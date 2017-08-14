@@ -1,0 +1,35 @@
+{
+  "name": "riteway",
+  "version": "1.0.0",
+  "description": "Unit tests that always supply a good bug report when they fail.",
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint source && echo 'Lint complete.'",
+    "test": "node -r @std/esm source/test",
+    "watch": "watch 'clear && npm run -s test && npm run -s lint'"
+  },
+  "@std/esm": {
+    "esm": "js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ericelliott/riteway.git"
+  },
+  "author": "Eric Elliott",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ericelliott/riteway/issues"
+  },
+  "homepage": "https://github.com/ericelliott/riteway#readme",
+  "devDependencies": {
+    "eslint": "4.4.1",
+    "tape": "4.8.0",
+    "watch": "1.0.2"
+  },
+  "peerDependencies": {
+    "tape": "^4.8.0"
+  },
+  "dependencies": {
+    "@std/esm": "0.2.2"
+  }
+}
