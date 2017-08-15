@@ -42,3 +42,20 @@ describe('sum()', async should => {
   });
 });
 ```
+
+## Output
+
+```
+TAP version 13
+# sum()
+ok 1 Given no arguments: should return 0
+ok 2 Given zero: should return the correct sum
+ok 3 Given negative numbers: should return the correct sum
+ok 4 Given NaN: should throw
+
+1..4
+# tests 4
+# pass  4
+
+# ok
+```
