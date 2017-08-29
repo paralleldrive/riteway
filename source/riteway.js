@@ -1,4 +1,4 @@
-import tape from 'tape';
+const tape = require('tape');
 
 // The testing library: a thin wrapper around tape
 const describe = (unit, cb) => tape(unit, assert => {
@@ -27,4 +27,4 @@ const Try = (fn, ...args) => {
   }
 };
 
-export { describe, Try };
+module.exports = { describe, Try };

@@ -5,11 +5,8 @@
   "main": "index.js",
   "scripts": {
     "lint": "eslint source && echo 'Lint complete.'",
-    "test": "node -r @std/esm source/test",
+    "test": "node source/test",
     "watch": "watch 'clear && npm run -s test && npm run -s lint'"
-  },
-  "@std/esm": {
-    "esm": "js"
   },
   "repository": {
     "type": "git",
@@ -23,13 +20,9 @@
   "homepage": "https://github.com/ericelliott/riteway#readme",
   "devDependencies": {
     "eslint": "4.4.1",
-    "tape": "4.8.0",
     "watch": "1.0.2"
   },
-  "peerDependencies": {
-    "tape": "^4.8.0"
-  },
   "dependencies": {
-    "@std/esm": "0.2.2"
+    "tape": "^4.8.0"
   }
 }

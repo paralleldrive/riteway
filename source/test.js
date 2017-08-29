@@ -1,4 +1,4 @@
-import { describe, Try } from './riteway';
+const { describe, Try } = require('./riteway');
 
 // a function to test
 const sum = (...args) => {
