@@ -2,7 +2,7 @@
   "name": "riteway",
   "version": "2.0.0",
   "description": "Unit tests that always supply a good bug report when they fail.",
-  "main": "index.js",
+  "main": "source/index.js",
   "scripts": {
     "lint": "eslint source && echo 'Lint complete.'",
     "test": "node source/test",
