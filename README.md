@@ -4,7 +4,7 @@ Unit tests that always supply a good bug report when they fail.
 
 
 ```js
-import { describe, Try } from './riteway';
+import { describe, Try } from 'riteway';
 
 // a function to test
 const sum = (...args) => {
