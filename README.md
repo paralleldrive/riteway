@@ -2,6 +2,12 @@
 
 Unit tests that always supply a good bug report when they fail.
 
+* **R**eadable
+* **I**solated/**I**ntegrated
+* **T**horough
+* **E**xplicit
+
+RITEway forces you to write **R**eadable, **I**solated, and **E**xplicit tests, because that's the only way you can use the API. It also makes it easier to be thorough by making test assertions so simple that you'll want write more of them.
 
 ```js
 import { describe, Try } from 'riteway';
