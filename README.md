@@ -1,6 +1,6 @@
 # RITEway
 
-Unit tests that always supply a good bug report when they fail.
+Test assertions that always supply a good bug report when they fail.
 
 * **R**eadable
 * **I**solated/**I**ntegrated
@@ -50,6 +50,8 @@ describe('sum()', async should => {
 ```
 
 ## Output
+
+RITEway produces standard TAP output, so it's easy to integrate with just about any test formatter and reporting tool. (TAP is a well established standard with hundreds (thousands?) of integrations).
 
 ```
 TAP version 13
