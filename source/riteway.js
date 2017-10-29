@@ -16,7 +16,7 @@ const describe = (unit, cb) => tape(unit, assert => {
     end
   }));
 
-  if (result && result.then) result.then(end);
+  if (result && result.then) result.then(end).catch(x => x);
 });
 
 const Try = (fn, ...args) => {
