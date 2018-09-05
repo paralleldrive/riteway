@@ -1,7 +1,7 @@
 declare module 'riteway' {
   export function describe(label: string, callback: describeCallback): void
   
-  export function Try(fn: Function, ...args: Array<number>): any
+  export function Try(fn: Function, ...args: Array<any>): any
 
   type describeCallback = (should: should) => Promise<void>
 
