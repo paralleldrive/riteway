@@ -11,7 +11,7 @@ declare module 'riteway' {
 
   interface Assertion {
     given: string
-    should: string
+    should?: string
     actual: any
     expected: any
   }
