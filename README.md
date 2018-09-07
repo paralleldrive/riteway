@@ -67,3 +67,11 @@ ok 4 Given NaN: should throw
 
 # ok
 ```
+
+Prefer colorful output? No problem. The standard TAP output has you covered. You can run it through any TAP formatter you like:
+
+```
+npm install -g tap-color
+npm test | tap-color
+```
+
