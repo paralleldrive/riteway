@@ -20,11 +20,11 @@
   },
   "homepage": "https://github.com/ericelliott/riteway#readme",
   "devDependencies": {
-    "eslint": "^5.5.0",
-    "updtr": "^2.0.0",
+    "eslint": "5.5.0",
+    "updtr": "2.0.0",
     "watch": "1.0.2"
   },
   "dependencies": {
-    "tape": "^4.9.1"
+    "tape": "4.9.1"
   }
 }
