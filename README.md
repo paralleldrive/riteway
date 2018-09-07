@@ -75,3 +75,4 @@ npm install -g tap-color
 npm test | tap-color
 ```
 
+![Colorized output](docs/tap-color-screenshot.png)
