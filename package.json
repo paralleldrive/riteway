@@ -6,7 +6,8 @@
   "scripts": {
     "lint": "eslint source && echo 'Lint complete.'",
     "test": "node source/test",
-    "watch": "watch 'clear && npm run -s test && npm run -s lint'"
+    "watch": "watch 'clear && npm run -s test && npm run -s lint'",
+    "update": "updtr"
   },
   "repository": {
     "type": "git",
@@ -19,10 +20,11 @@
   },
   "homepage": "https://github.com/ericelliott/riteway#readme",
   "devDependencies": {
-    "eslint": "4.4.1",
+    "eslint": "5.5.0",
+    "updtr": "2.0.0",
     "watch": "1.0.2"
   },
   "dependencies": {
-    "tape": "^4.8.0"
+    "tape": "4.9.1"
   }
 }
