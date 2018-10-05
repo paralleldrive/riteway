@@ -27,4 +27,6 @@ const Try = (fn, ...args) => {
   }
 };
 
-module.exports = { describe, Try };
+const createStream = tape.createStream.bind(tape);
+
+module.exports = { describe, Try, createStream };
