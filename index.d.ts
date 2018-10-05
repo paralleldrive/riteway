@@ -3,16 +3,14 @@ declare module 'riteway' {
   
   export function Try<U extends any[], V>(fn: (...args: U) => V, ...args: U): any
 
-  type describeCallback = (should: should) => Promise<void>
-
-  type should = (label?: string) => { assert: assert }
+  type describeCallback = ({ assert: assert }) => Promise<void>
 
   type assert = (assertion: Assertion) => void
 
   interface Assertion {
-    given: string
-    should?: string
-    actual: any
-    expected: any
+    readonly given: string
+    readonly should: string
+    readonly actual: any
+    readonly expected: any
   }
 }

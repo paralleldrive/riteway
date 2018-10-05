@@ -4,20 +4,19 @@ const tape = require('tape');
 const describe = (unit, cb) => tape(unit, assert => {
   const end = assert.end.bind(assert);
 
-  const result = cb(description => ({
-    assert: ({ actual, expected, given, should = description }) =>
-      assert.same(
-        actual, expected,
-        `Given ${ given }: should ${ should }`
-      ),
-    // We can probably use async/await to deal with most async tests,
-    // but we should probably still supply `end()` so users can do
-    // whatever they like
-    end
-  }));
+  const result = cb({
+    assert: riteAssert(assert),
+    end,
+  });
 
   if (result && result.then) result.then(end);
 });
+
+const riteAssert = (tapeAssert) => ({ actual, expected, given, should }) =>
+  tapeAssert.same(
+    actual, expected,
+    `Given ${ given }: should ${ should }`
+  );
 
 const Try = (fn, ...args) => {
   try {
