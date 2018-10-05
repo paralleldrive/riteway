@@ -1,4 +1,4 @@
-const { describe, Try } = require('./riteway');
+const { describe, Try, createStream } = require('./riteway');
 
 // a function to test
 const sum = (...args) => {
@@ -35,3 +35,14 @@ describe('sum()', async should => {
     expected: new TypeError('NaN')
   });
 });
+
+describe('createStream', async should => {
+  const { assert } = should();
+
+  assert({
+    given: 'check type of createStream',
+    should: 'be a function',
+    actual: typeof createStream,
+    expected: 'function'
+  })
+})
