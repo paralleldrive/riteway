@@ -6,8 +6,8 @@ const sum = (...args) => {
   return args.reduce((acc, n) => acc + n, 0);
 };
 
-describe('sum()', async should => {
-  const { assert } = should('return the correct sum');
+describe('sum()', async assert => {
+  const should = 'return the correct sum';
 
   assert({
     given: 'no arguments',
@@ -18,12 +18,14 @@ describe('sum()', async should => {
 
   assert({
     given: 'zero',
+    should,
     actual: sum(2, 0),
     expected: 2
   });
 
   assert({
     given: 'negative numbers',
+    should,
     actual: sum(1, -4),
     expected: -3
   });
@@ -36,13 +38,21 @@ describe('sum()', async should => {
   });
 });
 
-describe('createStream', async should => {
-  const { assert } = should();
+describe('synchronous assert()', ({assert, end}) => {
 
   assert({
-    given: 'check type of createStream',
+    given: 'synchronous function taking end()',
+    should: 'end the test when end() is called'
+  });
+
+  end();
+});
+
+describe('createStream()', async assert => {
+  assert({
+    given: 'typeof check',
     should: 'be a function',
     actual: typeof createStream,
     expected: 'function'
-  })
-})
+  });
+});
