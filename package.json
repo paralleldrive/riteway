@@ -1,6 +1,6 @@
 {
   "name": "riteway",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "description": "Unit tests that always supply a good bug report when they fail.",
   "main": "source/index.js",
   "scripts": {
