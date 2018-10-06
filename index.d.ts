@@ -1,18 +1,28 @@
 declare module 'riteway' {
   export function describe(label: string, callback: describeCallback): void
-  
+
   export function Try<U extends any[], V>(fn: (...args: U) => V, ...args: U): any
 
-  type describeCallback = (should: should) => Promise<void>
+  export function createStream(opts: CreateStreamOptions): ReadableStream
 
-  type should = (label?: string) => { assert: assert }
+  type end = () => void
 
-  type assert = (assertion: Assertion) => void
+  interface assert {
+    (assertion: Assertion): void
+    end: end
+    assert: assert
+  }
+
+  type describeCallback = (assert: assert) => Promise<void>
 
   interface Assertion {
-    given: string
-    should?: string
-    actual: any
-    expected: any
+    readonly given: any
+    readonly should?: string
+    readonly actual: any
+    readonly expected: any
+  }
+
+  interface CreateStreamOptions {
+    readonly objectMode: boolean
   }
 }

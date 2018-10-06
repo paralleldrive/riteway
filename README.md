@@ -9,6 +9,23 @@ Test assertions that always supply a good bug report when they fail.
 
 RITEway forces you to write **R**eadable, **I**solated, and **E**xplicit tests, because that's the only way you can use the API. It also makes it easier to be thorough by making test assertions so simple that you'll want to write more of them.
 
+There are [5 questions every unit test must answer](https://medium.com/javascript-scene/what-every-unit-test-needs-f6cd34d9836d). RITEWay forces you to answer them.
+
+1. What is the unit under test (module, function, class, whatever)?
+2. What should it do? (Prose description)
+3. What was the actual output?
+4. What was the expected output?
+5. How do you reproduce the failure?
+
+
+## Installing
+
+```
+npm install --save-dev riteway
+```
+
+## Example Usage
+
 ```js
 import { describe, Try } from 'riteway';
 
@@ -18,8 +35,8 @@ const sum = (...args) => {
   return args.reduce((acc, n) => acc + n, 0);
 };
 
-describe('sum()', async should => {
-  const { assert } = should('return the correct sum');
+describe('sum()', async assert => {
+  const should = 'return the correct sum';
 
   assert({
     given: 'no arguments',
@@ -30,12 +47,14 @@ describe('sum()', async should => {
 
   assert({
     given: 'zero',
+    should,
     actual: sum(2, 0),
     expected: 2
   });
 
   assert({
     given: 'negative numbers',
+    should,
     actual: sum(1, -4),
     expected: -3
   });
@@ -76,3 +95,82 @@ npm test | tap-color
 ```
 
 ![Colorized output](docs/tap-color-screenshot.png)
+
+
+## API
+
+### describe
+
+```js
+describe = (unit: String, cb: TestFunction) => Void
+```
+
+Describe takes a prose description of the unit under test (function, module, whatever), and a callback function (`cb: TestFunction`). The callback function should be an [async function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function) so that the test can automatically complete when it reaches the end. RITEWay assumes that all tests are asynchronous. Async functions automatically return a promise in JavaScript, so RITEWay knows when to end each test.
+
+
+### TestFunction
+
+```js
+TestFunction = assert => Promise | Void
+```
+
+The `TestFunction` is a user-defined function which takes `assert()` and should return a promise. If you make your `TestFunction` async, it will return a promise automatically. If you don't make your function async, you can destructure `end()` from `assert()` and call it when you're done to end the test. For example, this is the actual unit test used to test the `end()` function (yes, we used RITEWay to test RITEWay):
+
+```js
+describe('synchronous assert()', ({assert, end}) => {
+
+  assert({
+    given: 'synchronous function taking end()',
+    should: 'end the test when end() is called'
+  });
+
+  end();
+});
+```
+
+Failure to end the test will cause an error telling you that your test exited without ending. Usually, the fix is to add `async` to your function signature, e.g.:
+
+```js
+describe('sum()', async assert => {
+  /* test goes here */
+});
+```
+
+
+### assert
+
+```js
+interface assert = {
+  ({
+    given = Any,
+    should = '',
+    actual: Any,
+    expected: Any
+  } = {}) => Void, throws
+  end: () => Void,
+  assert
+}
+```
+
+The `assert` function is the function you call to make your assertions. It takes prose descriptions for `given` and `should` (which should be strings), and invokes the test harness to evaluate the pass/fail status of the test. Unless you're using a custom test harness, assertion failures will cause a test failure report and an error exit status.
+
+
+### createStream
+
+```js
+createStream = ({ objectMode: Boolean }) => NodeStream
+```
+
+Create a stream of output, bypassing the default output stream that writes messages to `console.log()`. By default the stream will be a text stream of TAP output, but you can get an object stream instead by setting opts.objectMode to true.
+
+```js
+import { describe, createStream } from 'riteway';
+
+createStream({ objectMode: true }).on('data', function (row) {
+    console.log(JSON.stringify(row))
+});
+
+describe('foo', async assert => {
+  /* your tests here */
+});
+```

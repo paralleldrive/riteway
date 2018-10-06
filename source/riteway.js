@@ -7,7 +7,7 @@ const describe = (unit = '', cb = noop) => tape(unit, test => {
   const end = test.end.bind(test);
 
   const assert = ({
-    given = '',
+    given,
     should = '',
     actual,
     expected
