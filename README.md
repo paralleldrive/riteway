@@ -114,21 +114,9 @@ Describe takes a prose description of the unit under test (function, module, wha
 TestFunction = assert => Promise | Void
 ```
 
-The `TestFunction` is a user-defined function which takes `assert()` and should return a promise. If you make your `TestFunction` async, it will return a promise automatically. If you don't make your function async, you can destructure `end()` from `assert()` and call it when you're done to end the test. For example, this is the actual unit test used to test the `end()` function (yes, we used RITEWay to test RITEWay):
+The `TestFunction` is a user-defined function which takes `assert()` and should return a promise. If you supply an async function, it will return a promise automatically. If you don't, you'll need to explicitly return a promise.
 
-```js
-describe('synchronous assert()', ({assert, end}) => {
-
-  assert({
-    given: 'synchronous function taking end()',
-    should: 'end the test when end() is called'
-  });
-
-  end();
-});
-```
-
-Failure to end the test will cause an error telling you that your test exited without ending. Usually, the fix is to add `async` to your function signature, e.g.:
+Failure to resolve the `TestFunction` promise will cause an error telling you that your test exited without ending. Usually, the fix is to add `async` to your `TestFunction` signature, e.g.:
 
 ```js
 describe('sum()', async assert => {
@@ -140,16 +128,12 @@ describe('sum()', async assert => {
 ### assert
 
 ```js
-interface assert = {
-  ({
-    given = Any,
-    should = '',
-    actual: Any,
-    expected: Any
-  } = {}) => Void, throws
-  end: () => Void,
-  assert
-}
+assert = ({
+  given = Any,
+  should = '',
+  actual: Any,
+  expected: Any
+} = {}) => Void, throws
 ```
 
 The `assert` function is the function you call to make your assertions. It takes prose descriptions for `given` and `should` (which should be strings), and invokes the test harness to evaluate the pass/fail status of the test. Unless you're using a custom test harness, assertion failures will cause a test failure report and an error exit status.

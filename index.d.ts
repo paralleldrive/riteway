@@ -5,13 +5,7 @@ declare module 'riteway' {
 
   export function createStream(opts: CreateStreamOptions): ReadableStream
 
-  type end = () => void
-
-  interface assert {
-    (assertion: Assertion): void
-    end: end
-    assert: assert
-  }
+  type assert = (assertion: Assertion) => void
 
   type describeCallback = (assert: assert) => Promise<void>
 

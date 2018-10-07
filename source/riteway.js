@@ -7,18 +7,17 @@ const describe = (unit = '', cb = noop) => tape(unit, test => {
   const end = test.end.bind(test);
 
   const assert = ({
-    given,
+    // initialize values to undefined so TypeScript doesn't complain
+    given = undefined,
     should = '',
-    actual,
-    expected
+    actual = undefined,
+    expected = undefined
   } = {}) => {
     test.same(
       actual, expected,
       `Given ${given}: should ${should}`
     );
   };
-  assert.end = end;
-  assert.assert = assert;
 
   const result = cb(assert);
 

@@ -38,16 +38,6 @@ describe('sum()', async assert => {
   });
 });
 
-describe('synchronous assert()', ({assert, end}) => {
-
-  assert({
-    given: 'synchronous function taking end()',
-    should: 'end the test when end() is called'
-  });
-
-  end();
-});
-
 describe('createStream()', async assert => {
   assert({
     given: 'typeof check',
