@@ -1,5 +1,5 @@
 declare module 'riteway' {
-  export function describe(label: string, callback: describeCallback): void
+  export function describe(label: string, TestFunction: TestFunction): void
 
   export function Try<U extends any[], V>(fn: (...args: U) => V, ...args: U): any
 
@@ -7,7 +7,7 @@ declare module 'riteway' {
 
   type assert = (assertion: Assertion) => void
 
-  type describeCallback = (assert: assert) => Promise<void>
+  type TestFunction = (assert: assert) => Promise<void>
 
   interface Assertion {
     readonly given: any
