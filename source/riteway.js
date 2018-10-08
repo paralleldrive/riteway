@@ -3,8 +3,8 @@ const tape = require('tape');
 const noop = new Function();
 
 // The testing library: a thin wrapper around tape
-const describe = (unit = '', cb = noop) => tape(unit, test => {
-  const end = test.end.bind(test);
+const describe = (unit = '', TestFunction = noop) => tape(unit, test => {
+  const end = () => test.end();
 
   const assert = ({
     // initialize values to undefined so TypeScript doesn't complain
@@ -19,9 +19,9 @@ const describe = (unit = '', cb = noop) => tape(unit, test => {
     );
   };
 
-  const result = cb(assert);
+  const result = TestFunction(assert);
 
-  if (result && result.then) result.then(end);
+  if (result && result.then) return result.then(end);
 });
 
 const Try = (fn = noop, ...args) => {
