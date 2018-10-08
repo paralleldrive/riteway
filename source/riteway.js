@@ -1,25 +1,30 @@
 const tape = require('tape');
 
+const noop = new Function();
+
 // The testing library: a thin wrapper around tape
-const describe = (unit, cb) => tape(unit, assert => {
-  const end = assert.end.bind(assert);
+const describe = (unit = '', TestFunction = noop) => tape(unit, test => {
+  const end = () => test.end();
 
-  const result = cb(description => ({
-    assert: ({ actual, expected, given, should = description }) =>
-      assert.same(
-        actual, expected,
-        `Given ${ given }: should ${ should }`
-      ),
-    // We can probably use async/await to deal with most async tests,
-    // but we should probably still supply `end()` so users can do
-    // whatever they like
-    end
-  }));
+  const assert = ({
+    // initialize values to undefined so TypeScript doesn't complain
+    given = undefined,
+    should = '',
+    actual = undefined,
+    expected = undefined
+  } = {}) => {
+    test.same(
+      actual, expected,
+      `Given ${given}: should ${should}`
+    );
+  };
 
-  if (result && result.then) result.then(end);
+  const result = TestFunction(assert);
+
+  if (result && result.then) return result.then(end);
 });
 
-const Try = (fn, ...args) => {
+const Try = (fn = noop, ...args) => {
   try {
     return fn(...args);
   } catch (err) {
