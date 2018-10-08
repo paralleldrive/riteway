@@ -11,7 +11,7 @@ declare module 'riteway' {
 
   interface Assertion {
     readonly given: any
-    readonly should?: string
+    readonly should: string
     readonly actual: any
     readonly expected: any
   }
