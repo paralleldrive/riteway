@@ -33,7 +33,7 @@ describe('sum()', async assert => {
   assert({
     given: 'NaN',
     should: 'throw',
-    actual: Try(sum, 1, NaN),
+    actual: await Try(sum, 1, NaN),
     expected: new TypeError('NaN')
   });
 });
