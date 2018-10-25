@@ -24,9 +24,9 @@ const describe = (unit = '', TestFunction = noop) => tape(unit, test => {
   if (result && result.then) return result.then(end);
 });
 
-const Try = (fn = noop, ...args) => {
+const Try = async (fn = noop, ...args) => {
   try {
-    return fn(...args);
+    return await fn(...args);
   } catch (err) {
     return err;
   }
