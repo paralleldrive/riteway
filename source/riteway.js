@@ -24,9 +24,14 @@ const describe = (unit = '', TestFunction = noop) => tape(unit, test => {
   if (result && result.then) return result.then(end).catch(end);
 });
 
-const Try = async (fn = noop, ...args) => {
+const identity = x => x;
+const isPromise = x => x && typeof x.then === 'function';
+const catchAndReturn = x => x.catch(identity);
+const catchPromise = x => isPromise(x) ? catchAndReturn(x) : x;
+
+const Try = (fn = noop, ...args) => {
   try {
-    return await fn(...args);
+    return catchPromise(fn(...args));
   } catch (err) {
     return err;
   }
