@@ -2,8 +2,7 @@ const tape = require('tape');
 
 const noop = new Function();
 
-// The testing library: a thin wrapper around tape
-const describe = (unit = '', TestFunction = noop) => tape(unit, test => {
+const withRiteway = TestFunction => test => {
   const end = () => test.end();
 
   const assert = ({
@@ -22,7 +21,14 @@ const describe = (unit = '', TestFunction = noop) => tape(unit, test => {
   const result = TestFunction(assert);
 
   if (result && result.then) return result.then(end).catch(end);
-});
+};
+
+const withTape = tapeFn => (unit = '', TestFunction = noop) => tapeFn(unit, withRiteway(TestFunction));
+
+// The testing library: a thin wrapper around tape
+const describe = withTape(tape);
+describe.only = withTape(tape.only);
+describe.skip = tape.skip;
 
 const Try = (fn = noop, ...args) => {
   try {
