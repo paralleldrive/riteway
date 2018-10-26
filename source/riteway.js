@@ -3,7 +3,6 @@ const tape = require('tape');
 const noop = new Function();
 
 // The testing library: a thin wrapper around tape
-
 const describe = (unit = '', TestFunction = noop) => tape(unit, test => {
   const end = () => test.end();
 
