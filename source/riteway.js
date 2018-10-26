@@ -21,7 +21,7 @@ const describe = (unit = '', TestFunction = noop) => tape(unit, test => {
 
   const result = TestFunction(assert);
 
-  if (result && result.then) return result.then(end);
+  if (result && result.then) return result.then(end).catch(end);
 });
 
 const Try = async (fn = noop, ...args) => {
