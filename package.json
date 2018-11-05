@@ -3,6 +3,9 @@
   "version": "3.0.1",
   "description": "Unit tests that always supply a good bug report when they fail.",
   "main": "source/index.js",
+  "bin": {
+    "riteway": "./bin/riteway"
+  },
   "scripts": {
     "lint": "eslint source && echo 'Lint complete.'",
     "test": "node source/test",
