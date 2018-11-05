@@ -27,7 +27,7 @@ npm install --save-dev riteway
 and add an npm command in your package.json:
 
 ```
-"test": "riteway test/**/*-test.js"
+"test": "riteway test/**/*-test.js",
 ```
 
 so that you can run tests with: `npm test`. Riteway also supports full
