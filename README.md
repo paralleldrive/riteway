@@ -27,14 +27,15 @@ npm install --save-dev riteway
 and add an npm command in your package.json:
 
 ```
-"riteway": "riteway test/**/*-test.js"
+"test": "riteway test/**/*-test.js"
 ```
 
-Riteway also supports full TAPE-compatible usage syntax, so you can have an
-advanced entry that looks something like the following:
+so that you can run tests with: `npm test`. Riteway also supports full
+TAPE-compatible usage syntax, so you can have an advanced entry that looks
+something like the following:
 
 ```
-"riteway": "nyc riteway test/**/*-rt.js | tap-nirvana",
+"test": "nyc riteway test/**/*-rt.js | tap-nirvana",
 ```
 
 In this latter case, riteway run is managed by popular
