@@ -40,7 +40,8 @@ have an advance entry that looks something like:
 In this latter case, riteway run is managed by popular
 [nyc](https://www.npmjs.com/package/nyc) module that generates test coverage
 stats/reports and the on-screen output is piped through an advanced TAPE
-formatter [tap-nirvana](https://www.npmjs.com/package/tap-nirvana).
+formatter [tap-nirvana](https://www.npmjs.com/package/tap-nirvana) that adds
+color coding, source line identification and advanced diff-ing capabilities.
 
 
 ## Example Usage
