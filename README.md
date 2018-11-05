@@ -30,8 +30,8 @@ and add an npm command in your package.json:
 "riteway": "riteway test/**/*-test.js"
 ```
 
-Actually Riteway supports full TAPE-compatible usage syntax, so you can also
-have an advance entry that looks something like:
+Riteway also supports full TAPE-compatible usage syntax, so you can have an
+advanced entry that looks something like the following:
 
 ```
 "riteway": "nyc riteway test/**/*-rt.js | tap-nirvana",
