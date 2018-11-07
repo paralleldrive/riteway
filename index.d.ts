@@ -7,7 +7,7 @@ declare module 'riteway' {
 
   type assert = (assertion: Assertion) => void
 
-  type TestFunction = (assert: assert) => Promise<void>
+  type TestFunction = (assert: assert, end?: Function) => Promise<void>
 
   interface Assertion {
     readonly given: any
