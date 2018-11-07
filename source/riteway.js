@@ -19,9 +19,10 @@ const describe = (unit = '', TestFunction = noop) => tape(unit, test => {
     );
   };
 
-  const result = TestFunction(assert);
+  const result = TestFunction(assert, end);
 
-  if (result && result.then) return result.then(end).catch(end);
+  // don't use .catch() - it will swallow test errors
+  if (result && result.then) return result.then(end);
 });
 
 const identity = x => x;

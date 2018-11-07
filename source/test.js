@@ -38,6 +38,21 @@ describe('sum()', async assert => {
   });
 });
 
+describe('describe()', (assert, end) => {
+  setTimeout(() => {
+    assert({
+      given: 'TestFunction using end()',
+      should: 'pass end()',
+      actual: typeof end,
+      expected: 'function'
+    });
+  }, 20);
+
+  setTimeout(() => {
+    end();
+  }, 50);
+});
+
 describe('createStream()', async assert => {
   assert({
     given: 'typeof check',

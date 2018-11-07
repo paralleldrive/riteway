@@ -5,9 +5,10 @@
   "main": "source/index.js",
   "scripts": {
     "lint": "eslint source && echo 'Lint complete.'",
+    "typecheck": "npx -p typescript tsc --rootDir . source/test.js --allowJs --checkJs --noEmit --lib es6 && echo 'TypeScript check complete.'",
+    "ts": "npm run -s typecheck",
     "test": "node source/test",
-    "ts": "npx -p typescript tsc --rootDir . source/test.js --allowJs --checkJs --noEmit --lib es6",
-    "watch": "watch 'clear && npm run -s test && npm run -s lint' source",
+    "watch": "watch 'clear && npm run -s test && npm run -s lint && npm run -s typecheck' source",
     "update": "updtr"
   },
   "repository": {
@@ -21,8 +22,9 @@
   },
   "homepage": "https://github.com/ericelliott/riteway#readme",
   "devDependencies": {
-    "eslint": "5.6.1",
-    "typescript": "3.1.1",
+    "@types/node": "10.12.1",
+    "eslint": "5.8.0",
+    "typescript": "3.1.4",
     "updtr": "3.1.0",
     "watch": "1.0.2"
   },
