@@ -1,7 +1,7 @@
 declare module 'riteway' {
   export function describe(label: string, TestFunction: TestFunction): void
 
-  export function Try<U extends any[], V>(fn: (...args: U) => V, ...args: U): any
+  export function Try<U extends any[], V>(fn: (...args: U) => V, ...args: U): any | Promise<any>
 
   export function createStream(opts: CreateStreamOptions): ReadableStream
 

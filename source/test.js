@@ -61,3 +61,15 @@ describe('createStream()', async assert => {
     expected: 'function'
   });
 });
+
+describe('Try()', async assert => {
+  {
+    const error = new Error('ooops');
+    assert({
+      given: 'an async function that throws',
+      should: 'await and return the value of the error',
+      actual: (await Try(async () => { throw error; }, 'irrelivant')).toString(),
+      expected: error.toString()
+    });
+  }
+});
