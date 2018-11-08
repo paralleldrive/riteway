@@ -38,6 +38,21 @@ describe('sum()', async assert => {
   });
 });
 
+describe('describe()', (assert, end) => {
+  setTimeout(() => {
+    assert({
+      given: 'TestFunction using end()',
+      should: 'pass end()',
+      actual: typeof end,
+      expected: 'function'
+    });
+  }, 20);
+
+  setTimeout(() => {
+    end();
+  }, 50);
+});
+
 describe('createStream()', async assert => {
   assert({
     given: 'typeof check',
@@ -45,4 +60,16 @@ describe('createStream()', async assert => {
     actual: typeof createStream,
     expected: 'function'
   });
+});
+
+describe('Try()', async assert => {
+  {
+    const error = new Error('ooops');
+    assert({
+      given: 'an async function that throws',
+      should: 'await and return the value of the error',
+      actual: (await Try(async () => { throw error; }, 'irrelivant')).toString(),
+      expected: error.toString()
+    });
+  }
 });
