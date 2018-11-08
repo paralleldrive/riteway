@@ -128,6 +128,21 @@ describe = (unit: String, cb: TestFunction) => Void
 
 Describe takes a prose description of the unit under test (function, module, whatever), and a callback function (`cb: TestFunction`). The callback function should be an [async function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function) so that the test can automatically complete when it reaches the end. RITEWay assumes that all tests are asynchronous. Async functions automatically return a promise in JavaScript, so RITEWay knows when to end each test.
 
+### describe.only
+
+```js
+describe.only = (unit: String, cb: TestFunction) => Void
+```
+
+Like Describe, but don't run any other tests in the test suite.  See [test.only](https://github.com/substack/tape#testonlyname-cb)
+
+### describe.skip
+
+```js
+describe.skip = (unit: String, cb: TestFunction) => Void
+```
+
+Skip running this test. See [test.skip](https://github.com/substack/tape#testskipname-cb)
 
 ### TestFunction
 
