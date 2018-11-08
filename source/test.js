@@ -1,3 +1,4 @@
+const tape = require('tape');
 const { describe, Try, createStream } = require('./riteway');
 
 // a function to test
@@ -72,4 +73,33 @@ describe('Try()', async assert => {
       expected: error.toString()
     });
   }
+});
+
+describe('skip()', async assert => {
+  assert({
+    given: 'describe.skip',
+    should: 'be equal to tape.skip',
+    actual: describe.skip === tape.skip,
+    expected: true
+  });
+});
+
+describe('only()', async () => {
+  describe.only('a test marked as the only one to run', async assert => {
+    assert({
+      given: 'a test using only()',
+      should: 'run just this single test',
+      actual: true,
+      expected: true
+    });
+  });
+
+  describe('a non-executing test', async assert => {
+    assert({
+      given: 'another test only()',
+      should: 'not run this test',
+      actual: false,
+      expected: true
+    });
+  });
 });
