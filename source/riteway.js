@@ -2,8 +2,7 @@ const tape = require('tape');
 
 const noop = new Function();
 
-// The testing library: a thin wrapper around tape
-const describe = (unit = '', TestFunction = noop) => tape(unit, test => {
+const withRiteway = TestFunction => test => {
   const end = () => test.end();
 
   const assert = ({
@@ -21,9 +20,15 @@ const describe = (unit = '', TestFunction = noop) => tape(unit, test => {
 
   const result = TestFunction(assert, end);
 
-  // don't use .catch() - it will swallow test errors
   if (result && result.then) return result.then(end);
-});
+};
+
+const withTape = tapeFn => (unit = '', TestFunction = noop) => tapeFn(unit, withRiteway(TestFunction));
+
+// The testing library: a thin wrapper around tape
+const describe = withTape(tape);
+describe.only = withTape(tape.only);
+describe.skip = tape.skip;
 
 const identity = x => x;
 const isPromise = x => x && typeof x.then === 'function';
