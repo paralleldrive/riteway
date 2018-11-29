@@ -24,6 +24,27 @@ There are [5 questions every unit test must answer](https://medium.com/javascrip
 npm install --save-dev riteway
 ```
 
+and add an npm command in your package.json:
+
+```
+"test": "riteway test/**/*-test.js",
+```
+
+so that you can run tests with: `npm test`. Riteway also supports full
+TAPE-compatible usage syntax, so you can have an advanced entry that looks
+something like the following:
+
+```
+"test": "nyc riteway test/**/*-rt.js | tap-nirvana",
+```
+
+In this latter case, riteway run is managed by popular
+[nyc](https://www.npmjs.com/package/nyc) module that generates test coverage
+stats/reports and the on-screen output is piped through an advanced TAPE
+formatter [tap-nirvana](https://www.npmjs.com/package/tap-nirvana) that adds
+color coding, source line identification and advanced diff-ing capabilities.
+
+
 ## Example Usage
 
 ```js
