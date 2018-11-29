@@ -3,6 +3,9 @@
   "version": "4.0.0",
   "description": "Unit tests that always supply a good bug report when they fail.",
   "main": "source/index.js",
+  "bin": {
+    "riteway": "./bin/riteway"
+  },
   "scripts": {
     "lint": "eslint source && echo 'Lint complete.'",
     "typecheck": "npx -p typescript tsc --rootDir . source/test.js --allowJs --checkJs --noEmit --lib es6 && echo 'TypeScript check complete.'",
