@@ -22,9 +22,9 @@
   },
   "homepage": "https://github.com/ericelliott/riteway#readme",
   "devDependencies": {
-    "@types/node": "10.12.1",
-    "eslint": "5.8.0",
-    "typescript": "3.1.4",
+    "@types/node": "10.12.10",
+    "eslint": "5.9.0",
+    "typescript": "3.2.1",
     "updtr": "3.1.0",
     "watch": "1.0.2"
   },
