@@ -181,7 +181,7 @@ The `assert` function is the function you call to make your assertions. It takes
 createStream = ({ objectMode: Boolean }) => NodeStream
 ```
 
-Create a stream of output, bypassing the default output stream that writes messages to `console.log()`. By default the stream will be a text stream of TAP output, but you can get an object stream instead by setting opts.objectMode to true.
+Create a stream of output, bypassing the default output stream that writes messages to `console.log()`. By default the stream will be a text stream of TAP output, but you can get an object stream instead by setting `opts.objectMode` to `true`.
 
 ```js
 import { describe, createStream } from 'riteway';
