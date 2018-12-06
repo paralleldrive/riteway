@@ -1,5 +1,5 @@
-const tape = require('tape');
-const { describe, Try, createStream } = require('./riteway');
+import { describe, Try, createStream } from './index';
+import tape from 'tape';
 
 // a function to test
 const sum = (...args) => {
