@@ -147,10 +147,10 @@ Skip running this test. See [test.skip](https://github.com/substack/tape#testski
 ### TestFunction
 
 ```js
-TestFunction = assert => Promise | Void
+TestFunction = assert => Promise<void>
 ```
 
-The `TestFunction` is a user-defined function which takes `assert()` and should return a promise. If you supply an async function, it will return a promise automatically. If you don't, you'll need to explicitly return a promise.
+The `TestFunction` is a user-defined function which takes `assert()` and must return a promise. If you supply an async function, it will return a promise automatically. If you don't, you'll need to explicitly return a promise.
 
 Failure to resolve the `TestFunction` promise will cause an error telling you that your test exited without ending. Usually, the fix is to add `async` to your `TestFunction` signature, e.g.:
 
