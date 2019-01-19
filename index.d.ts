@@ -6,15 +6,15 @@ declare module 'riteway' {
 
   export function createStream(opts: CreateStreamOptions): ReadableStream
 
-  type assert = (assertion: Assertion) => void
+  type assert = <T>(assertion: Assertion<T>) => void
 
   type TestFunction = (assert: assert, end?: Function) => Promise<void>
 
-  interface Assertion {
+  interface Assertion<T> {
     readonly given: any
     readonly should: string
-    readonly actual: any
-    readonly expected: any
+    readonly actual: T
+    readonly expected: T
   }
 
   interface CreateStreamOptions {
