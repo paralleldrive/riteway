@@ -25,7 +25,7 @@
   },
   "homepage": "https://github.com/ericelliott/riteway#readme",
   "devDependencies": {
-    "@types/node": "10.12.25",
+    "@types/node": "10.12.26",
     "eslint": "5.13.0",
     "typescript": "3.3.3",
     "updtr": "3.1.0",
