@@ -10,8 +10,9 @@
     "lint": "eslint source && echo 'Lint complete.'",
     "typecheck": "npx -p typescript tsc --rootDir . source/test.js --allowJs --checkJs --noEmit --lib es6 && echo 'TypeScript check complete.'",
     "ts": "npm run -s typecheck",
-    "test": "node -r esm source/test",
+    "test": "node -r babel-register -r babel-polyfill source/test | tap-nirvana",
     "watch": "watch 'clear && npm run -s test && npm run -s lint' source",
+    "precommit": "npm run -s test && npm run -s lint",
     "update": "updtr"
   },
   "repository": {
@@ -26,13 +27,22 @@
   "homepage": "https://github.com/ericelliott/riteway#readme",
   "devDependencies": {
     "@types/node": "10.12.26",
+    "babel-cli": "6.26.0",
+    "babel-eslint": "10.0.1",
+    "babel-preset-env": "1.7.0",
+    "babel-preset-react": "6.24.1",
+    "babel-register": "6.26.0",
     "eslint": "5.13.0",
+    "eslint-plugin-react": "7.12.4",
+    "react": "16.8.2",
+    "tap-nirvana": "1.1.0",
     "typescript": "3.3.3",
     "updtr": "3.1.0",
     "watch": "1.0.2"
   },
   "dependencies": {
-    "esm": "3.2.4",
+    "cheerio": "1.0.0-rc.2",
+    "react-dom": "16.8.2",
     "tape": "4.10.1"
   }
 }
