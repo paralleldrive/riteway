@@ -1,5 +1,6 @@
-import { describe, Try, createStream } from './index';
+import { describe, Try, createStream, renderComponent } from './index';
 import tape from 'tape';
+import React from 'react';
 
 // a function to test
 const sum = (...args) => {
@@ -84,22 +85,15 @@ describe('skip()', async assert => {
   });
 });
 
-describe('only()', async () => {
-  describe.only('a test marked as the only one to run', async assert => {
-    assert({
-      given: 'a test using only()',
-      should: 'run just this single test',
-      actual: true,
-      expected: true
-    });
-  });
+describe('renderComponent', async assert => {
+  const text = 'Foo';
+  const $ = renderComponent(<div className="foo">{ text }</div>);
 
-  describe('a non-executing test', async assert => {
-    assert({
-      given: 'another test only()',
-      should: 'not run this test',
-      actual: false,
-      expected: true
-    });
+  assert({
+    given: 'A react component',
+    should: 'return a working cheerio instance',
+    actual: $('.foo').html().trim(),
+    expected: text
   });
 });
+
