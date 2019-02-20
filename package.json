@@ -31,7 +31,7 @@
     "babel-preset-env": "1.7.0",
     "babel-preset-react": "6.24.1",
     "babel-register": "6.26.0",
-    "eslint": "5.13.0",
+    "eslint": "5.14.1",
     "eslint-plugin-react": "7.12.4",
     "react": "16.8.2",
     "tap-nirvana": "1.1.0",
