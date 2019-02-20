@@ -89,6 +89,32 @@ describe('sum()', async assert => {
 });
 ```
 
+### Testing React Components
+
+```js
+import React from 'react';
+import render from 'riteway/render-component';
+import { describe } from 'riteway';
+
+describe('renderComponent', async assert => {
+  const $ = render(<div className="foo">testing</div>);
+
+  assert({
+    given: 'some jsx',
+    should: 'render markup',
+    actual: $('.foo').html().trim(),
+    expected: 'testing'
+  });
+});
+```
+
+RITEway makes it easier than ever to test React pure components. A pure component is a component which, given the same inputs, always renders the same output.
+
+I don't recommend unit testing stateful components, or components with side-effects. Write functional tests for those, instead, because you'll need tests which describe the complete end-to-end flow, from user input, to back-end-services, and back to the UI. Those tests frequently duplicate any testing effort you would spend unit-testing stateful UI behaviors. You'd need to do a lot of mocking to properly unit test those kinds of components anyway, and that mocking may cover up problems with too much coupling in your component. See ["Mocking is a Code Smell"](https://medium.com/javascript-scene/mocking-is-a-code-smell-944a70c90a6a) for details.
+
+A great alternative is to encapsulate side-effects and state management in container components, and then pass state into pure components as props. Unit test the pure components and use functional tests to ensure that the complete UX flow works in real browsers from the user's perspective.
+
+
 ## Output
 
 RITEway produces standard TAP output, so it's easy to integrate with just about any test formatter and reporting tool. (TAP is a well established standard with hundreds (thousands?) of integrations).

@@ -1,6 +1,4 @@
 import tape from 'tape';
-import reactDom from 'react-dom/server';
-import dom from 'cheerio';
 
 const noop = new Function();
 
@@ -47,8 +45,5 @@ const Try = (fn = noop, ...args) => {
 
 const createStream = tape.createStream.bind(tape);
 
-const renderComponent = component =>
-  dom.load(reactDom.renderToStaticMarkup(component));
-
 export default describe;
-export { describe, Try, createStream, renderComponent };
+export { describe, Try, createStream };
