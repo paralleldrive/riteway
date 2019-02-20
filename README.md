@@ -217,6 +217,12 @@ describe('foo', async assert => {
 
 ## Render Component
 
+First, import `render` from `riteway/render-component`:
+
+```
+import render from 'riteway/render-component';
+```
+
 ```
 render = (jsx: String) => CheerioObject
 ```
