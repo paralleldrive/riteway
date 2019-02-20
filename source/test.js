@@ -1,4 +1,5 @@
-import { describe, Try, createStream, renderComponent } from './index';
+import { describe, Try, createStream } from './riteway';
+import render from './render-component';
 import tape from 'tape';
 import React from 'react';
 
@@ -87,7 +88,7 @@ describe('skip()', async assert => {
 
 describe('renderComponent', async assert => {
   const text = 'Foo';
-  const $ = renderComponent(<div className="foo">{ text }</div>);
+  const $ = render(<div className="foo">{ text }</div>);
 
   assert({
     given: 'A react component',
