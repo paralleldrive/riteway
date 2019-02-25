@@ -4,6 +4,8 @@ declare module 'riteway' {
 
   export function createStream(opts: CreateStreamOptions): ReadableStream
 
+  export function describe(unit: string, testFunction: TestFunction): Promise<void>
+
   type assert = <T>(assertion: Assertion<T>) => void
 
   type TestFunction = (assert: assert, end?: Function) => Promise<void>
