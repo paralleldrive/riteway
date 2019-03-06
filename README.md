@@ -224,7 +224,7 @@ import render from 'riteway/render-component';
 ```
 
 ```
-render = (jsx: String) => CheerioObject
+render = (jsx) => CheerioObject
 ```
 
-Take a JSX string and return a [Cheerio object](https://cheerio.js.org/), a partial implementation of the jQuery core API which makes selecting from your rendered JSX markup easy. 
+Take a JSX object and return a [Cheerio object](https://cheerio.js.org/), a partial implementation of the jQuery core API which makes selecting from your rendered JSX markup easy. 
