@@ -102,7 +102,7 @@ describe('renderComponent', async assert => {
 });
 ```
 
-RITEway makes it easier than ever to test React pure components, using the 'riteway/render-component' module. A pure component is a component which, given the same inputs, always renders the same output.
+RITEway makes it easier than ever to test React pure components, using the `riteway/render-component` module. A pure component is a component which, given the same inputs, always renders the same output.
 
 I don't recommend unit testing stateful components, or components with side-effects. Write functional tests for those, instead, because you'll need tests which describe the complete end-to-end flow, from user input, to back-end-services, and back to the UI. Those tests frequently duplicate any testing effort you would spend unit-testing stateful UI behaviors. You'd need to do a lot of mocking to properly unit test those kinds of components anyway, and that mocking may cover up problems with too much coupling in your component. See ["Mocking is a Code Smell"](https://medium.com/javascript-scene/mocking-is-a-code-smell-944a70c90a6a) for details.
 
