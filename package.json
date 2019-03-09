@@ -41,7 +41,7 @@
   },
   "dependencies": {
     "cheerio": "1.0.0-rc.2",
-    "esm": "3.2.13",
+    "esm": "3.2.14",
     "react-dom": "16.8.4",
     "tape": "4.10.1"
   }
