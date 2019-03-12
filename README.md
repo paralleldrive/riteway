@@ -38,6 +38,54 @@ Now you can run your tests with `npm test`. RITEway also supports full TAPE-comp
 
 In this case, we're using [nyc](https://www.npmjs.com/package/nyc), which generates test coverage reports. The output is piped through an advanced TAP formatter, [tap-nirvana](https://www.npmjs.com/package/tap-nirvana) that adds color coding, source line identification and advanced diff capabilities.
 
+### Troubleshooting
+
+If you get an error like: 
+
+```shell
+SyntaxError: Unexpected identifier
+    at new Script (vm.js:79:7)
+    at createScript (vm.js:251:10)
+    at Object.runInThisContext (vm.js:303:10)
+...
+```
+
+The problem is likely that you need a `.babeljs` configured with support for esm (standard JavaScript modules) and/or React. If you need React support, that might look something like:
+
+```js
+{
+  "presets": [
+    [
+      "@babel/preset-env",
+      {
+        "targets": [
+          "last 2 versions",
+          "safari >= 7"
+        ]
+      }
+    ],
+    "@babel/preset-react"
+  ]
+}
+```
+
+To install babel devdependencies:
+
+```js
+npm install --save-dev @babel/core @babel/polyfill @babel/preset-env @babel/register
+```
+
+And if you're using react:
+
+```js
+npm install --save-dev @babel/preset-react
+```
+
+You can then update your test script in `package.json` to use babel:
+
+```
+"test": "node -r @babel/register -r @babel/polyfill source/test"
+```
 
 ## Example Usage
 
