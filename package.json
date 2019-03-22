@@ -34,7 +34,7 @@
     "@types/node": "10.14.2",
     "eslint": "5.15.3",
     "eslint-plugin-react": "7.12.4",
-    "react": "16.8.4",
+    "react": "16.8.5",
     "tap-nirvana": "1.1.0",
     "typescript": "3.3.4000",
     "watch": "1.0.2"
@@ -42,7 +42,7 @@
   "dependencies": {
     "cheerio": "1.0.0-rc.2",
     "esm": "3.2.20",
-    "react-dom": "16.8.4",
+    "react-dom": "16.8.5",
     "tape": "4.10.1"
   }
 }
