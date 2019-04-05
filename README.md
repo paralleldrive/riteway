@@ -87,6 +87,25 @@ You can then update your test script in `package.json` to use babel:
 "test": "node -r @babel/register -r @babel/polyfill source/test"
 ```
 
+When you structure your folders by type like this:
+
+```bash
+├──todos
+│  ├── component
+│  ├── reducer
+│  └── test
+└──user
+   ├── component
+   ├── reducer
+   └── test
+```
+
+Update your test script to find all files with your custom ending:
+
+```json
+"test": "node -r @babel/register -r @babel/polyfill ./node_modules/.bin/riteway 'src/**/*.test.js' | tap-color",
+```
+
 ## Example Usage
 
 ```js
