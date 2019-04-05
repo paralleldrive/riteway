@@ -87,7 +87,7 @@ You can then update your test script in `package.json` to use babel:
 "test": "node -r @babel/register -r @babel/polyfill source/test"
 ```
 
-When you structure your folders by type like this:
+If you structure your folders by type like this:
 
 ```bash
 ├──todos
