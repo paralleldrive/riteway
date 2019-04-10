@@ -103,7 +103,7 @@ If you structure your folders by type like this:
 Update your test script to find all files with your custom ending:
 
 ```json
-"test": "node -r @babel/register -r @babel/polyfill ./node_modules/.bin/riteway 'src/**/*.test.js' | tap-color",
+"test": "riteway -r @babel/register -r @babel/polyfill 'src/**/*.test.js' | tap-color",
 ```
 
 ## Example Usage
