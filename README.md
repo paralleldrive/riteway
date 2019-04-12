@@ -179,7 +179,7 @@ A great alternative is to encapsulate side-effects and state management in conta
 
 When you [unit test React components](https://medium.com/javascript-scene/unit-testing-react-components-aeda9a44aae2) you frequently have to render your components many times. Sometimes the component needs to be wrapped in context (e.g. React Router or Redux) and often you want different props for some tests.
 
-RITEway makes it easy to isolate your tests while keeping them readable by using `create` functions in conjunction with [compound statements](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/block).
+RITEway makes it easy to isolate your tests while keeping them readable by using [factory functions](https://link.medium.com/WxHPhCc3OV) in conjunction with [block scope](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/block).
 
 ```js
 import ClickCounter from '../click-counter/click-counter-component';
