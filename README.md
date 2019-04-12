@@ -175,6 +175,43 @@ I don't recommend unit testing stateful components, or components with side-effe
 
 A great alternative is to encapsulate side-effects and state management in container components, and then pass state into pure components as props. Unit test the pure components and use functional tests to ensure that the complete UX flow works in real browsers from the user's perspective.
 
+#### Isolating React Unit Tests
+
+When you [unit test React components](https://medium.com/javascript-scene/unit-testing-react-components-aeda9a44aae2) you frequently have to render your components many times. Sometimes the component needs to be wrapped in context (e.g. React Router or Redux) and often you want different props for some tests.
+
+RITEway makes it easy to isolate your tests while keeping them readable by using `create` functions in conjunction with [compound statements](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/block).
+
+```js
+import ClickCounter from '../click-counter/click-counter-component';
+
+describe('ClickCounter component', async assert => {
+  const createCounter = clickCount =>
+    render(<ClickCounter clicks={ clickCount } />)
+  ;
+  
+  {
+    const count = 3;
+    const $ = createCounter(count);
+    assert({
+      given: 'a click count',
+      should: 'render the correct number of clicks.',
+      actual: parseInt($('.clicks-count').html().trim(), 10),
+      expected: count
+    });
+  }
+  
+  {
+    const count = 5;
+    const $ = createCounter(count);
+    assert({
+      given: 'a click count',
+      should: 'render the correct number of clicks.',
+      actual: parseInt($('.clicks-count').html().trim(), 10),
+      expected: count
+    });
+  }
+});
+```
 
 ## Output
 
