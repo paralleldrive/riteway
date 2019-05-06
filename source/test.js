@@ -1,7 +1,9 @@
 import { describe, Try, createStream } from './riteway';
 import render from './render-component';
+import renderPreact from './render-preact-component';
 import tape from 'tape';
 import React from 'react';
+import { h } from 'preact';
 
 // a function to test
 const sum = (...args) => {
@@ -98,3 +100,16 @@ describe('renderComponent', async assert => {
   });
 });
 
+describe('renderPreactComponent', async assert => {
+  const text = 'Foo';
+  const $ = renderPreact(h('div', { class: 'foo' }, text));
+
+  assert({
+    given: 'A preact component',
+    should: 'return a working cheerio instance',
+    actual: $('.foo')
+      .html()
+      .trim(),
+    expected: text,
+  });
+});

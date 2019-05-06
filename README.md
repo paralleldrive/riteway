@@ -213,6 +213,30 @@ describe('ClickCounter component', async assert => {
 });
 ```
 
+### Testing Preact components works just like testing React components.
+
+```js
+import render from 'riteway/render-preact-component';
+import { h } from 'preact';
+// To use JSX you might need to use
+// /** @jsx h */
+// See https://github.com/developit/preact-render-to-string
+
+describe('renderPreactComponent', async assert => {
+  const text = 'Foo';
+  const $ = renderPreact(h('div', { class: 'foo' }, text));
+
+  assert({
+    given: 'A preact component',
+    should: 'return a working cheerio instance',
+    actual: $('.foo')
+      .html()
+      .trim(),
+    expected: text,
+  });
+});
+```
+
 ## Output
 
 RITEway produces standard TAP output, so it's easy to integrate with just about any test formatter and reporting tool. (TAP is a well established standard with hundreds (thousands?) of integrations).

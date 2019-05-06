@@ -34,6 +34,7 @@
     "@types/node": "10.14.6",
     "eslint": "5.16.0",
     "eslint-plugin-react": "7.13.0",
+    "preact": "8.4.2",
     "react": "16.8.6",
     "tap-nirvana": "1.1.0",
     "typescript": "3.4.5",
@@ -42,6 +43,7 @@
   "dependencies": {
     "cheerio": "1.0.0-rc.3",
     "esm": "3.2.22",
+    "preact-render-to-string": "4.1.0",
     "react-dom": "16.8.6",
     "tape": "4.10.1"
   }
