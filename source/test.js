@@ -107,9 +107,7 @@ describe('renderPreactComponent', async assert => {
   assert({
     given: 'A preact component',
     should: 'return a working cheerio instance',
-    actual: $('.foo')
-      .html()
-      .trim(),
-    expected: text,
+    actual: $('.foo').html().trim(),
+    expected: text
   });
 });
