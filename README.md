@@ -106,7 +106,7 @@ Update your test script to find all files with your custom ending:
 "test": "riteway -r @babel/register -r @babel/polyfill 'src/**/*.test.js' | tap-nirvana",
 ```
 
-Another option if you don't want to transpile is to install the [`esm` package](https://dev.to/bennypowers/you-should-be-using-esm-kn3):
+Another option if you don't want to transpile is to install the [`esm` package](https://dev.to/bennypowers/you-should-be-using-esm-kn3). This means you don't use JSX in your project (for example, a NodeJS app).
 
 ```shell
 npm install --save-dev esm
