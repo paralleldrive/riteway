@@ -6,5 +6,7 @@
   "automergeType": "branch",
   "major": {
     "automerge": false
-  }
+  },
+  "schedule": "before 4am",
+  "timezone": "America/Los_Angeles"
 }
