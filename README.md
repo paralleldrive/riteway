@@ -213,6 +213,47 @@ describe('ClickCounter component', async assert => {
 });
 ```
 
+### Testing asynchronous functions with await
+
+It is possible to test `async` functions and promises by using the `await` keyword.
+
+Here are a couple of examples from the RITEway test suite:
+
+- `await` for `async` function:
+
+```js
+import { describe } from 'riteway';
+
+describe('await for async function that returns a JavaScript value', async assert => {
+  const later = async () => {
+    await new Promise(resolve => setTimeout(resolve, 10));
+    return 'pong';
+  }
+
+  assert({
+    given: 'async function that returns a string value after a small delay',
+    should: 'await and receive the correct result',
+    actual: await later(),
+    expected: 'pong'
+  });
+});
+```
+
+- `await` for a promise:
+
+```js
+import { describe } from 'riteway';
+
+describe('await for a promise that resolves with a JavaScript value', async assert => {
+  assert({
+    given: 'promise that resolves with a string value',
+    should: 'await and receive the correct result',
+    actual: await Promise.resolve('finished'),
+    expected: 'finished'
+  });
+});
+```
+
 ## Output
 
 RITEway produces standard TAP output, so it's easy to integrate with just about any test formatter and reporting tool. (TAP is a well established standard with hundreds (thousands?) of integrations).

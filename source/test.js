@@ -98,3 +98,25 @@ describe('renderComponent', async assert => {
   });
 });
 
+describe('await for async function that returns a JavaScript value', async assert => {
+  const later = async () => {
+    await new Promise(resolve => setTimeout(resolve, 10));
+    return 'pong';
+  }
+
+  assert({
+    given: 'async function that returns a string value after a small delay',
+    should: 'await and receive the correct result',
+    actual: await later(),
+    expected: 'pong'
+  });
+});
+
+describe('await for a promise that resolves with a JavaScript value', async assert => {
+  assert({
+    given: 'promise that resolves with a string value',
+    should: 'await and receive the correct result',
+    actual: await Promise.resolve('finished'),
+    expected: 'finished'
+  });
+});
