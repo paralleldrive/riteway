@@ -310,8 +310,7 @@ assert = ({
 
 The `assert` function is the function you call to make your assertions. It takes prose descriptions for `given` and `should` (which should be strings), and invokes the test harness to evaluate the pass/fail status of the test. Unless you're using a custom test harness, assertion failures will cause a test failure report and an error exit status.
 
-Note that `assert` internally uses the `deepEqual()` method from `tape` when performing the test assertion. See the corresponding documentation of `deepEqual()` for more details:
-  * <https://github.com/substack/tape#tdeepequalactual-expected-msg>.
+Note that `assert` uses [a deep equality check](https://github.com/substack/tape#tdeepequalactual-expected-msg) to compare the actual and expected values. Rarely, you may need another kind of check. In those cases, pass a JavaScript expression for the `actual` value.
 
 ### createStream
 
