@@ -1,6 +1,7 @@
 import tape from 'tape';
 
 const noop = new Function();
+const isPromise = x => x && typeof x.then === 'function';
 
 const withRiteway = TestFunction => test => {
   const end = () => test.end();
@@ -20,7 +21,7 @@ const withRiteway = TestFunction => test => {
 
   const result = TestFunction(assert, end);
 
-  if (result && result.then) return result.then(end);
+  if (isPromise(result)) return result.then(end);
 };
 
 const withTape = tapeFn => (unit = '', TestFunction = noop) => tapeFn(unit, withRiteway(TestFunction));
@@ -31,7 +32,6 @@ const describe = Object.assign(withTape(tape), {
   skip: tape.skip
 });
 
-const isPromise = x => x && typeof x.then === 'function';
 const catchAndReturn = x => x.catch(x => x);
 const catchPromise = x => isPromise(x) ? catchAndReturn(x) : x;
 
