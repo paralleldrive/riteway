@@ -20,19 +20,19 @@ There are [5 questions every unit test must answer](https://medium.com/javascrip
 
 ## Installing
 
-```
+```shell
 npm install --save-dev riteway
 ```
 
 Then add an npm command in your package.json:
 
-```
+```json
 "test": "riteway test/**/*-test.js",
 ```
 
 Now you can run your tests with `npm test`. RITEway also supports full TAPE-compatible usage syntax, so you can have an advanced entry that looks like:
 
-```
+```json
 "test": "nyc riteway test/**/*-rt.js | tap-nirvana",
 ```
 
@@ -52,7 +52,7 @@ SyntaxError: Unexpected identifier
 
 The problem is likely that you need a `.babeljs` configured with support for esm (standard JavaScript modules) and/or React. If you need React support, that might look something like:
 
-```js
+```json
 {
   "presets": [
     [
@@ -71,25 +71,25 @@ The problem is likely that you need a `.babeljs` configured with support for esm
 
 To install babel devdependencies:
 
-```js
+```shell
 npm install --save-dev @babel/core @babel/polyfill @babel/preset-env @babel/register
 ```
 
 And if you're using react:
 
-```js
+```shell
 npm install --save-dev @babel/preset-react
 ```
 
 You can then update your test script in `package.json` to use babel:
 
-```
+```json
 "test": "node -r @babel/register -r @babel/polyfill source/test"
 ```
 
 If you structure your folders by type like this:
 
-```bash
+```shell
 ├──todos
 │  ├── component
 │  ├── reducer
@@ -103,7 +103,19 @@ If you structure your folders by type like this:
 Update your test script to find all files with your custom ending:
 
 ```json
-"test": "riteway -r @babel/register -r @babel/polyfill 'src/**/*.test.js' | tap-color",
+"test": "riteway -r @babel/register -r @babel/polyfill 'src/**/*.test.js' | tap-nirvana",
+```
+
+Another option if you don't want to transpile is to install the [`esm` package](https://dev.to/bennypowers/you-should-be-using-esm-kn3). The esm-only option won't work for you if you use JSX in your project. If you're building a React project, use Babel instead.
+
+```shell
+npm install --save-dev esm
+```
+
+and use it in you package.json:
+
+```json
+"test": "riteway -r esm test/**/*.test.js | tap-nirvana"
 ```
 
 ## Example Usage
@@ -217,7 +229,7 @@ describe('ClickCounter component', async assert => {
 
 RITEway produces standard TAP output, so it's easy to integrate with just about any test formatter and reporting tool. (TAP is a well established standard with hundreds (thousands?) of integrations).
 
-```
+```shell
 TAP version 13
 # sum()
 ok 1 Given no arguments: should return 0
@@ -234,7 +246,7 @@ ok 4 Given NaN: should throw
 
 Prefer colorful output? No problem. The standard TAP output has you covered. You can run it through any TAP formatter you like:
 
-```
+```shell
 npm install -g tap-color
 npm test | tap-color
 ```
@@ -323,11 +335,11 @@ describe('foo', async assert => {
 
 First, import `render` from `riteway/render-component`:
 
-```
+```js
 import render from 'riteway/render-component';
 ```
 
-```
+```js
 render = (jsx) => CheerioObject
 ```
 
