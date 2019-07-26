@@ -40,7 +40,7 @@ In this case, we're using [nyc](https://www.npmjs.com/package/nyc), which genera
 
 ### Troubleshooting
 
-If you get an error like: 
+If you get an error like:
 
 ```shell
 SyntaxError: Unexpected identifier
@@ -200,7 +200,7 @@ describe('ClickCounter component', async assert => {
   const createCounter = clickCount =>
     render(<ClickCounter clicks={ clickCount } />)
   ;
-  
+
   {
     const count = 3;
     const $ = createCounter(count);
@@ -211,7 +211,7 @@ describe('ClickCounter component', async assert => {
       expected: count
     });
   }
-  
+
   {
     const count = 5;
     const $ = createCounter(count);
@@ -331,6 +331,17 @@ describe('foo', async assert => {
 });
 ```
 
+### countKeys
+
+Given an object, return a count of the object's own properties.
+
+```js
+countKeys = (Object) => Number
+```
+
+This function can be handy when you're adding new state to an object keyed by ID, and you want to ensure that the correct number of keys were added to the object.
+
+
 ## Render Component
 
 First, import `render` from `riteway/render-component`:
@@ -343,4 +354,4 @@ import render from 'riteway/render-component';
 render = (jsx) => CheerioObject
 ```
 
-Take a JSX object and return a [Cheerio object](https://cheerio.js.org/), a partial implementation of the jQuery core API which makes selecting from your rendered JSX markup easy. 
+Take a JSX object and return a [Cheerio object](https://cheerio.js.org/), a partial implementation of the jQuery core API which makes selecting from your rendered JSX markup easy.
