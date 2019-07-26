@@ -45,5 +45,13 @@ const Try = (fn = noop, ...args) => {
 
 const createStream = tape.createStream.bind(tape);
 
+/**
+ * Given an object, return a count of the object's own properties.
+ *
+ * @param {object} [obj] The object whose keys you wish to count.
+ * @returns {number}
+ */
+const countKeys = (obj = {}) => Object.keys(obj).length;
+
 export default describe;
-export { describe, Try, createStream };
+export { describe, Try, createStream, countKeys };
