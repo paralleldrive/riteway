@@ -1,3 +1,6 @@
+/// <reference types="cheerio" />
+/// <reference types="react" />
+
 declare module 'riteway' {
 
   export function Try<U extends any[], V>(fn: (...args: U) => V, ...args: U): any | Promise<any>
@@ -26,4 +29,8 @@ declare module 'riteway' {
   interface CreateStreamOptions {
     readonly objectMode: boolean
   }
+}
+
+declare module "riteway/render" {
+  export default function render(el: JSX.Element): Cheerio;
 }
