@@ -1,4 +1,4 @@
-import { describe, Try, createStream } from './riteway';
+import { describe, Try, createStream, countKeys } from './riteway';
 import render from './render-component';
 import tape from 'tape';
 import React from 'react';
@@ -98,3 +98,11 @@ describe('renderComponent', async assert => {
   });
 });
 
+describe('countKeys()', async assert => {
+  assert({
+    given: 'an object',
+    should: 'return the number of own props in the object',
+    actual: countKeys({a: 'a', b: 'b', c: 'c'}),
+    expected: 3
+  });
+});
