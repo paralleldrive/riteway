@@ -31,6 +31,6 @@ declare module 'riteway' {
   }
 }
 
-declare module "riteway/render" {
+declare module "riteway/render-component" {
   export default function render(el: JSX.Element): Cheerio;
 }
