@@ -31,7 +31,7 @@
     "@babel/preset-env": "7.6.3",
     "@babel/preset-react": "7.6.3",
     "@babel/register": "7.6.2",
-    "@types/node": "10.14.20",
+    "@types/node": "10.14.21",
     "eslint": "6.2.0",
     "eslint-plugin-react": "7.16.0",
     "react": "16.10.2",
