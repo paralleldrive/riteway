@@ -50,7 +50,7 @@ SyntaxError: Unexpected identifier
 ...
 ```
 
-The problem is likely that you need a `.babeljs` configured with support for esm (standard JavaScript modules) and/or React. If you need React support, that might look something like:
+The problem is likely that you need a `.babelrc` configured with support for esm (standard JavaScript modules) and/or React. If you need React support, that might look something like:
 
 ```json
 {
