@@ -1,6 +1,6 @@
 # RITEway
 
-Test assertions that always supply a good bug report when they fail.
+Simple, readable, helpful unit tests.
 
 * **R**eadable
 * **I**solated/**I**ntegrated
