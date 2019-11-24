@@ -9,6 +9,7 @@
   },
   "scripts": {
     "lint": "eslint source && echo 'Lint complete.'",
+    "stryker": "stryker run",
     "typecheck": "npx -p typescript tsc --rootDir . source/test.js --allowJs --checkJs --noEmit --lib es6 --jsx react && echo 'TypeScript check complete.'",
     "ts": "npm run -s typecheck",
     "test": "node -r @babel/register -r @babel/polyfill source/test",
