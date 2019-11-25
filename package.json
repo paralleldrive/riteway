@@ -37,7 +37,7 @@
     "@stryker-mutator/html-reporter": "^2.4.0",
     "@stryker-mutator/javascript-mutator": "^2.4.0",
     "@types/node": "10.17.5",
-    "eslint": "6.7.0",
+    "eslint": "6.7.1",
     "eslint-plugin-react": "7.16.0",
     "react": "16.12.0",
     "tap-nirvana": "1.1.0",
