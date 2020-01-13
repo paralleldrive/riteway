@@ -28,7 +28,7 @@
   "devDependencies": {
     "@babel/core": "7.8.0",
     "@babel/polyfill": "7.8.0",
-    "@babel/preset-env": "7.8.0",
+    "@babel/preset-env": "7.8.2",
     "@babel/preset-react": "7.8.0",
     "@babel/register": "7.8.0",
     "@types/node": "10.17.13",
