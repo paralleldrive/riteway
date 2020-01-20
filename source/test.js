@@ -56,7 +56,6 @@ describe('describe()', (assert, end) => {
   }, 50);
 });
 
-
 describe('createStream()', async assert => {
   assert({
     given: 'typeof check',

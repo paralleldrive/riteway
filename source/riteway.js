@@ -15,6 +15,7 @@ const withRiteway = TestFunction => test => {
     if (missing.length) {
       throw new Error(`Missing key(s): ${missing.reduce(concatToString, '')}`);
     }
+
     const {
       // initialize values to undefined so TypeScript doesn't complain
       given = undefined,
