@@ -2,17 +2,27 @@ import tape from 'tape';
 
 const noop = new Function();
 const isPromise = x => x && typeof x.then === 'function';
+const requiredKeys = ['given', 'should', 'actual', 'expected'];
+const concatToString = (keys, key, index) => keys + (index ? ', ' : '') + key;
 
 const withRiteway = TestFunction => test => {
   const end = () => test.end();
 
-  const assert = ({
-    // initialize values to undefined so TypeScript doesn't complain
-    given = undefined,
-    should = '',
-    actual = undefined,
-    expected = undefined
-  } = {}) => {
+  const assert = (args = {}) => {
+    const missing = requiredKeys.filter(
+      k => !Object.keys(args).includes(k)
+    );
+    if (missing.length) {
+      throw new Error(`Missing key(s): ${missing.reduce(concatToString, '')}`);
+    }
+    const {
+      // initialize values to undefined so TypeScript doesn't complain
+      given = undefined,
+      should = '',
+      actual = undefined,
+      expected = undefined
+    } = args;
+
     test.same(
       actual, expected,
       `Given ${given}: should ${should}`

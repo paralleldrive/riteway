@@ -56,6 +56,7 @@ describe('describe()', (assert, end) => {
   }, 50);
 });
 
+
 describe('createStream()', async assert => {
   assert({
     given: 'typeof check',
@@ -77,6 +78,41 @@ describe('Try()', async assert => {
   }
 });
 
+describe('assert()', async assert => {
+  assert({
+    given: 'some key is undefined',
+    should: 'not throw',
+    actual: undefined,
+    expected: undefined
+  });
+
+  {
+    try {
+      assert({});
+    } catch (error) {
+      assert({
+        given: 'calling `assert` with missing keys',
+        should: 'throw with missing keys',
+        actual: error.message,
+        expected: 'Missing key(s): given, should, actual, expected',
+      });
+    }
+  }
+
+  {
+    try {
+      assert({ given: 'some keys', should: 'find the missing keys' });
+    } catch (error) {
+      assert({
+        given: 'calling `assert` with missing keys',
+        should: 'throw with missing keys',
+        actual: error.message,
+        expected: 'Missing key(s): actual, expected',
+      });
+    }
+  }
+});
+
 describe('skip()', async assert => {
   assert({
     given: 'describe.skip',
@@ -88,7 +124,7 @@ describe('skip()', async assert => {
 
 describe('renderComponent', async assert => {
   const text = 'Foo';
-  const $ = render(<div className="foo">{ text }</div>);
+  const $ = render(<div className="foo">{text}</div>);
 
   assert({
     given: 'A react component',
@@ -102,7 +138,7 @@ describe('countKeys()', async assert => {
   assert({
     given: 'an object',
     should: 'return the number of own props in the object',
-    actual: countKeys({a: 'a', b: 'b', c: 'c'}),
+    actual: countKeys({ a: 'a', b: 'b', c: 'c' }),
     expected: 3
   });
 });
