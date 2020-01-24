@@ -13,7 +13,7 @@ const withRiteway = TestFunction => test => {
       k => !Object.keys(args).includes(k)
     );
     if (missing.length) {
-      throw new Error(`Missing key(s): ${missing.reduce(concatToString, '')}`);
+      throw new Error(`The following parameters are required by \`assert\`: ${missing.reduce(concatToString, '')}`);
     }
 
     const {

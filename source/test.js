@@ -93,7 +93,7 @@ describe('assert()', async assert => {
         given: 'calling `assert` with missing keys',
         should: 'throw with missing keys',
         actual: error.message,
-        expected: 'Missing key(s): given, should, actual, expected',
+        expected: 'The following parameters are required by `assert`: given, should, actual, expected',
       });
     }
   }
@@ -106,7 +106,7 @@ describe('assert()', async assert => {
         given: 'calling `assert` with missing keys',
         should: 'throw with missing keys',
         actual: error.message,
-        expected: 'Missing key(s): actual, expected',
+        expected: 'The following parameters are required by `assert`: actual, expected',
       });
     }
   }
