@@ -2,6 +2,7 @@ import { describe, Try, createStream, countKeys } from './riteway';
 import render from './render-component';
 import tape from 'tape';
 import React from 'react';
+import deepEqual from 'deep-equal'
 
 // a function to test
 const sum = (...args) => {
@@ -104,5 +105,21 @@ describe('countKeys()', async assert => {
     should: 'return the number of own props in the object',
     actual: countKeys({a: 'a', b: 'b', c: 'c'}),
     expected: 3
+  });
+});
+
+describe('array-object-compare bug fixed via deep-equal v2.0.1',async (assert, _, t) => {
+  assert({
+    given: 'an array and an object',
+    should: 'not be equal',
+    actual: deepEqual({}, []),
+    expected: false
+  });
+
+  assert({
+    given: 'another example',
+    should: 'not be equal',
+    actual: deepEqual({ 0: 'foo' }, ['foo']),
+    expected: false
   });
 });
