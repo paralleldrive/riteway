@@ -110,6 +110,13 @@ describe('assert()', async assert => {
       });
     }
   }
+
+  assert({
+    given: 'an empty array for actual, empty object for expected',
+    should: 'not be equal',
+    actual: [],
+    expected: {}
+  });
 });
 
 describe('skip()', async assert => {
