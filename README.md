@@ -116,6 +116,50 @@ and use it in you package.json:
 
 ```json
 "test": "riteway -r esm test/**/*.test.js | tap-nirvana"
+
+
+```
+### Trounbleshooting Nextjs
+
+Using @babel/polyfill may causes a few problem with nextjs. 
+
+if that is the case unse the @babel/runtime and @babel/plugin-transform-runtime instad:
+
+```shell
+npm install --save-dev @babel/core @babel/preset-env @babel/register @babel/preset-react
+
+npm install --save @babel/runtime 
+npm install --save-dev @babel/plugin-transform-runtime
+```
+
+Your test script in **package.json**:
+
+```json
+"test": "riteway -r @babel/register 'src/**/*-test.js' | tap-nirvana ",
+```
+
+and then in your **.babelrc**
+
+```json
+{
+  "presets": [
+    [
+      "@babel/preset-env",
+      {
+        "targets": [
+          "last 2 versions",
+          "safari >= 7"
+        ]
+      }
+    ],
+    "@babel/preset-react"
+  ],
+  "plugins": [
+    [
+      "@babel/transform-runtime"
+    ]
+  ]
+}
 ```
 
 ## Example Usage
