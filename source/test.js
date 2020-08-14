@@ -1,3 +1,4 @@
+import './match-test';
 import { describe, Try, createStream, countKeys } from './riteway';
 import render from './render-component';
 import tape from 'tape';
