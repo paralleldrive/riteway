@@ -65,14 +65,20 @@ The problem is likely that you need a `.babelrc` configured with support for esm
       }
     ],
     "@babel/preset-react"
+  ],
+  "plugins": [
+    [
+      "@babel/plugin-transform-runtime",
+      { "corejs": 2 }
+    ]
   ]
 }
 ```
 
-To install babel devdependencies:
+To install babel devDependencies:
 
 ```shell
-npm install --save-dev @babel/core @babel/polyfill @babel/preset-env @babel/register
+npm install --save-dev @babel/core @babel/plugin-transform-runtime @babel/preset-env @babel/register @babel/runtime-corejs2
 ```
 
 And if you're using react:
@@ -84,7 +90,7 @@ npm install --save-dev @babel/preset-react
 You can then update your test script in `package.json` to use babel:
 
 ```json
-"test": "node -r @babel/register -r @babel/polyfill source/test"
+"test": "node -r @babel/register source/test"
 ```
 
 If you structure your folders by type like this:
@@ -103,7 +109,7 @@ If you structure your folders by type like this:
 Update your test script to find all files with your custom ending:
 
 ```json
-"test": "riteway -r @babel/register -r @babel/polyfill 'src/**/*.test.js' | tap-nirvana",
+"test": "riteway -r @babel/register 'src/**/*.test.js' | tap-nirvana",
 ```
 
 Another option if you don't want to transpile is to install the [`esm` package](https://dev.to/bennypowers/you-should-be-using-esm-kn3). The esm-only option won't work for you if you use JSX in your project. If you're building a React project, use Babel instead.
