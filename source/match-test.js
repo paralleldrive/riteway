@@ -1,5 +1,5 @@
 import { describe } from './riteway';
-import { match } from './match';
+import match from './match';
 
 describe('match', async assert => {
   {

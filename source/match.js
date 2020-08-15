@@ -8,8 +8,10 @@
  * @param {string} text The text to search.
  * @returns {(pattern: string|Object) => string}
  */
-export const match = text => pattern => {
+const match = text => pattern => {
   const RE = new RegExp(pattern);
   const matched = text.match(RE);
   return matched ? matched[0] : '';
 };
+
+export default match;

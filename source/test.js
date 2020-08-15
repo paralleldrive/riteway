@@ -2,7 +2,7 @@ import React from 'react';
 import tape from 'tape';
 
 import { describe, Try, createStream, countKeys } from './riteway';
-import { match } from './match';
+import match from './match';
 import render from './render-component';
 
 // a function to test
