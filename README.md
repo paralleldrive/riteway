@@ -406,7 +406,7 @@ text contains anything matching the pattern you passed in. Writing tests this wa
 allows you to see clear expected and actual values, so you can expect the specific
 text you're expecting to find:
 
-```
+```js
 describe('MyComponent', async assert => {
   const text = 'Test for whatever you like!';
   const $ = render(<MyComponent text={ text }/>);
