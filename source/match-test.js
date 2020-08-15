@@ -2,33 +2,35 @@ import { describe } from './riteway';
 import { match } from './match';
 
 describe('match', async assert => {
-
   {
+    const given = 'some text to search and a pattern to match';
+    const should = 'return the matched text';
+
     const textToSearch = '<h1>Dialog Title</h1>';
     const pattern = 'Dialog Title';
     const contains = match(textToSearch);
-    const actual = contains(pattern);
 
     assert({
-      given: 'some text to search and a pattern to match',
-      should: 'return the matched text',
-      actual,
+      given,
+      should,
+      actual: contains(pattern),
       expected: pattern,
     });
+  }
 
-    {
-      const textWithDigit = '<h1>There are 4 cats</h1>';
-      const pattern = /\d+\s\w+/i;
-      const expected = '4 cats';
-      const contains = match(textWithDigit);
-      const actual = contains(pattern);
+  {
+    const given = 'some text with digits';
+    const should = 'return the matched text';
 
-      assert({
-        given: 'some text with digits',
-        should: 'return the matched text',
-        actual,
-        expected,
-      });
-    }
+    const textWithDigit = '<h1>There are 4 cats</h1>';
+    const pattern = /\d+\s\w+/i;
+    const contains = match(textWithDigit);
+
+    assert({
+      given,
+      should,
+      actual: contains(pattern),
+      expected: '4 cats'
+    });
   }
 });
