@@ -361,4 +361,62 @@ import render from 'riteway/render-component';
 render = (jsx) => CheerioObject
 ```
 
-Take a JSX object and return a [Cheerio object](https://cheerio.js.org/), a partial implementation of the jQuery core API which makes selecting from your rendered JSX markup easy.
+Take a JSX object and return a [Cheerio object](https://cheerio.js.org/), a partial implementation of the jQuery core API which makes selecting from your rendered JSX markup just like selecting with jQuery or the `querySelectorAll` API.
+
+### Example
+
+```js
+describe('MyComponent', async assert => {
+  const $ = render(<MyComponent />);
+
+  assert({
+    given: 'no params',
+    should: 'render something with the my-component class',
+    actual: $('.my-component').length,
+    expected: 1
+  });
+});
+```
+
+
+## Match
+
+First, import `match` from `riteway/match`:
+
+```js
+import match from 'riteway/match';
+```
+
+```js
+match = text => pattern => String
+```
+
+Take some text to search and return a function which takes a pattern and returns the matched text, if found, or an empty string. The pattern can be a string or regular expression.
+
+### Example
+
+Imagine you have a React component you need to test. The component takes some text and renders it in some div contents. You need to make sure that the passed text is getting rendered.
+
+```js
+const MyComponent = ({text}) => <div className="contents">{text}</div>;
+```
+
+You can use match to create a new function that will test to see if your search
+text contains anything matching the pattern you passed in. Writing tests this way
+allows you to see clear expected and actual values, so you can expect the specific
+text you're expecting to find:
+
+```js
+describe('MyComponent', async assert => {
+  const text = 'Test for whatever you like!';
+  const $ = render(<MyComponent text={ text }/>);
+  const contains = match($('.contents').html());
+
+  assert({
+    given: 'some text to display',
+    should: 'render the text.',
+    actual: contains(text),
+    expected: text
+  });
+});
+```

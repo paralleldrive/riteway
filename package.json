@@ -9,11 +9,12 @@
   },
   "scripts": {
     "lint": "eslint source && echo 'Lint complete.'",
+    "lint-fix": "eslint --fix source && eslint --fix ./*.js",
     "typecheck": "npx -p typescript tsc --esModuleInterop --rootDir . source/test.js --allowJs --checkJs --noEmit --lib es6 --jsx react && echo 'TypeScript check complete.'",
     "ts": "npm run -s typecheck",
     "test": "node -r @babel/register source/test",
     "watch": "watch 'clear && npm run -s test | tap-nirvana && npm run -s lint && npm run -s typecheck' source",
-    "precommit": "npm run -s test && npm run -s lint && npm run -s typecheck"
+    "precommit": "npm run -s test && npm run -s lint-fix && npm run -s typecheck"
   },
   "repository": {
     "type": "git",
