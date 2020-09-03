@@ -33,7 +33,7 @@
     "@babel/preset-react": "7.10.4",
     "@babel/register": "7.11.5",
     "@babel/runtime-corejs2": "7.11.2",
-    "@types/node": "10.17.28",
+    "@types/node": "10.17.29",
     "eslint": "7.8.1",
     "eslint-plugin-react": "7.20.6",
     "react": "16.13.1",
