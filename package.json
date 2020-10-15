@@ -35,7 +35,7 @@
     "@babel/runtime-corejs2": "7.11.2",
     "@types/node": "10.17.35",
     "eslint": "7.10.0",
-    "eslint-plugin-react": "7.21.2",
+    "eslint-plugin-react": "7.21.4",
     "react": "16.13.1",
     "tap-nirvana": "1.1.0",
     "typescript": "4.0.3",
