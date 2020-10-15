@@ -195,7 +195,7 @@ A great alternative is to encapsulate side-effects and state management in conta
 
 #### Isolating React Unit Tests
 
-When you [unit test React components](https://medium.com/javascript-scene/unit-testing-react-components-aeda9a44aae2) you frequently have to render your components many times. Sometimes the component needs to be wrapped in context (e.g. React Router or Redux) and often you want different props for some tests.
+When you [unit test React components](https://medium.com/javascript-scene/unit-testing-react-components-aeda9a44aae2) you frequently have to render your components many times. Often, you want different props for some tests.
 
 RITEway makes it easy to isolate your tests while keeping them readable by using [factory functions](https://link.medium.com/WxHPhCc3OV) in conjunction with [block scope](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/block).
 
