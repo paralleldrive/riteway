@@ -33,4 +33,21 @@ describe('match', async assert => {
       expected: '4 cats'
     });
   }
+
+  {
+    const given = 'some text that includes regex meta characters';
+    const should = 'return the matched text';
+
+    const textWithRegexMetaChar = '<h1>Are there any cats?</h1>';
+    const pattern = 'Are there any cats?';
+    const contains = match(textWithRegexMetaChar);
+
+    assert({
+      given,
+      should,
+      actual: contains(pattern),
+      expected: 'Are there any cats?'
+    });
+  }
+
 });
