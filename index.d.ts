@@ -32,7 +32,7 @@ declare module 'riteway' {
 }
 
 declare module "riteway/render-component" {
-  export default function render(el: JSX.Element): CheerioStatic;
+  export default function render(el: JSX.Element): cheerio.Root;
 }
 
 declare module "riteway/match" {
