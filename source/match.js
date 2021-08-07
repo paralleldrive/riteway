@@ -14,6 +14,6 @@ const match = text => pattern => {
 };
 
 const escapeRegex = string =>
-  string.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+  string.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
 
 export default match;
