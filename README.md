@@ -124,6 +124,89 @@ and use it in you package.json:
 "test": "riteway -r esm test/**/*.test.js | tap-nirvana"
 ```
 
+### Usage with SWC
+
+If you're using the Rust based compiler SWC, for example because you're using Next.js, [which as of version 12 uses the SWC compiler](https://nextjs.org/blog/next-12#faster-builds-and-fast-refresh-with-rust-compiler), you might need some additional configurations.
+
+1. Next.js uses React and JSX.
+2. Next.js allows you to configure your project to use [absolute import paths](https://nextjs.org/docs/advanced-features/module-path-aliases).
+3. You might be using `.module.css` files or `.css` files in your Next.js project.
+
+Here is how you can compile your code with SWC and run RITEway tests.
+
+Install [`@swc/core`](https://swc.rs/docs/getting-started) and [`@swc/register`](https://github.com/swc-project/register):
+
+```
+npm install --save-dev @swc/core @swc/register
+```
+
+or
+
+```
+yarn add --dev @swc/register
+```
+
+Add a `"test"` script to your `package.json`:
+
+```json
+"test": "riteway -r @swc/register 'src/**/*.test.js' | tap-nirvana",
+```
+
+Create a `.swcrc` file with configurations to handle absolute imports, CSS, and React with JSX:
+
+```json
+{
+  "jsc": {
+    "baseUrl": "./src",
+    "paths": {
+      "*.css": ["utils/identity-object-proxy.js"],
+      "utils/*": ["utils/*"]
+    },
+    "parser": {
+      "jsx": true,
+      "syntax": "ecmascript"
+    },
+    "transform": {
+      "react": {
+        "runtime": "automatic"
+      }
+    }
+  },
+  "module": {
+    "type": "commonjs"
+  }
+}
+```
+
+The `"baseUrl"` setting combined with `"utils/*": ["utils/*"]` is an example if you're using an absolute import from `src/utils`, e.g. `utils/pipe`. You'll need to add this for every folder for which you're using absolute imports.
+
+The `"parser"` and `"transform"` settings tell SWC how to handle JSX and [files that use React without importing it](https://reactjs.org/blog/2020/09/22/introducing-the-new-jsx-transform.html).
+
+The `"module"` settings allows you to use modern syntax like `import`.
+
+`"*.css": ["utils/identity-object-proxy.js"],` tells SWC to replace all absolute CSS imports with an identity object proxy. (**Note:** relative imports like `import './styles.css` will NOT be replaced, and you need to convert them to absolute imports.) An identity object proxy is an object that returns each key stringified when accessed. For example `obj.foo` returns `"foo"`. 
+
+You will need to create the identity object proxy yourself. Here is an example one:
+
+```js
+const identityObjectProxy = new Proxy(
+  {},
+  {
+    get: function getter(target, key) {
+      if (key === '__esModule') {
+        return false;
+      }
+
+      return key;
+    },
+  },
+);
+
+export default identityObjectProxy;
+```
+
+Unit tests generally run within milliseconds. If you're using RITEway and your tests take long to run, this might be because Babel takes much time to compile your code. You might want to consider to migrate to compilation with SWC as described above to speed up your tests.
+
 ## Example Usage
 
 ```js
