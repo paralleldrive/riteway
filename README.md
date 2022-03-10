@@ -126,11 +126,13 @@ and use it in you package.json:
 
 ### Usage with SWC
 
-If you're using the Rust based compiler SWC, for example because you're using Next.js, [which as of version 12 uses the SWC compiler](https://nextjs.org/blog/next-12#faster-builds-and-fast-refresh-with-rust-compiler), you might need some additional configurations.
+SWC is a fast, Rust based compiler that is [the new default compiler in Next.js 12+](https://nextjs.org/blog/next-12#faster-builds-and-fast-refresh-with-rust-compiler).
 
-1. Next.js uses React and JSX.
-2. Next.js allows you to configure your project to use [absolute import paths](https://nextjs.org/docs/advanced-features/module-path-aliases).
-3. You might be using `.module.css` files or `.css` files in your Next.js project.
+If you'd like to use it, there are some additional configuration steps:
+
+1. Configure SWC to recognize React and JSX.
+2. Configure your project to use [absolute import paths](https://nextjs.org/docs/advanced-features/module-path-aliases).
+3. Configure SWC to recognize `.module.css` files or `.css` files in your Next.js project.
 
 Here is how you can compile your code with SWC and run RITEway tests.
 
@@ -186,7 +188,7 @@ The `"module"` settings allows you to use modern syntax like `import`.
 
 `"*.css": ["utils/identity-object-proxy.js"],` tells SWC to replace all absolute CSS imports with an identity object proxy. (**Note:** relative imports like `import './styles.css` will NOT be replaced, and you need to convert them to absolute imports.) An identity object proxy is an object that returns each key stringified when accessed. For example `obj.foo` returns `"foo"`. 
 
-You will need to create the identity object proxy yourself. Here is an example one:
+You will need to create the identity object proxy yourself. Here is an example:
 
 ```js
 const identityObjectProxy = new Proxy(
@@ -205,7 +207,6 @@ const identityObjectProxy = new Proxy(
 export default identityObjectProxy;
 ```
 
-Unit tests generally run within milliseconds. If you're using RITEway and your tests take long to run, this might be because Babel takes much time to compile your code. You might want to consider to migrate to compilation with SWC as described above to speed up your tests.
 
 ## Example Usage
 
