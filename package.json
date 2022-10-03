@@ -43,7 +43,7 @@
     "watch": "1.0.2"
   },
   "dependencies": {
-    "@types/cheerio": "0.22.30",
+    "@types/cheerio": "0.22.31",
     "@types/react": "17.0.15",
     "cheerio": "1.0.0-rc.10",
     "esm": "3.2.25",
