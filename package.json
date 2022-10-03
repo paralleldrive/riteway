@@ -39,7 +39,7 @@
     "eslint-plugin-react": "7.24.0",
     "react": "18.2.0",
     "tap-nirvana": "1.1.0",
-    "typescript": "4.3.5",
+    "typescript": "4.8.4",
     "watch": "1.0.2"
   },
   "dependencies": {
