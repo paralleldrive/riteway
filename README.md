@@ -112,16 +112,18 @@ Update your test script to find all files with your custom ending:
 "test": "riteway -r @babel/register 'src/**/*.test.js' | tap-nirvana",
 ```
 
-Another option if you don't want to transpile is to install the [`esm` package](https://dev.to/bennypowers/you-should-be-using-esm-kn3). The esm-only option won't work for you if you use JSX in your project. If you're building a React project, use Babel instead.
+### Usage with ESM Modules
 
-```shell
-npm install --save-dev esm
+If you want to use ESM modules instead of compiling, you'll need to import from the esm folder:
+
 ```
+import { describe } from 'riteway/esm/riteway.js';
+import { match } from 'riteway/esm/match.js';
 
-and use it in you package.json:
-
-```json
-"test": "riteway -r esm test/**/*.test.js | tap-nirvana"
+// Note: If you're using a compiler for JSX, you might want to handle
+// ESM modules with it, too, so you shouldn't need the ESM modules, but
+// if you want to use them anyway:
+import { render } from 'riteway/esm/render.js';
 ```
 
 ### Usage with SWC
