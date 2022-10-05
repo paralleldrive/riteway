@@ -116,7 +116,7 @@ Update your test script to find all files with your custom ending:
 
 If you want to use ESM modules instead of compiling, you'll need to import from the esm folder:
 
-```
+```js
 import { describe } from 'riteway/esm/riteway.js';
 import { match } from 'riteway/esm/match.js';
 
