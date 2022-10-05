@@ -13,9 +13,10 @@
     "typecheck": "npx -p typescript tsc --esModuleInterop --rootDir . source/test.js --allowJs --checkJs --noEmit --lib es6 --jsx react && npx -p typescript tsc index.d.ts --noEmit && echo 'TypeScript check complete.'",
     "ts": "npm run -s typecheck",
     "test": "node -r @babel/register source/test",
-    "esm": "cp source/*.js esm/ && cp esm/riteway.js esm/index.js",
+    "esm": "cp source/*.js esm/ && cp esm/riteway.js esm/index.js && echo 'esm complete.'",
     "watch": "watch 'clear && npm run -s test | tap-nirvana && npm run -s lint && npm run -s typecheck && npm run -s esm' source",
-    "precommit": "npm run -s test && npm run -s lint-fix && npm run -s typecheck"
+    "precommit": "npm run -s test && npm run -s lint-fix && npm run -s typecheck",
+    "update": "updtr"
   },
   "repository": {
     "type": "git",
@@ -28,26 +29,27 @@
   },
   "homepage": "https://github.com/ericelliott/riteway#readme",
   "devDependencies": {
-    "@babel/core": "7.14.8",
-    "@babel/plugin-transform-runtime": "7.14.5",
-    "@babel/preset-env": "7.14.8",
-    "@babel/preset-react": "7.14.5",
-    "@babel/register": "7.14.5",
-    "@babel/runtime-corejs2": "7.14.8",
-    "@types/node": "16.4.2",
-    "eslint": "7.31.0",
-    "eslint-plugin-react": "7.24.0",
-    "react": "17.0.2",
+    "@babel/core": "7.19.3",
+    "@babel/plugin-transform-runtime": "7.19.1",
+    "@babel/preset-env": "7.19.3",
+    "@babel/preset-react": "7.18.6",
+    "@babel/register": "7.18.9",
+    "@babel/runtime-corejs2": "7.19.2",
+    "@types/node": "18.8.2",
+    "eslint": "8.24.0",
+    "eslint-plugin-react": "7.31.8",
+    "react": "18.2.0",
     "tap-nirvana": "1.1.0",
-    "typescript": "4.3.5",
+    "typescript": "4.8.4",
+    "updtr": "4.0.0",
     "watch": "1.0.2"
   },
   "dependencies": {
-    "@types/cheerio": "0.22.30",
-    "@types/react": "17.0.15",
-    "cheerio": "1.0.0-rc.10",
+    "@types/cheerio": "0.22.31",
+    "@types/react": "18.0.21",
+    "cheerio": "1.0.0-rc.12",
     "esm": "3.2.25",
-    "react-dom": "17.0.2",
-    "tape": "5.2.2"
+    "react-dom": "18.2.0",
+    "tape": "5.6.1"
   }
 }
