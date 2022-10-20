@@ -126,6 +126,14 @@ import { match } from 'riteway/esm/match.js';
 import { render } from 'riteway/esm/render.js';
 ```
 
+The script to run your tests should be run using `node` instead of `riteway`, like this:
+
+```json
+"test": "node test/index-test.js",
+```
+
+Since the tests are being run using `node`, it will not be possible to use globs to select the test files. You're encouraged to create a single entry test file which imports all test files from your project.
+
 ### Usage with SWC
 
 SWC is a fast, Rust based compiler that is [the new default compiler in Next.js 12+](https://nextjs.org/blog/next-12#faster-builds-and-fast-refresh-with-rust-compiler).
