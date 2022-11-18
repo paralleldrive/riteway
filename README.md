@@ -155,16 +155,16 @@ npm install --save-dev @swc/core @swc/register
 or
 
 ```
-yarn add --dev @swc/register
+yarn add --dev @swc/core @swc/register
 ```
 
 Add a `"test"` script to your `package.json`:
 
 ```json
-"test": "riteway -r @swc/register 'src/**/*.test.js' | tap-nirvana",
+"test": "node -r @swc/register src/test.js",
 ```
 
-Create a `.swcrc` file with configurations to handle absolute imports, CSS, and React with JSX:
+Create an `.swcrc` file with the options you need. Hint: Try the [SWC Playground](https://swc.rs/playground) for help generating valid SWC configurations. Example with css modules, absolute path, and React support:
 
 ```json
 {
