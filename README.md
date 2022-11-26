@@ -143,6 +143,7 @@ If you'd like to use it, there are some additional configuration steps:
 1. Configure SWC to recognize React and JSX.
 2. Configure your project to use [absolute import paths](https://nextjs.org/docs/advanced-features/module-path-aliases).
 3. Configure SWC to recognize `.module.css` files or `.css` files in your Next.js project.
+4. Configure SWC to run `styled-jsx` plugins, if you use it.
 
 Here is how you can compile your code with SWC and run RITEway tests.
 
@@ -182,6 +183,11 @@ Create an `.swcrc` file with the options you need. Hint: Try the [SWC Playground
       "react": {
         "runtime": "automatic"
       }
+    },
+    "experimental": {
+      "plugins": [
+        ["@swc/plugin-styled-jsx", {}]
+      ]
     }
   },
   "module": {
@@ -196,7 +202,7 @@ The `"parser"` and `"transform"` settings tell SWC how to handle JSX and [files 
 
 The `"module"` settings allows you to use modern syntax like `import`.
 
-`"*.css": ["utils/identity-object-proxy.js"],` tells SWC to replace all absolute CSS imports with an identity object proxy. (**Note:** relative imports like `import './styles.css` will NOT be replaced, and you need to convert them to absolute imports.) An identity object proxy is an object that returns each key stringified when accessed. For example `obj.foo` returns `"foo"`. 
+`"*.css": ["utils/identity-object-proxy.js"],` tells SWC to replace all absolute CSS imports with an identity object proxy. (**Note:** relative imports like `import './styles.css` will NOT be replaced, and you need to convert them to absolute imports.) An identity object proxy is an object that returns each key stringified when accessed. For example `obj.foo` returns `"foo"`.
 
 You will need to create the identity object proxy yourself. Here is an example:
 
