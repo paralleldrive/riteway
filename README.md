@@ -1,4 +1,4 @@
-# RITEway
+# Riteway
 
 Simple, readable, helpful unit tests.
 
