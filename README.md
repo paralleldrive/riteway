@@ -1,4 +1,4 @@
-# RITEway
+# Riteway
 
 Simple, readable, helpful unit tests.
 
@@ -7,9 +7,9 @@ Simple, readable, helpful unit tests.
 * **T**horough
 * **E**xplicit
 
-RITEway forces you to write **R**eadable, **I**solated, and **E**xplicit tests, because that's the only way you can use the API. It also makes it easier to be thorough by making test assertions so simple that you'll want to write more of them.
+Riteway forces you to write **R**eadable, **I**solated, and **E**xplicit tests, because that's the only way you can use the API. It also makes it easier to be thorough by making test assertions so simple that you'll want to write more of them.
 
-There are [5 questions every unit test must answer](https://medium.com/javascript-scene/what-every-unit-test-needs-f6cd34d9836d). RITEWay forces you to answer them.
+There are [5 questions every unit test must answer](https://medium.com/javascript-scene/what-every-unit-test-needs-f6cd34d9836d). Riteway forces you to answer them.
 
 1. What is the unit under test (module, function, class, whatever)?
 2. What should it do? (Prose description)
@@ -30,7 +30,7 @@ Then add an npm command in your package.json:
 "test": "riteway test/**/*-test.js",
 ```
 
-Now you can run your tests with `npm test`. RITEway also supports full TAPE-compatible usage syntax, so you can have an advanced entry that looks like:
+Now you can run your tests with `npm test`. Riteway also supports full TAPE-compatible usage syntax, so you can have an advanced entry that looks like:
 
 ```json
 "test": "nyc riteway test/**/*-rt.js | tap-nirvana",
@@ -145,7 +145,7 @@ If you'd like to use it, there are some additional configuration steps:
 3. Configure SWC to recognize `.module.css` files or `.css` files in your Next.js project.
 4. Configure SWC to run `styled-jsx` plugins, if you use it.
 
-Here is how you can compile your code with SWC and run RITEway tests.
+Here is how you can compile your code with SWC and run Riteway tests.
 
 Install [`@swc/core`](https://swc.rs/docs/getting-started) and [`@swc/register`](https://github.com/swc-project/register):
 
@@ -287,7 +287,7 @@ describe('renderComponent', async assert => {
 });
 ```
 
-RITEway makes it easier than ever to test pure React components using the `riteway/render-component` module. A pure component is a component which, given the same inputs, always renders the same output.
+Riteway makes it easier than ever to test pure React components using the `riteway/render-component` module. A pure component is a component which, given the same inputs, always renders the same output.
 
 I don't recommend unit testing stateful components, or components with side-effects. Write functional tests for those, instead, because you'll need tests which describe the complete end-to-end flow, from user input, to back-end-services, and back to the UI. Those tests frequently duplicate any testing effort you would spend unit-testing stateful UI behaviors. You'd need to do a lot of mocking to properly unit test those kinds of components anyway, and that mocking may cover up problems with too much coupling in your component. See ["Mocking is a Code Smell"](https://medium.com/javascript-scene/mocking-is-a-code-smell-944a70c90a6a) for details.
 
@@ -297,7 +297,7 @@ A great alternative is to encapsulate side-effects and state management in conta
 
 When you [unit test React components](https://medium.com/javascript-scene/unit-testing-react-components-aeda9a44aae2) you frequently have to render your components many times. Often, you want different props for some tests.
 
-RITEway makes it easy to isolate your tests while keeping them readable by using [factory functions](https://link.medium.com/WxHPhCc3OV) in conjunction with [block scope](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/block).
+Riteway makes it easy to isolate your tests while keeping them readable by using [factory functions](https://link.medium.com/WxHPhCc3OV) in conjunction with [block scope](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/block).
 
 ```js
 import ClickCounter from '../click-counter/click-counter-component';
@@ -333,7 +333,7 @@ describe('ClickCounter component', async assert => {
 
 ## Output
 
-RITEway produces standard TAP output, so it's easy to integrate with just about any test formatter and reporting tool. (TAP is a well established standard with hundreds (thousands?) of integrations).
+Riteway produces standard TAP output, so it's easy to integrate with just about any test formatter and reporting tool. (TAP is a well established standard with hundreds (thousands?) of integrations).
 
 ```shell
 TAP version 13
@@ -368,7 +368,7 @@ npm test | tap-color
 describe = (unit: String, cb: TestFunction) => Void
 ```
 
-Describe takes a prose description of the unit under test (function, module, whatever), and a callback function (`cb: TestFunction`). The callback function should be an [async function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function) so that the test can automatically complete when it reaches the end. RITEWay assumes that all tests are asynchronous. Async functions automatically return a promise in JavaScript, so RITEWay knows when to end each test.
+Describe takes a prose description of the unit under test (function, module, whatever), and a callback function (`cb: TestFunction`). The callback function should be an [async function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function) so that the test can automatically complete when it reaches the end. Riteway assumes that all tests are asynchronous. Async functions automatically return a promise in JavaScript, so Riteway knows when to end each test.
 
 ### describe.only
 
