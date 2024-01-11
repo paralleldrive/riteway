@@ -8,13 +8,7 @@ const concatToString = (keys, key, index) => keys + (index ? ', ' : '') + key;
 const withRiteway = TestFunction => test => {
   const end = () => test.end();
 
-  const assert = ({
-    // initialize values to undefined so TypeScript doesn't complain
-    given = undefined,
-    should = undefined,
-    actual = undefined,
-    expected = undefined
-  }) => {
+  const assert = (args = {}) => {
     const missing = requiredKeys.filter((k) => !Object.keys({ given, should, actual, expected }).includes(k));
   if (missing.length) {
     throw new Error(
@@ -24,7 +18,15 @@ const withRiteway = TestFunction => test => {
       )}`
     );
   }
-  
+
+    const {
+      // initialize values to undefined so TypeScript doesn't complain
+      given = undefined,
+      should = undefined,
+      actual = undefined,
+      expected = undefined
+    } = args;
+
     test.same(
       actual, expected,
       `Given ${given}: should ${should}`
