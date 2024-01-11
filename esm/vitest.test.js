@@ -1,7 +1,7 @@
 
 import { describe } from "vitest";
 import { Try, countKeys, createStream } from './riteway';
-import vitestAssert from './vitest';
+import assert from './vitest';
 
 // a function to test
 const sum = (...args) => {
@@ -12,28 +12,28 @@ const sum = (...args) => {
 describe('sum()', () => {
   const should = 'return the correct sum';
 
-  vitestAssert({
+  assert({
     given: 'no arguments',
     should: 'return 0',
     actual: sum(),
     expected: 0
   });
 
-  vitestAssert({
+  assert({
     given: 'zero',
     should,
     actual: sum(2, 0),
     expected: 2
   });
 
-  vitestAssert({
+  assert({
     given: 'negative numbers',
     should,
     actual: sum(1, -4),
     expected: -3
   });
 
-  vitestAssert({
+  assert({
     given: 'NaN',
     should: 'throw',
     actual: Try(sum, 1, NaN),
@@ -42,7 +42,7 @@ describe('sum()', () => {
 });
 
 describe('createStream()', () => {
-  vitestAssert({
+  assert({
     given: 'typeof check',
     should: 'be a function',
     actual: typeof createStream,
@@ -53,7 +53,7 @@ describe('createStream()', () => {
 describe('Try()', async () => {
   {
     const error = new Error('ooops');
-    vitestAssert({
+    assert({
       given: 'an async function that throws',
       should: 'await and return the value of the error',
       actual: (await Try(async () => { throw error; }, 'irrelivant')).toString(),
@@ -62,8 +62,8 @@ describe('Try()', async () => {
   }
 });
 
-describe('vitestAssert()', () => {
-  vitestAssert({
+describe('assert()', () => {
+  assert({
     given: 'some key is undefined',
     should: 'not throw',
     actual: undefined,
@@ -72,33 +72,33 @@ describe('vitestAssert()', () => {
 
   {
     try {
-      vitestAssert({});
+      assert({});
     } catch (error) {
-      vitestAssert({
-        given: 'calling `vitestAssert` with missing keys',
+      assert({
+        given: 'calling `assert` with missing keys',
         should: 'throw with missing keys',
         actual: error.message,
-        expected: 'The following parameters are required by `vitestAssert`: given, should, actual, expected',
+        expected: 'The following parameters are required by `assert`: given, should, actual, expected',
       });
     }
   }
 
   {
     try {
-      vitestAssert({ given: 'some keys', should: 'find the missing keys' });
+      assert({ given: 'some keys', should: 'find the missing keys' });
     } catch (error) {
-      vitestAssert({
-        given: 'calling `vitestAssert` with missing keys',
+      assert({
+        given: 'calling `assert` with missing keys',
         should: 'throw with missing keys',
         actual: error.message,
-        expected: 'The following parameters are required by `vitestAssert`: actual, expected',
+        expected: 'The following parameters are required by `assert`: actual, expected',
       });
     }
   }
 });
 
 describe('countKeys()', () => {
-  vitestAssert({
+  assert({
     given: 'an object',
     should: 'return the number of own props in the object',
     actual: countKeys({ a: 'a', b: 'b', c: 'c' }),

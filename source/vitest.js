@@ -4,11 +4,11 @@ import { createTaskCollector, getCurrentSuite, setFn } from "vitest/suite";
 const requiredKeys = ["given", "should", "actual", "expected"];
 const concatToString = (keys, key, index) => keys + (index ? ", " : "") + key;
 
-const vitestAssert = createTaskCollector((args) => {
+const assert = createTaskCollector((args) => {
   const missing = requiredKeys.filter((k) => !Object.keys(args).includes(k));
   if (missing.length) {
     throw new Error(
-      `The following parameters are required by \`vitestAssert\`: ${missing.reduce(
+      `The following parameters are required by \`assert\`: ${missing.reduce(
         concatToString,
         ""
       )}`
@@ -35,4 +35,4 @@ const vitestAssert = createTaskCollector((args) => {
   setFn(task, deepEquals);
 });
 
-export { vitestAssert };
+export { assert };
