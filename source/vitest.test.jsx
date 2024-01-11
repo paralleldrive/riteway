@@ -113,7 +113,7 @@ describe('countKeys()', () => {
   // eslint-disable-next-line
   const MyComponent = ({text}) => <div className="contents">{text}</div>;
 
-  describe('renderComponent', async assert => {
+  describe('renderComponent', async () => {
     const text = 'Test for whatever you like!';
     const $ = render(<MyComponent text={ text }/>);
     const contains = match($('.contents').html());
