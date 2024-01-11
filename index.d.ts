@@ -48,5 +48,5 @@ declare module "riteway/vitest" {
     readonly expected: T
   }
 
-  export default function vitestAssert(assertion: Assertion<T>): <T>(assertion: Assertion<T>) => void
+  export function vitestAssert(assertion: Assertion<T>): <T>(assertion: Assertion<T>) => void
 }

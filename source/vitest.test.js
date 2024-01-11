@@ -1,7 +1,7 @@
 
 import { describe } from "vitest";
 import { Try, countKeys, createStream } from './riteway';
-import vitestAssert from './vitest';
+import { vitestAssert } from './vitest';
 
 // a function to test
 const sum = (...args) => {

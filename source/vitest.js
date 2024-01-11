@@ -35,4 +35,4 @@ const vitestAssert = createTaskCollector((args) => {
   setFn(task, deepEquals);
 });
 
-export default vitestAssert;
+export { vitestAssert };
