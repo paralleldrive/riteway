@@ -23,7 +23,6 @@ const vitestAssert = createTaskCollector((args) => {
     expected = undefined,
   } = args;
 
-  console.log("getCurrentSuite", getCurrentSuite())
   // task adds a task during the collection phase
   const task = getCurrentSuite().task(`Given ${given}: should ${should}`);
 
@@ -32,7 +31,7 @@ const vitestAssert = createTaskCollector((args) => {
   const deepEquals = () => {
     expect(actual).toEqual(expected);
   };
-
+ 
   setFn(task, deepEquals);
 });
 
