@@ -1,7 +1,9 @@
-
+import React from 'react';
 import { describe } from "vitest";
 import { Try, countKeys, createStream } from './riteway';
 import { vitestAssert } from './vitest';
+import match from './match';
+import render from './render-component';
 
 // a function to test
 const sum = (...args) => {
@@ -105,3 +107,22 @@ describe('countKeys()', () => {
     expected: 3
   });
 });
+
+{
+  // @ts-ignore
+  // eslint-disable-next-line
+  const MyComponent = ({text}) => <div className="contents">{text}</div>;
+
+  describe('renderComponent', async assert => {
+    const text = 'Test for whatever you like!';
+    const $ = render(<MyComponent text={ text }/>);
+    const contains = match($('.contents').html());
+
+    vitestAssert({
+      given: 'A react component',
+      should: 'return a working cheerio instance',
+      actual: contains(text),
+      expected: text
+    });
+  });
+}
