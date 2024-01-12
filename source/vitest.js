@@ -1,8 +1,8 @@
-import { expect } from "vitest";
-import { createTaskCollector, getCurrentSuite, setFn } from "vitest/suite";
+import { expect } from 'vitest';
+import { createTaskCollector, getCurrentSuite, setFn } from 'vitest/suite';
 
-const requiredKeys = ["given", "should", "actual", "expected"];
-const concatToString = (keys, key, index) => keys + (index ? ", " : "") + key;
+const requiredKeys = ['given', 'should', 'actual', 'expected'];
+const concatToString = (keys, key, index) => keys + (index ? ', ' : '') + key;
 
 const assert = createTaskCollector((args = {}) => {
   const missing = requiredKeys.filter((k) => !Object.keys(args).includes(k));
@@ -10,7 +10,7 @@ const assert = createTaskCollector((args = {}) => {
     throw new Error(
       `The following parameters are required by \`assert\`: ${missing.reduce(
         concatToString,
-        ""
+        ''
       )}`
     );
   }
@@ -18,7 +18,7 @@ const assert = createTaskCollector((args = {}) => {
   const {
     // initialize values to undefined so TypeScript doesn't complain
     given = undefined,
-    should = "",
+    should = '',
     actual = undefined,
     expected = undefined,
   } = args;

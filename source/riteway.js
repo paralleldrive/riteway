@@ -12,9 +12,9 @@ const withRiteway = TestFunction => test => {
     const missing = requiredKeys.filter(
       k => !Object.keys(args).includes(k)
     );
-  if (missing.length) {
-    throw new Error(`The following parameters are required by \`assert\`: ${missing.reduce(concatToString, '')}`);
-  }
+    if (missing.length) {
+      throw new Error(`The following parameters are required by \`assert\`: ${missing.reduce(concatToString, '')}`);
+    }
 
     const {
       // initialize values to undefined so TypeScript doesn't complain
