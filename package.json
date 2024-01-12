@@ -16,7 +16,8 @@
     "esm": "cp source/*.js esm/ && cp esm/riteway.js esm/index.js && echo 'esm complete.'",
     "watch": "watch 'clear && npm run -s test | tap-nirvana && npm run -s lint && npm run -s typecheck && npm run -s esm' source",
     "precommit": "npm run -s test && npm run -s lint-fix && npm run -s typecheck",
-    "update": "updtr"
+    "update": "updtr",
+    "release": "release-it"
   },
   "repository": {
     "type": "git",
@@ -39,6 +40,7 @@
     "eslint": "8.24.0",
     "eslint-plugin-react": "7.31.8",
     "react": "18.2.0",
+    "release-it": "^17.0.1",
     "tap-nirvana": "1.1.0",
     "typescript": "4.8.4",
     "updtr": "4.0.0",
