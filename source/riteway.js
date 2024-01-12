@@ -1,36 +1,33 @@
-import tape from 'tape';
+import tape from "tape";
 
 const noop = new Function();
-const isPromise = x => x && typeof x.then === 'function';
-const requiredKeys = ['given', 'should', 'actual', 'expected'];
-const concatToString = (keys, key, index) => keys + (index ? ', ' : '') + key;
+const isPromise = (x) => x && typeof x.then === "function";
+const requiredKeys = ["given", "should", "actual", "expected"];
+const concatToString = (keys, key, index) => keys + (index ? ", " : "") + key;
 
-const withRiteway = TestFunction => test => {
+const withRiteway = (TestFunction) => (test) => {
   const end = () => test.end();
 
   const assert = (args = {}) => {
-    const missing = requiredKeys.filter((k) => !Object.keys({ given, should, actual, expected }).includes(k));
-  if (missing.length) {
-    throw new Error(
-      `The following parameters are required by \`assert\`: ${missing.reduce(
-        concatToString,
-        ""
-      )}`
-    );
-  }
+    const missing = requiredKeys.filter((k) => !Object.keys(args).includes(k));
+    if (missing.length) {
+      throw new Error(
+        `The following parameters are required by \`assert\`: ${missing.reduce(
+          concatToString,
+          ""
+        )}`
+      );
+    }
 
     const {
       // initialize values to undefined so TypeScript doesn't complain
       given = undefined,
-      should = undefined,
+      should = "",
       actual = undefined,
-      expected = undefined
+      expected = undefined,
     } = args;
 
-    test.same(
-      actual, expected,
-      `Given ${given}: should ${should}`
-    );
+    test.same(actual, expected, `Given ${given}: should ${should}`);
   };
 
   const result = TestFunction(assert, end);
@@ -38,16 +35,19 @@ const withRiteway = TestFunction => test => {
   if (isPromise(result)) return result.then(end);
 };
 
-const withTape = tapeFn => (unit = '', TestFunction = noop) => tapeFn(unit, withRiteway(TestFunction));
+const withTape =
+  (tapeFn) =>
+  (unit = "", TestFunction = noop) =>
+    tapeFn(unit, withRiteway(TestFunction));
 
 // The testing library: a thin wrapper around tape
 const describe = Object.assign(withTape(tape), {
   only: withTape(tape.only),
-  skip: tape.skip
+  skip: tape.skip,
 });
 
-const catchAndReturn = x => x.catch(x => x);
-const catchPromise = x => isPromise(x) ? catchAndReturn(x) : x;
+const catchAndReturn = (x) => x.catch((x) => x);
+const catchPromise = (x) => (isPromise(x) ? catchAndReturn(x) : x);
 
 const Try = (fn = noop, ...args) => {
   try {
