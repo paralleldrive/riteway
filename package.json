@@ -16,7 +16,8 @@
     "esm": "cp source/*.js esm/ && cp esm/riteway.js esm/index.js && echo 'esm complete.'",
     "watch": "watch 'clear && npm run -s test | tap-nirvana && npm run -s lint && npm run -s typecheck && npm run -s esm' source",
     "precommit": "npm run -s test && npm run -s lint-fix && npm run -s typecheck",
-    "update": "updtr"
+    "update": "updtr",
+    "release": "release-it"
   },
   "repository": {
     "type": "git",
@@ -29,28 +30,29 @@
   },
   "homepage": "https://github.com/ericelliott/riteway#readme",
   "devDependencies": {
-    "@babel/core": "7.19.3",
-    "@babel/plugin-transform-runtime": "7.19.1",
-    "@babel/preset-env": "7.19.3",
-    "@babel/preset-react": "7.18.6",
-    "@babel/register": "7.18.9",
-    "@babel/runtime-corejs2": "7.19.2",
-    "@types/node": "18.8.2",
-    "eslint": "8.24.0",
-    "eslint-plugin-react": "7.31.8",
+    "@babel/core": "^7.23.7",
+    "@babel/plugin-transform-runtime": "^7.23.7",
+    "@babel/preset-env": "^7.23.8",
+    "@babel/preset-react": "^7.23.3",
+    "@babel/register": "^7.23.7",
+    "@babel/runtime-corejs2": "^7.23.8",
+    "@types/node": "^20.11.0",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react": "^7.33.2",
     "react": "18.2.0",
+    "release-it": "^17.0.1",
     "tap-nirvana": "1.1.0",
-    "typescript": "4.8.4",
+    "typescript": "^5.3.3",
     "updtr": "4.0.0",
     "watch": "1.0.2"
   },
   "dependencies": {
-    "@types/cheerio": "0.22.31",
-    "@types/react": "18.0.21",
+    "@types/cheerio": "^0.22.35",
+    "@types/react": "^18.2.47",
     "cheerio": "1.0.0-rc.12",
     "esm": "3.2.25",
     "react-dom": "18.2.0",
-    "tape": "5.6.1",
+    "tape": "^5.7.2",
     "vitest": "1.1.3"
   }
 }
