@@ -520,3 +520,55 @@ describe('MyComponent', async assert => {
   });
 });
 ```
+
+## Vitest
+
+[Vitest](https://vitest.dev/guide/) is a [Vite](https://vitejs.dev/) plugin through which you can run Riteway tests. It's a great way to get started with Riteway, because it's easy to set up and it's fast.
+
+### Installing
+
+First you will need to install Vitest. You will also need to install Riteway into your project if you have not already done so. You can use any package manager you like:
+
+```shell
+pnpm add --save-dev vitest
+npm install --save-dev vitest
+yarn add --save-dev vitest
+```
+
+### Usage
+
+First, import `assert` from `riteway/vitest` and `describe` from `vitest`:
+
+```ts
+import { assert } from 'riteway/vitest';
+import { describe } from "vitest";
+```
+
+Then, as simple as that, you should be able to use the Vitest runner to test. You can trigger the Vitest directly or add a script to your package.json. Running `npm vitest` would do the trick to see a basic test setup. See [here](https://vitest.dev/config/) for additional details on setting up a Vitest configuration.
+
+
+```ts
+// a function to test
+const sum = (...args) => {
+  if (args.some(v => Number.isNaN(v))) throw new TypeError('NaN');
+  return args.reduce((acc, n) => acc + n, 0);
+};
+
+describe('sum()', () => {
+  const should = 'return the correct sum';
+
+  assert({
+    given: 'no arguments',
+    should: 'return 0',
+    actual: sum(),
+    expected: 0
+  });
+
+  assert({
+    given: 'two numbers',
+    should: 'return the correct sum',
+    actual: sum(2, 0),
+    expected: 2
+  });
+});
+```
