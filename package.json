@@ -38,7 +38,7 @@
     "@babel/runtime-corejs2": "7.19.2",
     "@types/node": "18.8.2",
     "eslint": "8.24.0",
-    "eslint-plugin-react": "7.31.8",
+    "eslint-plugin-react": "7.33.2",
     "react": "18.2.0",
     "release-it": "^17.0.1",
     "tap-nirvana": "1.1.0",
