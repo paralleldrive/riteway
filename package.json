@@ -4,6 +4,12 @@
   "description": "Unit tests that always supply a good bug report when they fail.",
   "main": "source/index.js",
   "module": "source/riteway.js",
+  "exports": {
+    ".": "./source/index.js",
+    "./vitest": "./source/vitest.js",
+    "./match": "./source/match.js",
+    "./render-component": "./source/render-component.js"
+  },
   "bin": {
     "riteway": "./bin/riteway"
   },
