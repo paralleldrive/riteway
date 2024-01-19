@@ -38,15 +38,3 @@ declare module "riteway/render-component" {
 declare module "riteway/match" {
   export default function match(text: string): (pattern: string | RegExp) => string;
 }
-
-declare module "riteway/vitest" {
-
-  interface Assertion<T> {
-    readonly given: any
-    readonly should: string
-    readonly actual: T
-    readonly expected: T
-  }
-
-  export type assert = <T>(assertion: Assertion<T>) => void
-}

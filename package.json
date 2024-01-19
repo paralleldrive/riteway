@@ -4,6 +4,25 @@
   "description": "Unit tests that always supply a good bug report when they fail.",
   "main": "source/index.js",
   "module": "source/riteway.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": "./source/index.js",
+    "./vitest": {
+      "import": "./source/vitest.js",
+      "require": "./source/vitest.js",
+      "types": "./vitest.d.ts"
+    },
+    "./match": {
+      "import": "./source/match.js",
+      "require": "./source/match.js",
+      "types": "./index.d.ts"
+    },
+    "./render-component": {
+      "import": "./source/render-component.js",
+      "require": "./source/render-component.js",
+      "types": "./index.d.ts"
+    }
+  },
   "bin": {
     "riteway": "./bin/riteway"
   },
@@ -13,7 +32,7 @@
     "typecheck": "npx -p typescript tsc --esModuleInterop --rootDir . source/test.js --allowJs --checkJs --noEmit --lib es6 --jsx react && npx -p typescript tsc index.d.ts --noEmit && echo 'TypeScript check complete.'",
     "ts": "npm run -s typecheck",
     "test": "node -r @babel/register source/test",
-    "esm": "cp source/*.js esm/ && cp esm/riteway.js esm/index.js && echo 'esm complete.'",
+    "esm": "cp source/*.js esm/ && cp source/*.jsx esm/ && cp esm/riteway.js esm/index.js && echo 'esm complete.'",
     "watch": "watch 'clear && npm run -s test | tap-nirvana && npm run -s lint && npm run -s typecheck && npm run -s esm' source",
     "precommit": "npm run -s test && npm run -s lint-fix && npm run -s typecheck",
     "update": "updtr",
