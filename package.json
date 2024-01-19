@@ -12,8 +12,16 @@
       "require": "./source/vitest.js",
       "types": "./vitest.d.ts"
     },
-    "./match": "./source/match.js",
-    "./render-component": "./source/render-component.js"
+    "./match": {
+      "import": "./source/match.js",
+      "require": "./source/match.js",
+      "types": "./index.d.ts"
+    },
+    "./render-component": {
+      "import": "./source/render-component.js",
+      "require": "./source/render-component.js",
+      "types": "./index.d.ts"
+    }
   },
   "bin": {
     "riteway": "./bin/riteway"
