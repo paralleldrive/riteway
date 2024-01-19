@@ -4,9 +4,14 @@
   "description": "Unit tests that always supply a good bug report when they fail.",
   "main": "source/index.js",
   "module": "source/riteway.js",
+  "types": "./index.d.ts",
   "exports": {
     ".": "./source/index.js",
-    "./vitest": "./source/vitest.js",
+    "./vitest": {
+      "import": "./source/vitest.js",
+      "require": "./source/vitest.js",
+      "types": "./vitest.d.ts"
+    },
     "./match": "./source/match.js",
     "./render-component": "./source/render-component.js"
   },
