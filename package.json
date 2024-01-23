@@ -1,6 +1,6 @@
 {
   "name": "riteway",
-  "version": "8.0.0-RC1",
+  "version": "8.0.0-RC2",
   "description": "Unit tests that always supply a good bug report when they fail.",
   "main": "source/index.js",
   "module": "source/riteway.js",
@@ -55,11 +55,11 @@
     "@babel/preset-react": "^7.23.3",
     "@babel/register": "^7.23.7",
     "@babel/runtime-corejs2": "^7.23.8",
-    "@types/node": "^20.11.0",
+    "@types/node": "^20.11.5",
     "eslint": "^8.56.0",
     "eslint-plugin-react": "^7.33.2",
     "react": "18.2.0",
-    "release-it": "^17.0.1",
+    "release-it": "^17.0.3",
     "tap-nirvana": "1.1.0",
     "typescript": "^5.3.3",
     "updtr": "4.0.0",
@@ -67,11 +67,11 @@
   },
   "dependencies": {
     "@types/cheerio": "^0.22.35",
-    "@types/react": "^18.2.47",
+    "@types/react": "^18.2.48",
     "cheerio": "1.0.0-rc.12",
     "esm": "3.2.25",
     "react-dom": "18.2.0",
-    "tape": "^5.7.2",
-    "vitest": "1.1.3"
+    "tape": "^5.7.3",
+    "vitest": "^1.2.1"
   }
 }
