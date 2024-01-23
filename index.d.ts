@@ -30,11 +30,3 @@ declare module 'riteway' {
     readonly objectMode: boolean
   }
 }
-
-declare module "riteway/render-component" {
-  export default function render(el: JSX.Element): cheerio.Root;
-}
-
-declare module "riteway/match" {
-  export default function match(text: string): (pattern: string | RegExp) => string;
-}

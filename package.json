@@ -15,12 +15,12 @@
     "./match": {
       "import": "./source/match.js",
       "require": "./source/match.js",
-      "types": "./index.d.ts"
+      "types": "./match.d.ts"
     },
     "./render-component": {
       "import": "./source/render-component.js",
       "require": "./source/render-component.js",
-      "types": "./index.d.ts"
+      "types": "./render-component.d.ts"
     }
   },
   "bin": {
