@@ -49,14 +49,14 @@
   },
   "homepage": "https://github.com/ericelliott/riteway#readme",
   "devDependencies": {
-    "@babel/core": "^7.23.7",
-    "@babel/plugin-transform-runtime": "^7.23.7",
-    "@babel/preset-env": "^7.23.8",
+    "@babel/core": "^7.23.9",
+    "@babel/plugin-transform-runtime": "^7.23.9",
+    "@babel/preset-env": "^7.23.9",
     "@babel/preset-react": "^7.23.3",
     "@babel/register": "^7.23.7",
-    "@babel/runtime-corejs2": "^7.23.8",
-    "@types/node": "^20.11.5",
+    "@babel/runtime-corejs2": "^7.23.9",
     "@types/cheerio": "^0.22.35",
+    "@types/node": "^20.11.6",
     "@types/react": "^18.2.48",
     "eslint": "^8.56.0",
     "eslint-plugin-react": "^7.33.2",
@@ -71,7 +71,7 @@
     "cheerio": "1.0.0-rc.12",
     "esm": "3.2.25",
     "react-dom": "18.2.0",
-    "tape": "^5.7.3",
+    "tape": "^5.7.4",
     "vitest": "^1.2.1"
   }
 }
