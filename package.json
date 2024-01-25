@@ -65,7 +65,7 @@
     "tap-nirvana": "1.1.0",
     "typescript": "^5.3.3",
     "updtr": "4.0.0",
-    "watch": "1.0.2"
+    "watch": "^0.13.0"
   },
   "dependencies": {
     "cheerio": "1.0.0-rc.12",
