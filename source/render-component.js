@@ -1,8 +1,18 @@
 import reactDom from 'react-dom/server';
 import dom from 'cheerio';
+const { fixture } = require('@open-wc/testing-helpers');
+const { html } = require('lit');
 
-const render = component =>
+export const renderLit = async (template) => {
+  const el = await fixture(html`${template}`);
+  await el.updateComplete; // Wait for the component to finish rendering
+  if (el.shadowRoot) {
+    return dom.load(el.shadowRoot.innerHTML);
+  }
+  return dom.load(el.innerHTML);
+};
+
+export const renderReact = (component) =>
   dom.load(reactDom.renderToStaticMarkup(component));
 
-export default render;
-
+export default renderReact;
