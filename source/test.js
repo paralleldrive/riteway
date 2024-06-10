@@ -3,7 +3,7 @@ import tape from 'tape';
 
 import { describe, Try, createStream, countKeys } from './riteway';
 import match from './match';
-import render from './render-component';
+import render, { renderReact } from './render-component';
 
 // a function to test
 const sum = (...args) => {
@@ -128,7 +128,20 @@ describe('skip()', async assert => {
   // eslint-disable-next-line
   const MyComponent = ({text}) => <div className="contents">{text}</div>;
 
-  describe('renderComponent', async assert => {
+  describe('renderComponent: renderRecat', async assert => {
+    const text = 'Test for whatever you like!';
+    const $ = renderReact(<MyComponent text={ text }/>);
+    const contains = match($('.contents').html());
+
+    assert({
+      given: 'A react component',
+      should: 'return a working cheerio instance',
+      actual: contains(text),
+      expected: text
+    });
+  });
+
+  describe('renderComponent: default export', async assert => {
     const text = 'Test for whatever you like!';
     const $ = render(<MyComponent text={ text }/>);
     const contains = match($('.contents').html());

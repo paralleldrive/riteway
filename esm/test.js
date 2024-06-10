@@ -142,6 +142,26 @@ describe('skip()', async assert => {
   });
 }
 
+{
+  // @ts-ignore
+  // eslint-disable-next-line
+
+  describe('renderLitComponent', async assert => {
+    const { html } = await import('lit');
+
+    const text = 'Test for whatever you like!';
+    const $ = renderLit(html`<div>Text</div>`);
+    const contains = match($('.contents').html());
+
+    assert({
+      given: 'A lit component',
+      should: 'return a working cheerio instance',
+      actual: contains(text),
+      expected: text
+    });
+  });
+}
+
 describe('countKeys()', async assert => {
   assert({
     given: 'an object',
@@ -151,4 +171,5 @@ describe('countKeys()', async assert => {
   });
 });
 
-import './match-test';
+import './match-test';import { renderLit } from '../source/render-component';
+
