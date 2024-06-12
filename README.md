@@ -455,6 +455,8 @@ First, import `render` from `riteway/render-component`:
 
 ```js
 import render from 'riteway/render-component';
+// or you can also use renderReact (which is the same as the default export)
+import { renderReact } from 'riteway/render-component';
 ```
 
 ```js
@@ -468,6 +470,35 @@ Take a JSX object and return a [Cheerio object](https://cheerio.js.org/), a part
 ```js
 describe('MyComponent', async assert => {
   const $ = render(<MyComponent />);
+
+  assert({
+    given: 'no params',
+    should: 'render something with the my-component class',
+    actual: $('.my-component').length,
+    expected: 1
+  });
+});
+```
+
+### Render Lit
+
+To use this, import `renderLit` from `riteway/render-component`:
+
+```js
+import { renderLit } from 'riteway/render-component';
+```
+
+```js
+renderLit = (TemplateResult) => CheerioObject
+```
+
+Take a [TemplateResult](https://lit.dev/docs/v1/api/lit-html/templates/#TemplateResult) Lit type and returns a [Cheerio object](https://cheerio.js.org/), that can be used in the exact same way as aforementioned default `render` function which is specifically for React.
+
+#### Example
+
+```js
+describe('MyComponent', async assert => {
+  const $ = renderLit(html`<div>Test</div>`);
 
   assert({
     given: 'no params',
