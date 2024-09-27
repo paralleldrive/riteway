@@ -60,7 +60,7 @@
     "@types/react": "^18.2.48",
     "eslint": "^8.56.0",
     "eslint-plugin-react": "^7.33.2",
-    "react": "18.2.0",
+    "react": "18.3.1",
     "release-it": "^17.0.3",
     "tap-nirvana": "1.1.0",
     "typescript": "^5.3.3",
@@ -70,7 +70,7 @@
   "dependencies": {
     "cheerio": "1.0.0-rc.12",
     "esm": "3.2.25",
-    "react-dom": "18.2.0",
+    "react-dom": "18.3.1",
     "tape": "^5.7.4",
     "vitest": "^1.2.1"
   }
