@@ -19,6 +19,10 @@
       "import": "./source/match.js",
       "types": "./match.d.ts"
     },
+    "./render": {
+      "import": "./source/render-component.js",
+      "types": "./render-component.d.ts"
+    },
     "./render-component": {
       "import": "./source/render-component.js",
       "types": "./render-component.d.ts"
@@ -34,6 +38,10 @@
     "./esm/match.js": {
       "import": "./source/match.js",
       "types": "./match.d.ts"
+    },
+    "./esm/render.js": {
+      "import": "./source/render-component.js",
+      "types": "./render-component.d.ts"
     },
     "./esm/render-component.js": {
       "import": "./source/render-component.js",
