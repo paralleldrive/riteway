@@ -13,6 +13,8 @@ Riteway forces you to write **R**eadable, **I**solated, and **E**xplicit tests, 
 
 Riteway's structured approach makes it ideal for AIDD:
 
+**📖 Learn more:** [Better AI Driven Development with Test Driven Development](https://medium.com/effortless-programming/better-ai-driven-development-with-test-driven-development-d4849f67e339)
+
 - **Clear requirements**: The given, should expectations and 5-question framework help AI better understand exactly what to build
 - **Readable by design**: Natural language descriptions make tests comprehensible to both humans and AI
 - **Simple API**: Minimal surface area reduces AI confusion and hallucinations
