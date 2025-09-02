@@ -1,6 +1,6 @@
 # Riteway
 
-Simple, readable, helpful unit tests.
+Simple, readable, helpful unit tests for humans and AI Driven Development (AIDD).
 
 * **R**eadable
 * **I**solated/**I**ntegrated
@@ -8,6 +8,17 @@ Simple, readable, helpful unit tests.
 * **E**xplicit
 
 Riteway forces you to write **R**eadable, **I**solated, and **E**xplicit tests, because that's the only way you can use the API. It also makes it easier to be thorough by making test assertions so simple that you'll want to write more of them.
+
+## Why Riteway for AI Driven Development?
+
+Riteway's structured approach makes it ideal for AIDD:
+
+- **Clear requirements**: The given, should expectations and 5-question framework help AI better understand exactly what to build
+- **Readable by design**: Natural language descriptions make tests comprehensible to both humans and AI
+- **Simple API**: Minimal surface area reduces AI confusion and hallucinations
+- **Token efficient**: Concise syntax saves valuable context window space
+
+## The 5 Questions Every Test Must Answer
 
 There are [5 questions every unit test must answer](https://medium.com/javascript-scene/what-every-unit-test-needs-f6cd34d9836d). Riteway forces you to answer them.
 
@@ -38,190 +49,9 @@ Now you can run your tests with `npm test`. Riteway also supports full TAPE-comp
 
 In this case, we're using [nyc](https://www.npmjs.com/package/nyc), which generates test coverage reports. The output is piped through an advanced TAP formatter, [tap-nirvana](https://www.npmjs.com/package/tap-nirvana) that adds color coding, source line identification and advanced diff capabilities.
 
-### Troubleshooting
+### Requirements
 
-If you get an error like:
-
-```shell
-SyntaxError: Unexpected identifier
-    at new Script (vm.js:79:7)
-    at createScript (vm.js:251:10)
-    at Object.runInThisContext (vm.js:303:10)
-...
-```
-
-The problem is likely that you need a `.babelrc` configured with support for esm (standard JavaScript modules) and/or React. If you need React support, that might look something like:
-
-```json
-{
-  "presets": [
-    [
-      "@babel/preset-env",
-      {
-        "targets": [
-          "last 2 versions",
-          "safari >= 7"
-        ]
-      }
-    ],
-    "@babel/preset-react"
-  ],
-  "plugins": [
-    [
-      "@babel/plugin-transform-runtime",
-      { "corejs": 2 }
-    ]
-  ]
-}
-```
-
-To install babel devDependencies:
-
-```shell
-npm install --save-dev @babel/core @babel/plugin-transform-runtime @babel/preset-env @babel/register @babel/runtime-corejs2
-```
-
-And if you're using react:
-
-```shell
-npm install --save-dev @babel/preset-react
-```
-
-You can then update your test script in `package.json` to use babel:
-
-```json
-"test": "node -r @babel/register source/test"
-```
-
-If you structure your folders by type like this:
-
-```shell
-├──todos
-│  ├── component
-│  ├── reducer
-│  └── test
-└──user
-   ├── component
-   ├── reducer
-   └── test
-```
-
-Update your test script to find all files with your custom ending:
-
-```json
-"test": "riteway -r @babel/register 'src/**/*.test.js' | tap-nirvana",
-```
-
-### Usage with ESM Modules
-
-If you want to use ESM modules instead of compiling, you'll need to import from the esm folder:
-
-```js
-import { describe } from 'riteway/esm/riteway.js';
-import { match } from 'riteway/esm/match.js';
-
-// Note: If you're using a compiler for JSX, you might want to handle
-// ESM modules with it, too, so you shouldn't need the ESM modules, but
-// if you want to use them anyway:
-import { render } from 'riteway/esm/render.js';
-```
-
-The script to run your tests should be run using `node` instead of `riteway`, like this:
-
-```json
-"test": "node test/index-test.js",
-```
-
-Since the tests are being run using `node`, it will not be possible to use globs to select the test files. You're encouraged to create a single entry test file which imports all test files from your project.
-
-### Usage with SWC
-
-SWC is a fast, Rust based compiler that is [the new default compiler in Next.js 12+](https://nextjs.org/blog/next-12#faster-builds-and-fast-refresh-with-rust-compiler).
-
-If you'd like to use it, there are some additional configuration steps:
-
-1. Configure SWC to recognize React and JSX.
-2. Configure your project to use [absolute import paths](https://nextjs.org/docs/advanced-features/module-path-aliases).
-3. Configure SWC to recognize `.module.css` files or `.css` files in your Next.js project.
-4. Configure SWC to run `styled-jsx` plugins, if you use it.
-
-Here is how you can compile your code with SWC and run Riteway tests.
-
-Install [`@swc/core`](https://swc.rs/docs/getting-started) and [`@swc/register`](https://github.com/swc-project/register):
-
-```
-npm install --save-dev @swc/core @swc/register
-```
-
-or
-
-```
-yarn add --dev @swc/core @swc/register
-```
-
-Add a `"test"` script to your `package.json`:
-
-```json
-"test": "node -r @swc/register src/test.js",
-```
-
-Create an `.swcrc` file with the options you need. Hint: Try the [SWC Playground](https://swc.rs/playground) for help generating valid SWC configurations. Example with css modules, absolute path, and React support:
-
-```json
-{
-  "jsc": {
-    "baseUrl": "./src",
-    "paths": {
-      "*.css": ["utils/identity-object-proxy.js"],
-      "utils/*": ["utils/*"]
-    },
-    "parser": {
-      "jsx": true,
-      "syntax": "ecmascript"
-    },
-    "transform": {
-      "react": {
-        "runtime": "automatic"
-      }
-    },
-    "experimental": {
-      "plugins": [
-        ["@swc/plugin-styled-jsx", {}]
-      ]
-    }
-  },
-  "module": {
-    "type": "commonjs"
-  }
-}
-```
-
-The `"baseUrl"` setting combined with `"utils/*": ["utils/*"]` is an example if you're using an absolute import from `src/utils`, e.g. `utils/pipe`. You'll need to add this for every folder for which you're using absolute imports.
-
-The `"parser"` and `"transform"` settings tell SWC how to handle JSX and [files that use React without importing it](https://reactjs.org/blog/2020/09/22/introducing-the-new-jsx-transform.html).
-
-The `"module"` settings allows you to use modern syntax like `import`.
-
-`"*.css": ["utils/identity-object-proxy.js"],` tells SWC to replace all absolute CSS imports with an identity object proxy. (**Note:** relative imports like `import './styles.css` will NOT be replaced, and you need to convert them to absolute imports.) An identity object proxy is an object that returns each key stringified when accessed. For example `obj.foo` returns `"foo"`.
-
-You will need to create the identity object proxy yourself. Here is an example:
-
-```js
-const identityObjectProxy = new Proxy(
-  {},
-  {
-    get: function getter(target, key) {
-      if (key === '__esModule') {
-        return false;
-      }
-
-      return key;
-    },
-  },
-);
-
-export default identityObjectProxy;
-```
+Riteway requires Node.js 16+ and uses native ES modules.
 
 
 ## Example Usage
@@ -286,6 +116,8 @@ describe('renderComponent', async assert => {
   });
 });
 ```
+
+> Note: You will need something to transpile your JSX to JS for this to work. You can mostly reuse the same setup you have for your application for this.
 
 Riteway makes it easier than ever to test pure React components using the `riteway/render-component` module. A pure component is a component which, given the same inputs, always renders the same output.
 
@@ -523,7 +355,7 @@ describe('MyComponent', async assert => {
 
 ## Vitest
 
-[Vitest](https://vitest.dev/guide/) is a [Vite](https://vitejs.dev/) plugin through which you can run Riteway tests. It's a great way to get started with Riteway, because it's easy to set up and it's fast.
+[Vitest](https://vitest.dev/guide/) is a [Vite](https://vitejs.dev/) plugin through which you can run Riteway tests. It's a great way to get started with Riteway because it's easy to set up and fast. It also runs tests in real browsers, so you can test standard web components.
 
 ### Installing
 
@@ -541,10 +373,12 @@ First, import `assert` from `riteway/vitest` and `describe` from `vitest`:
 
 ```ts
 import { assert } from 'riteway/vitest';
-import { describe } from "vitest";
+import { describe, test } from "vitest";
 ```
 
-Then, as simple as that, you should be able to use the Vitest runner to test. You can trigger the Vitest directly or add a script to your package.json. Running `npm vitest` would do the trick to see a basic test setup. See [here](https://vitest.dev/config/) for additional details on setting up a Vitest configuration.
+Then you can use the Vitest runner to test. You can run `npm vitest` directly or add a script to your package.json. See [here](https://vitest.dev/config/) for additional details on setting up a Vitest configuration.
+
+When using vitest, you should wrap your asserts inside a test function so that vitest can understand where your tests failed when it encounters a failure.
 
 
 ```ts
@@ -555,20 +389,20 @@ const sum = (...args) => {
 };
 
 describe('sum()', () => {
-  const should = 'return the correct sum';
+  test('basic summing', () => {
+    assert({
+      given: 'no arguments',
+      should: 'return 0',
+      actual: sum(),
+      expected: 0
+    });
 
-  assert({
-    given: 'no arguments',
-    should: 'return 0',
-    actual: sum(),
-    expected: 0
-  });
-
-  assert({
-    given: 'two numbers',
-    should: 'return the correct sum',
-    actual: sum(2, 0),
-    expected: 2
+    assert({
+      given: 'two numbers',
+      should: 'return the correct sum',
+      actual: sum(2, 0),
+      expected: 2
+    });
   });
 });
 ```

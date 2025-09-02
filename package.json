@@ -2,52 +2,55 @@
   "name": "riteway",
   "version": "8.0.1",
   "description": "Unit tests that always supply a good bug report when they fail.",
-  "main": "source/index.js",
+  "type": "module",
+  "main": "source/riteway.js",
   "module": "source/riteway.js",
   "types": "./index.d.ts",
   "exports": {
-    ".": "./source/index.js",
-    "./esm/riteway.js": {
-      "import": "./esm/riteway.js",
-      "types": "./esm/riteway.d.ts"
-    },
-    "./esm/match.js": {
-      "import": "./esm/match.js",
-      "types": "./esm/match.d.ts"
-    },
-    "./esm/render.js": {
-      "import": "./esm/render-component.js",
-      "types": "./esm/render-component.d.ts"
-    },
-    "./esm/index.js": {
-      "import": "./esm/index.js"
-    },
-    "./esm/vitest.js": {
-      "import": "./esm/vitest.js"
-    },
-    "./esm/test.js": {
-      "import": "./esm/test.js"
-    },
-    "./esm/match-test.js": {
-      "import": "./esm/match-test.js"
-    },
-    "./esm/vitest.test.jsx": {
-      "import": "./esm/vitest.test.jsx"
+    ".": {
+      "import": "./source/riteway.js",
+      "types": "./index.d.ts"
     },
     "./vitest": {
       "import": "./source/vitest.js",
-      "require": "./source/vitest.js",
       "types": "./vitest.d.ts"
     },
     "./match": {
       "import": "./source/match.js",
-      "require": "./source/match.js",
       "types": "./match.d.ts"
     },
     "./render-component": {
       "import": "./source/render-component.js",
-      "require": "./source/render-component.js",
       "types": "./render-component.d.ts"
+    },
+    "./esm/riteway.js": {
+      "import": "./source/riteway.js",
+      "types": "./index.d.ts"
+    },
+    "./esm/index.js": {
+      "import": "./source/riteway.js",
+      "types": "./index.d.ts"
+    },
+    "./esm/match.js": {
+      "import": "./source/match.js",
+      "types": "./match.d.ts"
+    },
+    "./esm/render-component.js": {
+      "import": "./source/render-component.js",
+      "types": "./render-component.d.ts"
+    },
+    "./esm/vitest.js": {
+      "import": "./source/vitest.js",
+      "types": "./vitest.d.ts"
+    },
+    "./esm/test.js": {
+      "import": "./source/test.js"
+    },
+    "./esm/match-test.js": {
+      "import": "./source/match-test.js"
+    },
+    "./esm/vitest.test.jsx": {
+      "import": "./source/vitest.test.jsx"
     }
   },
   "bin": {
