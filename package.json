@@ -62,7 +62,7 @@
     }
   },
   "bin": {
-    "riteway": "./bin/riteway"
+    "riteway": "bin/riteway"
   },
   "scripts": {
     "lint": "eslint source && echo 'Lint complete.'",
