@@ -43,6 +43,12 @@ Then add an npm command in your package.json:
 "test": "riteway test/**/*-test.js",
 ```
 
+For projects using both core Riteway tests and JSX component tests, you can use a dual test runner setup:
+
+```json
+"test": "node source/test.js && vitest run",
+```
+
 Now you can run your tests with `npm test`. Riteway also supports full TAPE-compatible usage syntax, so you can have an advanced entry that looks like:
 
 ```json
@@ -53,13 +59,13 @@ In this case, we're using [nyc](https://www.npmjs.com/package/nyc), which genera
 
 ### Requirements
 
-Riteway requires Node.js 16+ and uses native ES modules.
+Riteway requires Node.js 16+ and uses native ES modules. Add `"type": "module"` to your package.json to enable ESM support. For JSX component testing, you'll need a build tool that can transpile JSX (see [JSX Setup](#jsx-setup) below).
 
 
 ## Example Usage
 
 ```js
-import { describe, Try } from 'riteway';
+import { describe, Try } from 'riteway/index.js';
 
 // a function to test
 const sum = (...args) => {
@@ -94,8 +100,8 @@ describe('sum()', async assert => {
   assert({
     given: 'NaN',
     should: 'throw',
-    actual: Try(sum, 1, NaN).toString(),
-    expected: 'TypeError: NaN'
+    actual: Try(sum, 1, NaN),
+    expected: new TypeError('NaN')
   });  
 });
 ```
@@ -103,9 +109,8 @@ describe('sum()', async assert => {
 ### Testing React Components
 
 ```js
-import React from 'react';
 import render from 'riteway/render-component';
-import { describe } from 'riteway';
+import { describe } from 'riteway/index.js';
 
 describe('renderComponent', async assert => {
   const $ = render(<div className="foo">testing</div>);
@@ -119,7 +124,7 @@ describe('renderComponent', async assert => {
 });
 ```
 
-> Note: You will need something to transpile your JSX to JS for this to work. You can mostly reuse the same setup you have for your application for this.
+> Note: JSX component testing requires transpilation. See the [JSX Setup](#jsx-setup) section below for configuration with Vite or Next.js.
 
 Riteway makes it easier than ever to test pure React components using the `riteway/render-component` module. A pure component is a component which, given the same inputs, always renders the same output.
 
@@ -261,7 +266,7 @@ createStream = ({ objectMode: Boolean }) => NodeStream
 Create a stream of output, bypassing the default output stream that writes messages to `console.log()`. By default the stream will be a text stream of TAP output, but you can get an object stream instead by setting `opts.objectMode` to `true`.
 
 ```js
-import { describe, createStream } from 'riteway';
+import { describe, createStream } from 'riteway/index.js';
 
 createStream({ objectMode: true }).on('data', function (row) {
     console.log(JSON.stringify(row))
@@ -318,7 +323,7 @@ describe('MyComponent', async assert => {
 First, import `match` from `riteway/match`:
 
 ```js
-import match from 'riteway/match';
+import match from 'riteway/match.js';
 ```
 
 ```js
@@ -355,6 +360,44 @@ describe('MyComponent', async assert => {
 });
 ```
 
+## JSX Setup
+
+For JSX component testing, you need a build tool that can transpile JSX. We recommend **Vite** or **Next.js**, both of which handle JSX out of the box.
+
+### Option 1: Vite Setup
+
+[Vite](https://vitejs.dev/) provides excellent JSX support with minimal configuration:
+
+1. **Install Vite, Vitest, and React plugin:**
+   ```bash
+   npm install --save-dev vite vitest @vitejs/plugin-react
+   ```
+
+2. **Create `vite.config.js` in your project root:**
+   ```javascript
+   import { defineConfig } from 'vite';
+   import react from '@vitejs/plugin-react';
+
+   export default defineConfig({
+     plugins: [react()],
+   });
+   ```
+
+3. **Update your package.json test script:**
+   ```json
+   {
+     "scripts": {
+       "test": "vitest run"
+     }
+   }
+   ```
+
+   Note: Vitest configuration is optional. The above setup will work with default settings.
+
+### Option 2: Next.js Setup
+
+[Next.js](https://nextjs.org/) handles JSX transpilation automatically. No additional configuration needed for JSX support.
+
 ## Vitest
 
 [Vitest](https://vitest.dev/guide/) is a [Vite](https://vitejs.dev/) plugin through which you can run Riteway tests. It's a great way to get started with Riteway because it's easy to set up and fast. It also runs tests in real browsers, so you can test standard web components.
@@ -364,9 +407,7 @@ describe('MyComponent', async assert => {
 First you will need to install Vitest. You will also need to install Riteway into your project if you have not already done so. You can use any package manager you like:
 
 ```shell
-pnpm add --save-dev vitest
 npm install --save-dev vitest
-yarn add --save-dev vitest
 ```
 
 ### Usage
@@ -378,7 +419,7 @@ import { assert } from 'riteway/vitest';
 import { describe, test } from "vitest";
 ```
 
-Then you can use the Vitest runner to test. You can run `npm vitest` directly or add a script to your package.json. See [here](https://vitest.dev/config/) for additional details on setting up a Vitest configuration.
+Then you can use the Vitest runner to test. You can run `npx vitest` directly or add a script to your package.json. See [here](https://vitest.dev/config/) for additional details on setting up a Vitest configuration.
 
 When using vitest, you should wrap your asserts inside a test function so that vitest can understand where your tests failed when it encounters a failure.
 
