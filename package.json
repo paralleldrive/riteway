@@ -93,7 +93,7 @@
     "error-causes": "^3.0.2",
     "eslint": "^9.33.0",
     "eslint-plugin-react": "^7.37.5",
-    "react": "19.1.1",
+    "react": "19.2.0",
     "release-it": "^19.0.4",
     "tap-nirvana": "1.1.0",
     "typescript": "^5.9.2",
@@ -106,7 +106,7 @@
     "esm": "3.2.25",
     "glob": "^11.0.3",
     "minimist": "^1.2.8",
-    "react-dom": "19.1.1",
+    "react-dom": "19.2.0",
     "resolve": "^1.22.10",
     "tape": "^5.9.0",
     "vitest": "^3.2.4"
