@@ -1,56 +1,73 @@
 #!/usr/bin/env node
 
-'use strict';
+import { resolve as resolvePath } from 'path';
+import { readFileSync } from 'fs';
+import resolve from 'resolve';
+import minimist from 'minimist';
+import { globSync } from 'glob';
+import dotignore from 'dotignore';
 
-var resolveModule = require('resolve').sync;
-var resolvePath = require('path').resolve;
-var readFileSync = require('fs').readFileSync;
-var parseOpts = require('minimist');
-var glob = require('glob');
-var ignore = require('dotignore');
+const resolveModule = resolve.sync;
+const createMatcher = dotignore.createMatcher;
 
-var opts = parseOpts(process.argv.slice(2), {
-  alias: { r: 'require', i: 'ignore' },
-  string: ['require', 'ignore'],
-  default: { r: [], i: null }
-});
+const asyncPipe = (...fns) => x => fns.reduce(async (y, f) => f(await y), x);
 
-var cwd = process.cwd();
+export const parseArgs = (argv) => {
+  const opts = minimist(argv, {
+    alias: { r: 'require', i: 'ignore' },
+    string: ['require', 'ignore'],
+    default: { r: [], i: null }
+  });
+  
+  return {
+    require: Array.isArray(opts.require) ? opts.require : [opts.require].filter(Boolean),
+    ignore: opts.ignore,
+    patterns: opts._,
+    cwd: process.cwd()
+  };
+};
 
-if (typeof opts.require === 'string') {
-  opts.require = [opts.require];
-}
+export const loadModules = async ({ require: modules, ...rest }) => {
+  await Promise.all(
+    modules.map(async (module) => {
+      const options = { basedir: rest.cwd, extensions: ['.js', '.mjs', '.json'] };
+      await import(resolveModule(module, options));
+    })
+  );
+  return { require: modules, ...rest };
+};
 
-opts.require.forEach(function (module) {
-  var options  = { basedir: cwd, extensions: Object.keys(require.extensions) };
-  if (module) {
-    /* This check ensures we ignore `-r ""`, trailing `-r`, or
-         * other silly things the user might (inadvertently) be doing.
-         */
-    require(resolveModule(module, options));
-  }
-});
-
-if (typeof opts.ignore === 'string') {
+export const createIgnoreMatcher = ({ ignore, cwd, ...rest }) => {
+  if (!ignore) return { ...rest, cwd, matcher: null };
+  
   try {
-    var ignoreStr = readFileSync(resolvePath(cwd, opts.ignore || '.gitignore'), 'utf-8');
+    const ignoreStr = readFileSync(resolvePath(cwd, ignore || '.gitignore'), 'utf-8');
+    return { ...rest, cwd, matcher: createMatcher(ignoreStr) };
   } catch (e) {
     console.error(e.message);
     process.exit(2);
   }
-  var matcher = ignore.createMatcher(ignoreStr);
-}
+};
 
-opts._.forEach(function (arg) {
-  // If glob does not match, `files` will be an empty array.
-  // Note: `glob.sync` may throw an error and crash the node process.
-  var files = glob.sync(arg);
+export const resolveTestFiles = ({ patterns, matcher, cwd, ...rest }) => {
+  const files = patterns
+    .flatMap(pattern => globSync(pattern))
+    .filter(file => !matcher || !matcher.shouldIgnore(file))
+    .map(file => resolvePath(cwd, file));
+    
+  return { ...rest, files };
+};
 
-  if (!Array.isArray(files)) {
-    throw new TypeError('unknown error: glob.sync did not return an array or throw. Please report this.');
-  }
+export const runTests = async ({ files }) => {
+  await Promise.all(files.map(file => import(file)));
+};
 
-  files.filter(function (file) { return !matcher || !matcher.shouldIgnore(file); }).forEach(function (file) {
-    require(resolvePath(cwd, file));
-  });
-});
+const main = asyncPipe(
+  parseArgs,
+  loadModules,
+  createIgnoreMatcher,
+  resolveTestFiles,
+  runTests
+);
+
+main(process.argv.slice(2)).catch(console.error);

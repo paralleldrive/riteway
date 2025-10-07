@@ -1,9 +1,6 @@
-import React from 'react';
 import tape from 'tape';
 
-import { describe, Try, createStream, countKeys } from './riteway';
-import match from './match';
-import render from './render-component';
+import { describe, Try, createStream, countKeys } from './riteway.js';
 
 // a function to test
 const sum = (...args) => {
@@ -123,24 +120,6 @@ describe('skip()', async assert => {
   });
 });
 
-{
-  // @ts-ignore
-  // eslint-disable-next-line
-  const MyComponent = ({text}) => <div className="contents">{text}</div>;
-
-  describe('renderComponent', async assert => {
-    const text = 'Test for whatever you like!';
-    const $ = render(<MyComponent text={ text }/>);
-    const contains = match($('.contents').html());
-
-    assert({
-      given: 'A react component',
-      should: 'return a working cheerio instance',
-      actual: contains(text),
-      expected: text
-    });
-  });
-}
 
 describe('countKeys()', async assert => {
   assert({
@@ -151,4 +130,5 @@ describe('countKeys()', async assert => {
   });
 });
 
-import './match-test';
+import './match-test.js';
+import '../bin/riteway.test.js';
