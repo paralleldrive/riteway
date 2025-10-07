@@ -1,6 +1,6 @@
 {
   "name": "riteway",
-  "version": "9.0.0-rc.1",
+  "version": "9.0.0",
   "description": "Unit tests that always supply a good bug report when they fail.",
   "type": "module",
   "main": "source/riteway.js",
