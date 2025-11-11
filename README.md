@@ -1,4 +1,5 @@
 # Riteway
+[![SudoLang AIDD](https://img.shields.io/badge/✨_SudoLang_AIDD-black)](https://github.com/paralleldrive/aidd)
 
 Simple, readable, helpful unit tests for humans and AI Driven Development (AIDD).
 
