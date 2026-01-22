@@ -1,22 +1,21 @@
 # Epic: Riteway AI Testing Framework
 
-Transform Riteway into an AI-native testing framework that enables agents to write and execute tests using natural language prompts.
+Enable Riteway users to test their AI prompts as easily as they test code, treating prompts as first-class testable units.
 
 ## Vision Alignment
 
-This epic directly supports our north star: "The standard testing framework for AI Driven Development and software agents" by making Riteway itself testable and usable by AI agents.
+This epic directly supports our north star: "The standard testing framework for AI Driven Development and software agents" by enabling Riteway users to test their prompts with the same rigor they test code.
 
 ## Epic Description
-
-After Phase 1, use `ai/commands/task` to create epic covering:
 
 **A. Migrate PR #378 Content:**
 - Copy `ai/` folder → `riteway-ai/`
 - Update all references
 
 **B. Prompt Compilation System:**
-- NPM script: compile prompts → importable JS modules (wrapper functions returning strings)
-- Ship with npm package for downstream imports
+- Compile Riteway prompts (from riteway-ai/) → importable JS modules (wrapper functions returning strings)
+- Ship compiled prompts with npm package so users can import them in their Vitest/Riteway test suites
+- Enables users to invoke prompt tests inside their existing test infrastructure
 
 **C. New CLI Feature: `riteway ai <promptfile>`:**
 - Extension-agnostic
@@ -32,11 +31,15 @@ describe(moduleName, {
   $response = callSubAgent($userPrompt)
   $requirements
 
-  assert({
-    requirement // "given $situation, should $thingToDo"
-    expected
-  }) // AI infers pass/fail
+  // Riteway test runner iterates each requirement and creates Riteway assertions
+  // inferring appropriate values for given, should, actual, expected
+  assert(requirements) // AI infers pass/fail for each requirement
 ```
+
+**How it works:**
+- `callSubAgent($userPrompt)` - Agent executes the prompt (NOT direct LLM API)
+- For each `$requirement`, Riteway test runner creates a Riteway assertion
+- AI infers `given`, `should`, `actual`, `expected` values from requirement + response
 
 **E. CLI Architecture:**
 - Check existing bin (likely exists)
@@ -47,6 +50,7 @@ describe(moduleName, {
 - Path: `ai-evals/$YYYY-MM-DD-$testPromptFilename-$(npx cuid2 --slug).tap.md`
 - Create ai-evals/ if missing
 - Format: **rich, colorized TAP** with markdown media embeds (screenshots, AI images, etc.)
+- Open test results in browser with markdown rendering
 
 **G. Success Criteria:**
 - Unit tests for CLI tool
@@ -59,13 +63,18 @@ describe(moduleName, {
 ### Functional Requirements
 
 - Given PR #378 ai/ folder content, should migrate to riteway-ai/ preserving all functionality
-- Given prompt files in the codebase, should compile them to importable JS modules
-- Given a downstream project, should allow importing compiled prompt modules via npm
-- Given a .sudo test file path, should read and parse the test file
-- Given a parsed test file, should delegate test execution to an AI agent (no direct LLM API calls)
+- Given Riteway prompt files in riteway-ai/, should compile them to importable JS modules
+- Given a downstream project, should allow importing compiled Riteway prompt modules via npm
+- Given imported prompt modules, should enable users to invoke prompt tests inside their Vitest/Riteway test suites
+- Given a .sudo test file path, should read the entire test file
+- Given test file contents (SudoLang/markdown), should pass complete file to AI agent without parsing
+- Given test file execution, should delegate to subagent via callSubAgent (no direct LLM API calls)
+- Given $requirements in test file, should iterate and create Riteway assertions for each
+- Given each requirement, should infer appropriate given, should, actual, expected values
 - Given test execution results, should record output in ai-evals/ folder with timestamped filename
 - Given test output requirements, should generate rich, colorized TAP format
 - Given markdown media (images, screenshots), should embed them in TAP output
+- Given output file created, should open test results in browser with markdown rendering
 - Given the CLI tool implementation, should have comprehensive unit test coverage
 - Given the complete system, should have an end-to-end test demonstrating full workflow
 
@@ -76,7 +85,9 @@ describe(moduleName, {
 - Given ai-evals folder requirements, should create directory if it doesn't exist
 - Given YYYY-MM-DD date format requirement, should generate ISO date stamps
 - Given test file format, should support extension-agnostic file reading
+- Given SudoLang/markdown test files, should treat as prompts and pass complete contents to agent
 - Given agent orchestration needs, should call subagents (not LLM APIs directly)
+- Given test output, should open in browser for markdown rendering
 
 ---
 
@@ -167,19 +178,20 @@ describe(moduleName, {
 
 ### Task 5: Implement AI Test Runner Module
 
-**Context**: Core module that reads test files and orchestrates AI execution
+**Context**: Core module that reads test files and orchestrates AI execution. SudoLang test files are prompts for agents - all markdown is valid SudoLang and may include frontmatter, etc.
 
 **Requirements**:
 - Given a test file path (any extension), should read file contents
-- Given test file contents, should parse for imports, describe blocks, and assertions
-- Given parsed test structure, should validate format
-- Given valid test file, should prepare for agent execution
+- Given test file contents, should pass entire file to AI agent (don't parse - it's a prompt)
+- Given agent execution, should delegate to subagent (no direct LLM API calls)
+- Given agent response with test results, should extract structured test output
 - Given test results, should return structured output
 
 **Success Criteria**:
 - [ ] Module created in separate file (e.g., lib/ai-test-runner.js)
 - [ ] Reads files extension-agnostically
-- [ ] Parses test file structure
+- [ ] Passes complete file contents to agent (no parsing)
+- [ ] Delegates to subagent for execution
 - [ ] Returns structured test execution data
 - [ ] Unit tests for module
 
@@ -190,7 +202,7 @@ describe(moduleName, {
 
 ### Task 6: Implement Test Output Recording
 
-**Context**: Record test results in ai-evals/ with proper naming and TAP format
+**Context**: Record test results in ai-evals/ with proper naming and TAP format, then open in browser
 
 **Requirements**:
 - Given test execution results, should create ai-evals/ if missing
@@ -200,6 +212,7 @@ describe(moduleName, {
 - Given test results, should format as rich, colorized TAP output
 - Given TAP output, should support markdown media embeds
 - Given complete output, should write to file
+- Given written file, should open test results in browser with markdown rendering
 
 **Success Criteria**:
 - [ ] ai-evals/ folder created automatically if missing
@@ -207,6 +220,7 @@ describe(moduleName, {
 - [ ] TAP output properly formatted
 - [ ] Colorization applied to TAP output
 - [ ] Markdown media embeds supported (images, screenshots)
+- [ ] Browser automatically opens with rendered markdown results
 - [ ] Unit tests for output formatting
 
 **Dependencies**: Task 5
@@ -288,20 +302,24 @@ describe(moduleName, {
 
 **Key Technical Considerations**:
 - Agent delegation pattern: Use Claude Code CLI or similar agent orchestrators, NOT direct LLM API calls
+- SudoLang test files are prompts - don't parse them, pass complete contents to agent (supports frontmatter, markdown, etc.)
 - TAP output format must remain standard-compliant while supporting markdown extensions
 - Slug generation must use shell execution: `npx cuid2 --slug`
 - Prompt compilation should be idempotent and cacheable
+- Browser rendering for test results provides better UX for rich media embeds
 
 **Potential Challenges**:
-- Parsing arbitrary test file formats (extension-agnostic)
 - Ensuring TAP compliance while adding media embed features
 - Managing agent orchestration without coupling to specific LLM providers
+- Browser auto-open across different platforms
+- Requirement iteration and assertion inference by AI
 
 **Suggested Patterns**:
 - Use TDD throughout implementation
-- Separate concerns: parsing, execution, formatting, output
+- Separate concerns: file reading, agent execution, formatting, output, browser rendering
 - Delegate to specialized modules for each concern
 - Use dependency injection for testability
+- Treat test files as opaque prompts for maximum flexibility
 
 **Reference Materials**:
 - PR #378: https://github.com/paralleldrive/riteway/pull/378
@@ -314,7 +332,6 @@ describe(moduleName, {
 
 **Status**: 🔵 PENDING
 **Created**: 2026-01-22
-**Dependencies**: Phase 1 completion (vision.md, README update)
 **Total Tasks**: 9
 **Estimated Total Effort**: Large (multiple medium tasks)
 
