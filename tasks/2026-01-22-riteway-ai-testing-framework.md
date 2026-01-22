@@ -42,6 +42,8 @@ describe(moduleName, {
 - Configure pass threshold (e.g., `--threshold 75` for 75% pass rate)
 - Default: 4 runs, 75% threshold (3/4 must pass)
 - Example: `--runs 10 --threshold 90` → 9/10 must pass or suite fails
+- **Runs execute in parallel** for speed
+- **Each run gets its own clean context** (no state leakage between runs)
 - Report individual run results and aggregate pass rate
 
 ### Test Output
@@ -67,6 +69,8 @@ describe(moduleName, {
 - Given each requirement, should infer appropriate given, should, actual, expected values
 - Given `--runs N` flag, should execute each test N times (default: 4)
 - Given `--threshold P` flag, should require P% of runs to pass (default: 75)
+- Given multiple test runs, should execute runs in parallel for speed
+- Given parallel execution, should ensure each run has its own clean context (no state leakage)
 - Given multiple test runs, should report individual run results and aggregate pass rate
 - Given pass rate below threshold, should fail the test suite
 - Given pass rate at or above threshold, should pass the test suite
@@ -122,7 +126,8 @@ describe(moduleName, {
 - Given a test file path (any extension), should read file contents
 - Given test file contents, should pass entire file to AI agent (don't parse - it's a prompt)
 - Given agent execution, should delegate to subagent (no direct LLM API calls)
-- Given runs config (default: 4), should execute test N times
+- Given runs config (default: 4), should execute test N times in parallel
+- Given parallel execution, should ensure each run has clean context (no state leakage)
 - Given threshold config (default: 75%), should calculate required passes
 - Given multiple runs, should aggregate results and determine pass/fail
 - Given agent response with test results, should extract structured test output
@@ -133,7 +138,8 @@ describe(moduleName, {
 - [ ] Reads files extension-agnostically
 - [ ] Passes complete file contents to agent (no parsing)
 - [ ] Delegates to subagent for execution
-- [ ] Executes configurable number of runs per test
+- [ ] Executes configurable number of runs per test in parallel
+- [ ] Each run has isolated clean context
 - [ ] Calculates pass/fail based on threshold
 - [ ] Returns structured test execution data with per-run and aggregate results
 - [ ] Unit tests for module
