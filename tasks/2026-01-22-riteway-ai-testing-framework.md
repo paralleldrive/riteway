@@ -52,7 +52,7 @@ describe(moduleName, {
 - Given multiple test runs, should report individual run results and aggregate pass rate
 - Given pass rate below threshold, should fail the test suite
 - Given pass rate at or above threshold, should pass the test suite
-- Given test execution results, should record output in ai-evals/ folder with timestamped filename
+- Given test execution results, should record output to path: `ai-evals/$YYYY-MM-DD-$testPromptFilename-$(npx cuid2 --slug).tap.md`
 - Given test output requirements, should generate rich, colorized TAP format
 - Given markdown media (images, screenshots), should embed them in TAP output
 - Given output file created, should open test results in browser with markdown rendering
