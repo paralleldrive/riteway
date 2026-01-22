@@ -8,21 +8,12 @@ This epic directly supports our north star: "The standard testing framework for 
 
 ## Epic Description
 
-**A. Migrate PR #378 Content:**
-- Copy `ai/` folder → `riteway-ai/`
-- Update all references
-
-**B. Prompt Compilation System:**
-- Compile Riteway prompts (from riteway-ai/) → importable JS modules (wrapper functions returning strings)
-- Ship compiled prompts with npm package so users can import them in their Vitest/Riteway test suites
-- Enables users to invoke prompt tests inside their existing test infrastructure
-
-**C. New CLI Feature: `riteway ai <promptfile>`:**
+**A. New CLI Feature: `riteway ai <promptfile>`:**
 - Extension-agnostic
 - Reads prompt → feeds to AI agent → agent runs tests
 - Reference: https://github.com/paralleldrive/sudolang/blob/main/examples/riteway.sudo
 
-**D. Test File Format (.sudo):**
+**B. Test File Format (.sudo):**
 ```
 import $targetPrompt // agents like Claude Code CLI handle - NO direct LLM API calls
 
@@ -41,18 +32,18 @@ describe(moduleName, {
 - For each `$requirement`, Riteway test runner creates a Riteway assertion
 - AI infers `given`, `should`, `actual`, `expected` values from requirement + response
 
-**E. CLI Architecture:**
+**C. CLI Architecture:**
 - Check existing bin (likely exists)
 - Implement as **separate module** imported into CLI
 - Add as new option
 
-**F. Test Output:**
+**D. Test Output:**
 - Path: `ai-evals/$YYYY-MM-DD-$testPromptFilename-$(npx cuid2 --slug).tap.md`
 - Create ai-evals/ if missing
 - Format: **rich, colorized TAP** with markdown media embeds (screenshots, AI images, etc.)
 - Open test results in browser with markdown rendering
 
-**G. Success Criteria:**
+**E. Success Criteria:**
 - Unit tests for CLI tool
 - E2E test with sample prompt
 
@@ -62,10 +53,6 @@ describe(moduleName, {
 
 ### Functional Requirements
 
-- Given PR #378 ai/ folder content, should migrate to riteway-ai/ preserving all functionality
-- Given Riteway prompt files in riteway-ai/, should compile them to importable JS modules
-- Given a downstream project, should allow importing compiled Riteway prompt modules via npm
-- Given imported prompt modules, should enable users to invoke prompt tests inside their Vitest/Riteway test suites
 - Given a .sudo test file path, should read the entire test file
 - Given test file contents (SudoLang/markdown), should pass complete file to AI agent without parsing
 - Given test file execution, should delegate to subagent via callSubAgent (no direct LLM API calls)
@@ -93,70 +80,7 @@ describe(moduleName, {
 
 ## Task Breakdown
 
-### Task 1: Research PR #378 and Plan Migration
-
-**Context**: Need to understand the existing ai/ folder structure from PR #378 before migrating
-
-**Requirements**:
-- Given PR #378 URL, should fetch and analyze the ai/ folder contents
-- Given the ai/ folder structure, should identify all files and dependencies to migrate
-- Given migration plan, should document file mapping (ai/ → riteway-ai/)
-- Given references in code, should identify all locations requiring updates
-
-**Success Criteria**:
-- [ ] PR #378 ai/ folder contents documented
-- [ ] File migration mapping created
-- [ ] Reference update locations identified
-
-**Dependencies**: None
-**Estimated Effort**: Small
-**Agent Orchestration**: Required - Use Explore agent for codebase analysis
-
----
-
-### Task 2: Migrate ai/ Folder to riteway-ai/
-
-**Context**: Copy and adapt ai/ folder from PR #378 to riteway-ai/
-
-**Requirements**:
-- Given ai/ folder contents from PR #378, should copy to riteway-ai/
-- Given file references in migrated code, should update paths to reflect new location
-- Given any hardcoded paths, should update to use riteway-ai/ prefix
-
-**Success Criteria**:
-- [ ] All files copied to riteway-ai/
-- [ ] All internal references updated
-- [ ] No broken imports or paths
-
-**Dependencies**: Task 1
-**Estimated Effort**: Small
-
----
-
-### Task 3: Create Prompt Compilation System
-
-**Context**: Build npm script to compile prompt files into importable JS modules
-
-**Requirements**:
-- Given prompt files in riteway-ai/, should compile to JS wrapper functions
-- Given compiled prompts, should export functions returning prompt strings
-- Given npm script execution, should generate all prompt modules
-- Given package.json, should include compilation in build/prepare scripts
-- Given downstream projects, should ship compiled prompts in npm package
-
-**Success Criteria**:
-- [ ] Compilation script created and working
-- [ ] Prompt files compiled to JS modules
-- [ ] Modules export functions returning prompt strings
-- [ ] npm script added to package.json
-- [ ] Files included in package.json "files" array
-
-**Dependencies**: Task 2
-**Estimated Effort**: Medium
-
----
-
-### Task 4: Analyze Existing CLI Structure
+### Task 1: Analyze Existing CLI Structure
 
 **Context**: Understand current CLI implementation to add new ai command
 
@@ -176,7 +100,7 @@ describe(moduleName, {
 
 ---
 
-### Task 5: Implement AI Test Runner Module
+### Task 2: Implement AI Test Runner Module
 
 **Context**: Core module that reads test files and orchestrates AI execution. SudoLang test files are prompts for agents - all markdown is valid SudoLang and may include frontmatter, etc.
 
@@ -195,12 +119,12 @@ describe(moduleName, {
 - [ ] Returns structured test execution data
 - [ ] Unit tests for module
 
-**Dependencies**: Task 4
+**Dependencies**: Task 1
 **Estimated Effort**: Medium
 
 ---
 
-### Task 6: Implement Test Output Recording
+### Task 3: Implement Test Output Recording
 
 **Context**: Record test results in ai-evals/ with proper naming and TAP format, then open in browser
 
@@ -223,12 +147,12 @@ describe(moduleName, {
 - [ ] Browser automatically opens with rendered markdown results
 - [ ] Unit tests for output formatting
 
-**Dependencies**: Task 5
+**Dependencies**: Task 2
 **Estimated Effort**: Medium
 
 ---
 
-### Task 7: Integrate AI Command into CLI
+### Task 4: Integrate AI Command into CLI
 
 **Context**: Wire up the ai test runner module to CLI as `riteway ai <file>`
 
@@ -247,12 +171,12 @@ describe(moduleName, {
 - [ ] Error handling implemented
 - [ ] Help text updated
 
-**Dependencies**: Tasks 5, 6
+**Dependencies**: Tasks 2, 3
 **Estimated Effort**: Small
 
 ---
 
-### Task 8: Create E2E Test
+### Task 5: Create E2E Test
 
 **Context**: Comprehensive test demonstrating full workflow
 
@@ -271,29 +195,27 @@ describe(moduleName, {
 - [ ] All success criteria validated
 - [ ] Test passes
 
-**Dependencies**: Task 7
+**Dependencies**: Task 4
 **Estimated Effort**: Medium
 
 ---
 
-### Task 9: Documentation and Final Integration
+### Task 6: Documentation and Final Integration
 
 **Context**: Ensure everything is documented and properly integrated
 
 **Requirements**:
 - Given new CLI feature, should update README with usage examples
-- Given prompt modules, should document how to import and use in downstream projects
 - Given ai-evals output, should document output format and location
 - Given package.json, should verify all scripts and files properly configured
 
 **Success Criteria**:
 - [ ] README updated with `riteway ai` documentation
-- [ ] Prompt module usage documented
 - [ ] ai-evals/ output format documented
 - [ ] package.json properly configured
 - [ ] All tests passing
 
-**Dependencies**: Task 8
+**Dependencies**: Task 5
 **Estimated Effort**: Small
 
 ---
@@ -322,7 +244,6 @@ describe(moduleName, {
 - Treat test files as opaque prompts for maximum flexibility
 
 **Reference Materials**:
-- PR #378: https://github.com/paralleldrive/riteway/pull/378
 - SudoLang example: https://github.com/paralleldrive/sudolang/blob/main/examples/riteway.sudo
 - TAP specification for output format compliance
 
@@ -332,13 +253,13 @@ describe(moduleName, {
 
 **Status**: 🔵 PENDING
 **Created**: 2026-01-22
-**Total Tasks**: 9
-**Estimated Total Effort**: Large (multiple medium tasks)
+**Total Tasks**: 6
+**Estimated Total Effort**: Medium (focused on CLI implementation)
 
 ---
 
 ## Next Steps
 
 1. Get user approval for this epic plan
-2. Begin with Task 1: Research PR #378
+2. Begin with Task 1: Analyze Existing CLI Structure
 3. Execute tasks sequentially with user approval between each task
