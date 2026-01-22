@@ -8,13 +8,15 @@ This epic directly supports our north star: "The standard testing framework for 
 
 ## Epic Description
 
-### New CLI Feature: `riteway ai <promptfile>`
-- Extension-agnostic
-- Reads prompt → feeds to AI agent → agent runs tests
-- Reference: https://github.com/paralleldrive/sudolang/blob/main/examples/riteway.sudo
+Implement `riteway ai <promptfile>` CLI command that reads SudoLang test files, delegates execution to AI agents, and outputs results in TAP format.
 
-### Test File Format (.sudo)
-```
+Reference: https://github.com/paralleldrive/sudolang/blob/main/examples/riteway.sudo
+
+---
+
+## Test File Contract
+
+```sudolang
 import $targetPrompt // agents like Claude Code CLI handle - NO direct LLM API calls
 
 describe(moduleName, {
@@ -31,30 +33,6 @@ describe(moduleName, {
 - `callSubAgent($userPrompt)` - Agent executes the prompt (NOT direct LLM API)
 - For each `$requirement`, Riteway test runner creates a Riteway assertion
 - AI infers `given`, `should`, `actual`, `expected` values from requirement + response
-
-### CLI Architecture
-- Check existing bin (likely exists)
-- Implement as **separate module** imported into CLI
-- Add as new option
-
-### Test Repeatability & Thresholds
-- Configure runs per test (e.g., `--runs 4`)
-- Configure pass threshold (e.g., `--threshold 75` for 75% pass rate)
-- Default: 4 runs, 75% threshold (3/4 must pass)
-- Example: `--runs 10 --threshold 90` → 9/10 must pass or suite fails
-- **Runs execute in parallel** for speed
-- **Each run gets its own clean context** (no state leakage between runs)
-- Report individual run results and aggregate pass rate
-
-### Test Output
-- Path: `ai-evals/$YYYY-MM-DD-$testPromptFilename-$(npx cuid2 --slug).tap.md`
-- Create ai-evals/ if missing
-- Format: **rich, colorized TAP** with markdown media embeds (screenshots, AI images, etc.)
-- Open test results in browser with markdown rendering
-
-### Success Criteria
-- Unit tests for CLI tool
-- E2E test with sample prompt
 
 ---
 
@@ -107,14 +85,7 @@ describe(moduleName, {
 - Given existing CLI code, should understand command structure and patterns
 - Given command patterns, should design ai subcommand integration point
 
-**Success Criteria**:
-- [ ] CLI entry point identified
-- [ ] Command structure documented
-- [ ] Integration approach designed
-
 **Dependencies**: None
-**Estimated Effort**: Small
-**Agent Orchestration**: Not Required
 
 ---
 
@@ -132,20 +103,9 @@ describe(moduleName, {
 - Given multiple runs, should aggregate results and determine pass/fail
 - Given agent response with test results, should extract structured test output
 - Given test results, should return structured output with per-run details and aggregate
-
-**Success Criteria**:
-- [ ] Module created in separate file (e.g., lib/ai-test-runner.js)
-- [ ] Reads files extension-agnostically
-- [ ] Passes complete file contents to agent (no parsing)
-- [ ] Delegates to subagent for execution
-- [ ] Executes configurable number of runs per test in parallel
-- [ ] Each run has isolated clean context
-- [ ] Calculates pass/fail based on threshold
-- [ ] Returns structured test execution data with per-run and aggregate results
-- [ ] Unit tests for module
+- Given module implementation, should have unit tests
 
 **Dependencies**: Task 1
-**Estimated Effort**: Medium
 
 ---
 
@@ -162,18 +122,9 @@ describe(moduleName, {
 - Given TAP output, should support markdown media embeds
 - Given complete output, should write to file
 - Given written file, should open test results in browser with markdown rendering
-
-**Success Criteria**:
-- [ ] ai-evals/ folder created automatically if missing
-- [ ] Filename follows exact format with slug generation
-- [ ] TAP output properly formatted
-- [ ] Colorization applied to TAP output
-- [ ] Markdown media embeds supported (images, screenshots)
-- [ ] Browser automatically opens with rendered markdown results
-- [ ] Unit tests for output formatting
+- Given module implementation, should have unit tests
 
 **Dependencies**: Task 2
-**Estimated Effort**: Medium
 
 ---
 
@@ -189,19 +140,9 @@ describe(moduleName, {
 - Given test runner results, should invoke output recording
 - Given errors, should display helpful error messages
 - Given successful execution, should exit with appropriate code
-
-**Success Criteria**:
-- [ ] `riteway ai <file>` command works
-- [ ] File argument accepted (any extension)
-- [ ] `--runs` flag accepted and passed to runner
-- [ ] `--threshold` flag accepted and passed to runner
-- [ ] Test runner module invoked correctly
-- [ ] Output recorded to ai-evals/
-- [ ] Error handling implemented
-- [ ] Help text updated with runs/threshold options
+- Given CLI help command, should display runs/threshold options
 
 **Dependencies**: Tasks 2, 3
-**Estimated Effort**: Small
 
 ---
 
@@ -216,16 +157,7 @@ describe(moduleName, {
 - Given output file, should verify media embed support
 - Given test completion, should verify exit codes
 
-**Success Criteria**:
-- [ ] Sample .sudo test file created
-- [ ] E2E test script created
-- [ ] Test executes `riteway ai` command
-- [ ] Output file verified for format and content
-- [ ] All success criteria validated
-- [ ] Test passes
-
 **Dependencies**: Task 4
-**Estimated Effort**: Medium
 
 ---
 
@@ -237,15 +169,9 @@ describe(moduleName, {
 - Given new CLI feature, should update README with usage examples
 - Given ai-evals output, should document output format and location
 - Given package.json, should verify all scripts and files properly configured
-
-**Success Criteria**:
-- [ ] README updated with `riteway ai` documentation
-- [ ] ai-evals/ output format documented
-- [ ] package.json properly configured
-- [ ] All tests passing
+- Given all implementation complete, should have all tests passing
 
 **Dependencies**: Task 5
-**Estimated Effort**: Small
 
 ---
 
