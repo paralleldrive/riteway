@@ -134,7 +134,7 @@ Autodux {
     Ignore the example usage, and use it only if the user asks for /help
   }
   /help - Explain how to use Autodux and list commands
-  /example - Example SudoLang source code in ./example.sudo
+  /example - Example SudoLang source code in ai/rules/frameworks/redux/example.mdc
   /save - Return the Dux in SudoLang format.
   /test cases - List the test cases in SudoLang format: TestCases [ ... ]
   /add [prop] [value] to the Dux object

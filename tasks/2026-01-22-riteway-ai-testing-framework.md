@@ -67,7 +67,13 @@ describe(moduleName, {
 - Given YYYY-MM-DD date format requirement, should generate ISO date stamps
 - Given test file format, should support extension-agnostic file reading
 - Given SudoLang/markdown test files, should treat as prompts and pass complete contents to agent
-- Given agent orchestration needs, should call subagents (not LLM APIs directly)
+- Given agent orchestration needs, should spawn subagent CLI subprocesses (not LLM APIs directly)
+- Given parallel execution, should spawn separate subprocesses per run (automatic context isolation)
+- Given agent-agnostic design, should support configurable agent CLI via agentConfig option
+- Given Claude Code CLI, should use: `claude -p --output-format json --no-session-persistence "prompt"`
+- Given OpenCode CLI, should use: `opencode run --format json "prompt"`
+- Given Cursor CLI, should use: `agent chat "prompt"` with `--api-key` for automation
+- Given default agent, should use Claude Code CLI (best JSON output support)
 - Given test output, should open in browser for markdown rendering
 - Given non-deterministic AI inference, should support configurable test runs and pass thresholds
 - Given threshold calculation, should use ceiling for required passes (e.g., 75% of 4 = 3 required)
@@ -178,12 +184,21 @@ describe(moduleName, {
 ## Implementation Notes
 
 **Key Technical Considerations**:
-- Agent delegation pattern: Use Claude Code CLI or similar agent orchestrators, NOT direct LLM API calls
+- Agent delegation pattern: Spawn subagent CLI subprocesses, NOT direct LLM API calls
 - SudoLang test files are prompts - don't parse them, pass complete contents to agent (supports frontmatter, markdown, etc.)
 - TAP output format must remain standard-compliant while supporting markdown extensions
 - Slug generation must use shell execution: `npx cuid2 --slug`
 - Prompt compilation should be idempotent and cacheable
 - Browser rendering for test results provides better UX for rich media embeds
+
+**Agent-Agnostic Architecture** (decided 2026-01-22):
+- Each test run spawns a fresh subprocess - automatic context isolation, no IDs needed
+- Default to Claude Code: `claude -p --output-format json --no-session-persistence`
+- Configurable via `agentConfig` option for OpenCode/Cursor support
+- CLI options researched:
+  - Claude Code: https://code.claude.com/docs/en/cli-reference
+  - OpenCode: https://opencode.ai/docs/cli/
+  - Cursor: https://cursor.com/docs/cli/using
 
 **Potential Challenges**:
 - Ensuring TAP compliance while adding media embed features
@@ -195,7 +210,7 @@ describe(moduleName, {
 - Use TDD throughout implementation
 - Separate concerns: file reading, agent execution, formatting, output, browser rendering
 - Delegate to specialized modules for each concern
-- Use dependency injection for testability
+- Use dependency injection for testability (agentConfig for mocking)
 - Treat test files as opaque prompts for maximum flexibility
 
 **Reference Materials**:
@@ -206,15 +221,54 @@ describe(moduleName, {
 
 ## Epic Status
 
-**Status**: 🔵 PENDING
+**Status**: 🟡 IN PROGRESS
 **Created**: 2026-01-22
 **Total Tasks**: 6
-**Estimated Total Effort**: Medium (focused on CLI implementation)
+**Completed**: Task 1, Task 2 (partial)
 
 ---
 
-## Next Steps
+## Progress Log
 
-1. Get user approval for this epic plan
-2. Begin with Task 1: Analyze Existing CLI Structure
-3. Execute tasks sequentially with user approval between each task
+### 2026-01-22: Session 1
+
+**Completed:**
+- ✅ Task 1: Analyzed CLI structure (`bin/riteway` uses asyncPipe pattern with minimist)
+- ✅ Task 2 partial: Created `source/ai-runner.js` with TDD
+  - `readTestFile()` - reads any file extension ✅
+  - `calculateRequiredPasses()` - ceiling math for threshold ✅
+- ✅ Architecture decision: Agent-agnostic subprocess spawning
+
+**Files Created:**
+- `source/ai-runner.js` - Core module (2 functions implemented)
+- `source/ai-runner.test.js` - Tests passing (4 tests)
+
+**Next: Resume Task 2**
+Implement remaining functions in `source/ai-runner.js`:
+1. `executeAgent({ agentConfig, prompt })` - Spawn CLI subprocess, return parsed JSON
+2. `aggregateResults({ runResults, threshold })` - Aggregate pass/fail from runs
+3. `runAITests({ filePath, runs, threshold, agentConfig })` - Orchestrate parallel runs
+
+**Architecture for `runAITests`:**
+```javascript
+export const runAITests = async ({
+  filePath,
+  runs = 4,
+  threshold = 75,
+  agentConfig = {
+    command: 'claude',
+    args: ['-p', '--output-format', 'json', '--no-session-persistence']
+  }
+}) => {
+  const prompt = await readTestFile(filePath);
+  const runResults = await Promise.all(
+    Array.from({ length: runs }, () => executeAgent(agentConfig, prompt))
+  );
+  return aggregateResults({ runResults, threshold });
+};
+```
+
+**Key Design Decisions:**
+- Subprocess per run = automatic context isolation (no IDs needed)
+- Default Claude Code, configurable for OpenCode/Cursor
+- Use `child_process.spawn` with JSON output parsing
