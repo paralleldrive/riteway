@@ -1,7 +1,6 @@
 import { mkdir, writeFile } from 'fs/promises';
 import { spawn } from 'child_process';
 import { basename, join } from 'path';
-import { fileURLToPath } from 'url';
 import open from 'open';
 
 /**

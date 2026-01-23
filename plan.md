@@ -9,6 +9,12 @@
 
 ## Completed Epics
 
+### ✅ RiteWay AI Testing Framework Epic
+**Status**: ✅ COMPLETED (2026-01-23)  
+**File**: [`tasks/archive/2026-01-22-riteway-ai-testing-framework.md`](./tasks/archive/2026-01-22-riteway-ai-testing-framework.md)  
+**Goal**: Enable Riteway users to test AI prompts as easily as they test code, treating prompts as first-class testable units  
+**Result**: Successfully implemented `riteway ai <promptfile>` CLI command with agent orchestration, parallel execution, TAP output, and comprehensive documentation. All 6 tasks completed with 62 passing tests.
+
 ### ✅ Modernize Test Runner Epic
 **Status**: ✅ COMPLETED (2025-10-06)  
 **File**: [`tasks/archive/2025-09-27-modernize-test-runner-epic.md`](./tasks/archive/2025-09-27-modernize-test-runner-epic.md)  
