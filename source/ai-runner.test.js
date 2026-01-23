@@ -1,4 +1,4 @@
-import { describe, test, vi } from 'vitest';
+import { describe, test } from 'vitest';
 import { assert } from './vitest.js';
 import {
   readTestFile,

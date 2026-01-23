@@ -7,7 +7,7 @@ import {
   formatTAP,
   recordTestOutput
 } from './test-output.js';
-import { writeFileSync, mkdirSync, rmSync, existsSync, readFileSync } from 'fs';
+import { mkdirSync, rmSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
