@@ -1,7 +1,13 @@
 # Riteway
 [![SudoLang AIDD](https://img.shields.io/badge/✨_SudoLang_AIDD-black)](https://github.com/paralleldrive/aidd)[![Parallel Drive](https://img.shields.io/badge/🖤_Parallel_Drive-000000?style=flat)](https://paralleldrive.com)
 
-Simple, readable, helpful unit tests for humans and AI Driven Development (AIDD).
+**The standard testing framework for AI Driven Development (AIDD) and software agents.**
+
+Riteway is a testing assertion style and philosophy which leads to simple, readable, helpful unit tests for humans and AI agents.
+
+It lets you write better, more readable tests with a fraction of the code that traditional assertion frameworks would use, and the `riteway ai` CLI lets you write AI agent prompt evals as easily as you would write a unit testing suite.
+
+Riteway is the AI-native way to build a modern test suite. It pairs well with Vitest, Playwright, Claude Code, Cursor Agent, Google Antigravity, and more.
 
 * **R**eadable
 * **I**solated/**I**ntegrated
