@@ -177,6 +177,13 @@ describe(moduleName, {
 - Given package.json, should verify all scripts and files properly configured
 - Given all implementation complete, should have all tests passing
 
+**Code Quality Improvements** (Nice-to-Have):
+- Extract usage message to constant (DRY principle - currently duplicated in help and error)
+- Extract percentage calculation helper function (single responsibility, readability)
+- Add integration tests for main() routing logic (help flag, AI command, test runner routing)
+- Add path traversal validation for user-supplied file paths (security enhancement)
+- Add inline JSDoc for remaining public API functions
+
 **Dependencies**: Task 5
 
 ---
@@ -221,10 +228,10 @@ describe(moduleName, {
 
 ## Epic Status
 
-**Status**: 🟡 IN PROGRESS (Ready for Task 4: CLI Integration)
+**Status**: 🟡 IN PROGRESS (Ready for Task 5: E2E Test)
 **Created**: 2026-01-22
 **Total Tasks**: 6
-**Completed**: Task 1, Task 2, Task 3
+**Completed**: Task 1, Task 2, Task 3, Task 4
 
 ---
 
@@ -273,12 +280,32 @@ describe(moduleName, {
 - `@paralleldrive/cuid2` - For unique slug generation
 - `open` - For browser launching
 
-**Next: Task 4**
-Integrate AI Command into CLI:
-1. Add 'ai' subcommand handler to CLI
-2. Parse --runs and --threshold flags
-3. Invoke test runner module
-4. Invoke output recording
-5. Handle errors with helpful messages
-6. Display proper exit codes
-7. Update CLI help command
+- ✅ Task 4: Completed CLI Integration
+  - `parseAIArgs()` - Parses AI command arguments with --runs, --threshold, and --agent flags ✅
+  - `getAgentConfig()` - Maps agent names (claude/opencode/cursor) to configurations ✅
+  - `runAICommand()` - Orchestrates AI test workflow with structured error handling ✅
+  - `main()` - Routes 'ai' subcommand to AI runner pipeline ✅
+  - Help command displays AI test options including agent selection ✅
+  - Structured error handling using error-causes library pattern ✅
+  - Agent-agnostic design with configurable agent support ✅
+  - All functions have comprehensive unit tests (17 tests passing) ✅
+
+**Files Updated:**
+- `bin/riteway` - Added AI command integration with error-causes pattern
+- `bin/riteway.test.js` - Added 17 tests for AI command (9 for getAgentConfig, 8 for other functions)
+
+**Code Quality Improvements:**
+- Consolidated path imports into single statement
+- Implemented error-causes library pattern for structured error handling
+- Added agentConfig support with --agent CLI flag
+- Added JSDoc documentation for getAgentConfig()
+- Expanded test coverage from 40 to 49 TAP tests
+
+**Next: Task 5**
+Create E2E Test:
+1. Create sample .sudo test file
+2. Execute full workflow
+3. Verify ai-evals/ output created
+4. Verify TAP format correctness
+5. Verify media embed support
+6. Verify exit codes

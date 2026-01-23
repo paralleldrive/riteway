@@ -8,7 +8,10 @@ import {
   loadModules, 
   createIgnoreMatcher, 
   resolveTestFiles,
-  runTests
+  runTests,
+  parseAIArgs,
+  runAICommand,
+  getAgentConfig
 } from './riteway.js';
 
 // Test utilities
@@ -203,4 +206,209 @@ describe('runTests()', async assert => {
     actual: await runTests({ files: [] }),
     expected: undefined
   });
+});
+
+describe('parseAIArgs()', async assert => {
+  assert({
+    given: 'AI command with test file path',
+    should: 'parse file path as first argument with defaults',
+    actual: parseAIArgs(['test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 4,
+      threshold: 75,
+      agent: 'claude',
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with --runs flag',
+    should: 'parse custom runs value',
+    actual: parseAIArgs(['--runs', '10', 'test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 10,
+      threshold: 75,
+      agent: 'claude',
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with --threshold flag',
+    should: 'parse custom threshold value',
+    actual: parseAIArgs(['--threshold', '80', 'test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 4,
+      threshold: 80,
+      agent: 'claude',
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with --agent flag',
+    should: 'parse custom agent value',
+    actual: parseAIArgs(['--agent', 'opencode', 'test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 4,
+      threshold: 75,
+      agent: 'opencode',
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with all flags',
+    should: 'parse all custom values',
+    actual: parseAIArgs(['--runs', '5', '--threshold', '60', '--agent', 'cursor', 'test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 5,
+      threshold: 60,
+      agent: 'cursor',
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with no file path',
+    should: 'return undefined filePath',
+    actual: parseAIArgs([]),
+    expected: {
+      filePath: undefined,
+      runs: 4,
+      threshold: 75,
+      agent: 'claude',
+      cwd: process.cwd()
+    }
+  });
+});
+
+describe('getAgentConfig()', async assert => {
+  assert({
+    given: 'agent name "claude"',
+    should: 'return claude agent configuration',
+    actual: getAgentConfig('claude'),
+    expected: {
+      command: 'claude',
+      args: ['-p', '--output-format', 'json', '--no-session-persistence']
+    }
+  });
+
+  assert({
+    given: 'agent name "opencode"',
+    should: 'return opencode agent configuration',
+    actual: getAgentConfig('opencode'),
+    expected: {
+      command: 'opencode',
+      args: ['--output-format', 'json']
+    }
+  });
+
+  assert({
+    given: 'agent name "cursor"',
+    should: 'return cursor agent configuration',
+    actual: getAgentConfig('cursor'),
+    expected: {
+      command: 'cursor-agent',
+      args: ['--output', 'json']
+    }
+  });
+
+  assert({
+    given: 'no agent name (undefined)',
+    should: 'return default claude configuration',
+    actual: getAgentConfig(),
+    expected: {
+      command: 'claude',
+      args: ['-p', '--output-format', 'json', '--no-session-persistence']
+    }
+  });
+
+  assert({
+    given: 'agent name in mixed case',
+    should: 'handle case-insensitive lookup',
+    actual: getAgentConfig('OpenCode'),
+    expected: {
+      command: 'opencode',
+      args: ['--output-format', 'json']
+    }
+  });
+
+  {
+    // Test invalid agent name throws error
+    let error;
+    try {
+      getAgentConfig('invalid-agent');
+    } catch (e) {
+      error = e;
+    }
+    
+    assert({
+      given: 'invalid agent name',
+      should: 'throw ValidationError with cause',
+      actual: error instanceof Error && error.cause !== undefined,
+      expected: true
+    });
+    
+    assert({
+      given: 'invalid agent name',
+      should: 'have correct error name',
+      actual: error?.cause?.name,
+      expected: 'ValidationError'
+    });
+    
+    assert({
+      given: 'invalid agent name',
+      should: 'include supported agents in message',
+      actual: error?.cause?.message.includes('claude') && 
+              error?.cause?.message.includes('opencode') &&
+              error?.cause?.message.includes('cursor'),
+      expected: true
+    });
+  }
+});
+
+describe('runAICommand()', async assert => {
+  {
+    // Test missing filePath throws structured error
+    let error;
+    try {
+      await runAICommand({ filePath: undefined, runs: 4, threshold: 75, cwd: process.cwd() });
+    } catch (e) {
+      error = e;
+    }
+    
+    assert({
+      given: 'options without filePath',
+      should: 'throw ValidationError with cause',
+      actual: error instanceof Error && error.cause !== undefined,
+      expected: true
+    });
+    
+    assert({
+      given: 'options without filePath',
+      should: 'have correct error name',
+      actual: error?.cause?.name,
+      expected: 'ValidationError'
+    });
+    
+    assert({
+      given: 'options without filePath',
+      should: 'have correct error code',
+      actual: error?.cause?.code,
+      expected: 'VALIDATION_ERROR'
+    });
+    
+    assert({
+      given: 'options without filePath',
+      should: 'include descriptive message',
+      actual: error?.cause?.message.includes('file path'),
+      expected: true
+    });
+  }
 });
