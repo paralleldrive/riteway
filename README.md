@@ -31,6 +31,30 @@ Riteway's structured approach makes it ideal for AIDD:
 
 Riteway includes a powerful CLI for testing AI agent prompts and evaluating their outputs. Test your prompts as rigorously as you test your code.
 
+### Prerequisites
+
+Riteway AI tests use CLI tools with OAuth authentication (not API keys). This ensures tests run against your subscription rather than usage-based billing.
+
+**Claude CLI** (default):
+```bash
+# Set up OAuth token (one-time)
+claude setup-token
+```
+Docs: https://docs.claude.ai/docs/cli-authentication
+
+**OpenCode CLI**:
+Follow provider setup instructions at https://opencode.ai/docs/cli/
+
+**Cursor CLI**:
+```bash
+# Set up OAuth authentication (one-time)
+agent login
+
+# Verify authentication
+agent status
+```
+Docs: https://docs.cursor.com/context/rules-for-ai
+
 ### Quick Start
 
 ```bash
@@ -108,10 +132,34 @@ Each agent runs in a subprocess with proper JSON output configuration.
 riteway ai <test-file> [options]
 
 Options:
-  --runs <n>        Number of test runs (default: 4)
-  --threshold <p>   Required pass percentage 0-100 (default: 75)
-  --agent <name>    AI agent to use: claude|opencode|cursor (default: claude)
+  --runs <n>            Number of test runs (default: 4)
+  --threshold <p>       Required pass percentage 0-100 (default: 75)
+  --agent <name>        AI agent to use: claude|opencode|cursor (default: claude)
+  --validate-extraction Validate extraction with judge sub-agent
+  --debug               Enable debug output to console
+  --debug-log           Enable debug output and save to auto-generated log file
 ```
+
+#### Debug Mode and Logging
+
+Use `--debug` to see detailed information about test execution in the console:
+
+```bash
+# Debug output to console only
+riteway ai test/my-prompt.sudo --debug
+
+# Debug output to console AND save to auto-generated log file
+riteway ai test/my-prompt.sudo --debug-log
+```
+
+When using `--debug-log`, the log file is automatically created in the `ai-evals/` directory with a timestamped filename matching the pattern: `YYYY-MM-DD-testname-xxxxx.debug.log`.
+
+Debug mode shows:
+- Agent command execution details
+- Prompt lengths and content previews
+- JSON parsing steps
+- Test extraction and evaluation results
+- Process exit codes and timing
 
 ### Example: Testing a Prompt
 
