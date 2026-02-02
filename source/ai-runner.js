@@ -1,5 +1,74 @@
 import { readFile } from 'fs/promises';
 import { spawn } from 'child_process';
+import { resolve, relative } from 'path';
+import { createError } from 'error-causes';
+import { extractTests } from './test-extractor.js';
+import { createDebugLogger } from './debug-logger.js';
+
+/**
+ * Validate that a file path does not escape the base directory.
+ * @param {string} filePath - Path to validate
+ * @param {string} baseDir - Base directory to restrict paths to
+ * @returns {string} Resolved absolute path
+ * @throws {Error} If path escapes the base directory
+ */
+export const validateFilePath = (filePath, baseDir) => {
+  const resolved = resolve(baseDir, filePath);
+  const rel = relative(baseDir, resolved);
+  if (rel.startsWith('..')) {
+    throw createError({
+      name: 'SecurityError',
+      message: 'File path escapes base directory',
+      code: 'PATH_TRAVERSAL',
+      filePath,
+      baseDir
+    });
+  }
+  return resolved;
+};
+
+/**
+ * Parse a string result from an agent, attempting multiple strategies.
+ * Strategies (in order):
+ * 1. Direct JSON parse if string starts with { or [
+ * 2. Extract and parse markdown-wrapped JSON (```json\n...\n```)
+ * 3. Keep as plain text if neither works
+ * @param {string} result - String to parse
+ * @param {Object} logger - Debug logger instance
+ * @returns {Object|string} Parsed object or original string
+ */
+export const parseStringResult = (result, logger) => {
+  const trimmed = result.trim();
+  
+  // Strategy 1: Try parsing as direct JSON if it looks like JSON
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      logger.log('Successfully parsed string as JSON');
+      return parsed;
+    } catch {
+      // Fall through to try markdown extraction
+      logger.log('Direct JSON parse failed, trying markdown extraction');
+    }
+  }
+  
+  // Strategy 2: Try extracting markdown-wrapped JSON
+  const markdownMatch = result.match(/```(?:json)?\s*\n([\s\S]*?)\n```/);
+  if (markdownMatch) {
+    logger.log('Found markdown-wrapped JSON, extracting...');
+    try {
+      const parsed = JSON.parse(markdownMatch[1]);
+      logger.log('Successfully parsed markdown-wrapped JSON');
+      return parsed;
+    } catch {
+      logger.log('Failed to parse markdown content, keeping original string');
+    }
+  }
+  
+  // Strategy 3: Keep as plain text
+  logger.log('String is not valid JSON, keeping as plain text');
+  return result;
+};
 
 /**
  * Read the contents of a test file.
@@ -18,10 +87,71 @@ export const readTestFile = (filePath) => readFile(filePath, 'utf-8');
  * @throws {Error} If threshold is not between 0 and 100
  */
 export const calculateRequiredPasses = ({ runs = 4, threshold = 75 } = {}) => {
+  if (!Number.isInteger(runs) || runs <= 0) {
+    throw createError({
+      name: 'ValidationError',
+      message: 'runs must be a positive integer',
+      code: 'INVALID_RUNS',
+      runs
+    });
+  }
   if (threshold < 0 || threshold > 100) {
-    throw new Error('threshold must be between 0 and 100');
+    throw createError({
+      name: 'ValidationError',
+      message: 'threshold must be between 0 and 100',
+      code: 'INVALID_THRESHOLD',
+      threshold
+    });
   }
   return Math.ceil((runs * threshold) / 100);
+};
+
+/**
+ * Verify that an agent is properly configured and authenticated.
+ * Performs a minimal smoke test by sending a simple prompt and checking for valid response.
+ * @param {Object} options
+ * @param {Object} options.agentConfig - Agent configuration
+ * @param {string} options.agentConfig.command - Command to execute
+ * @param {Array<string>} [options.agentConfig.args=[]] - Command arguments
+ * @param {number} [options.timeout=30000] - Timeout in milliseconds (default: 30 seconds)
+ * @param {boolean} [options.debug=false] - Enable debug logging
+ * @returns {Promise<Object>} Result object with success boolean and optional error message
+ */
+export const verifyAgentAuthentication = async ({ agentConfig, timeout = 30000, debug = false }) => {
+  const logger = createDebugLogger({ debug });
+  
+  logger.log('Verifying agent authentication...');
+  logger.command(agentConfig.command, agentConfig.args);
+
+  try {
+    // Simple smoke test prompt that should work with any agent
+    const testPrompt = 'Respond with valid JSON: {"status": "ok"}';
+    
+    await executeAgent({
+      agentConfig,
+      prompt: testPrompt,
+      timeout,
+      debug: false // Don't clutter output during smoke test
+    });
+
+    logger.log('Agent authentication verified successfully');
+    return { success: true };
+  } catch (err) {
+    logger.log('Agent authentication failed:', err.message);
+    
+    // Provide helpful error message with authentication guidance
+    let errorMessage = err.message;
+    
+    if (err.message.includes('authentication') || err.message.includes('auth') || 
+        err.message.includes('token') || err.message.includes('login')) {
+      errorMessage += '\n\n💡 Agent authentication required. Run the appropriate setup command:\n' +
+                     '   - Claude:  "claude setup-token" - https://docs.anthropic.com/en/docs/claude-code\n' +
+                     '   - Cursor:  "agent login" - https://docs.cursor.com/context/rules-for-ai\n' +
+                     '   - OpenCode: See https://opencode.ai/docs/cli/ for authentication setup';
+    }
+    
+    return { success: false, error: errorMessage };
+  }
 };
 
 /**
@@ -32,15 +162,24 @@ export const calculateRequiredPasses = ({ runs = 4, threshold = 75 } = {}) => {
  * @param {Array<string>} [options.agentConfig.args=[]] - Command arguments
  * @param {string} options.prompt - Prompt to send to the agent
  * @param {number} [options.timeout=300000] - Timeout in milliseconds (default: 5 minutes)
+ * @param {boolean} [options.debug=false] - Enable debug logging
+ * @param {string} [options.logFile] - Optional log file path for debug output
  * @returns {Promise<Object>} Parsed JSON response from agent
  * @throws {Error} If JSON parsing fails or subprocess errors
  */
-export const executeAgent = ({ agentConfig, prompt, timeout = 300000 }) => {
+export const executeAgent = ({ agentConfig, prompt, timeout = 300000, debug = false, logFile }) => {
   return new Promise((resolve, reject) => {
     const { command, args = [] } = agentConfig;
     const allArgs = [...args, prompt];
-    
+    const logger = createDebugLogger({ debug, logFile });
+
+    logger.log('\nExecuting agent command:');
+    logger.command(command, args);
+    logger.log(`Prompt length: ${prompt.length} characters`);
+
     const proc = spawn(command, allArgs);
+    proc.stdin.end(); // Close stdin immediately - CLI waits for this
+
     let stdout = '';
     let stderr = '';
     let timedOut = false;
@@ -48,6 +187,8 @@ export const executeAgent = ({ agentConfig, prompt, timeout = 300000 }) => {
     const timeoutId = setTimeout(() => {
       timedOut = true;
       proc.kill();
+      logger.log('Process timed out');
+      logger.flush();
       reject(new Error(`Agent process timed out after ${timeout}ms. Command: ${command} ${args.join(' ')}`));
     }, timeout);
 
@@ -64,21 +205,45 @@ export const executeAgent = ({ agentConfig, prompt, timeout = 300000 }) => {
       
       if (timedOut) return; // Already rejected with timeout error
 
+      logger.log(`Process exited with code: ${code}`);
+      logger.log(`Stdout length: ${stdout.length} characters`);
+      logger.log(`Stderr length: ${stderr.length} characters`);
+
       if (code !== 0) {
         const truncatedStdout = stdout.length > 500 ? stdout.slice(0, 500) + '...' : stdout;
+        const truncatedStderr = stderr.length > 500 ? stderr.slice(0, 500) + '...' : stderr;
+        
+        logger.log('Process failed with non-zero exit code');
+        logger.flush();
+        
         return reject(new Error(
           `Agent process exited with code ${code}\n` +
           `Command: ${command} ${args.join(' ')}\n` +
-          `Stderr: ${stderr}\n` +
+          `Stderr: ${truncatedStderr}\n` +
           `Stdout preview: ${truncatedStdout}`
         ));
       }
 
       try {
-        const result = JSON.parse(stdout);
+        const parsed = JSON.parse(stdout);
+        // Claude CLI wraps response in envelope with "result" field
+        let result = parsed.result !== undefined ? parsed.result : parsed;
+        
+        logger.log(`Parsed result type: ${typeof result}`);
+        if (typeof result === 'string') {
+          logger.log('Result is string, attempting to parse as JSON');
+          result = parseStringResult(result, logger);
+        }
+        
+        logger.result(result);
+        logger.flush();
+        
         resolve(result);
       } catch (err) {
         const truncatedStdout = stdout.length > 500 ? stdout.slice(0, 500) + '...' : stdout;
+        logger.log('JSON parsing failed:', err.message);
+        logger.flush();
+        
         reject(new Error(
           `Failed to parse agent output as JSON: ${err.message}\n` +
           `Command: ${command} ${args.join(' ')}\n` +
@@ -89,6 +254,9 @@ export const executeAgent = ({ agentConfig, prompt, timeout = 300000 }) => {
 
     proc.on('error', (err) => {
       clearTimeout(timeoutId);
+      logger.log('Process spawn error:', err.message);
+      logger.flush();
+      
       reject(new Error(
         `Failed to spawn agent process: ${err.message}\n` +
         `Command: ${command} ${args.join(' ')}`
@@ -97,53 +265,94 @@ export const executeAgent = ({ agentConfig, prompt, timeout = 300000 }) => {
   });
 };
 
+
 /**
- * Aggregate results from multiple test runs.
+ * Aggregate results from per-assertion test runs.
+ * Each assertion is independently evaluated against the threshold.
+ * Overall pass requires all assertions to meet the threshold.
  * @param {Object} options
- * @param {Array<Object>} options.runResults - Array of individual run results
+ * @param {Array<{ description: string, runResults: Array<Object> }>} options.perAssertionResults
  * @param {number} options.threshold - Required pass percentage (0-100)
- * @param {number} options.runs - Total number of runs
- * @returns {Object} Aggregated results with passed status, counts, and individual results
+ * @param {number} options.runs - Number of runs per assertion
+ * @returns {Object} Aggregated results with per-assertion breakdown
  */
-export const aggregateResults = ({ runResults, threshold, runs }) => {
-  const passCount = runResults.filter(r => r.passed).length;
+export const aggregatePerAssertionResults = ({ perAssertionResults, threshold, runs }) => {
   const requiredPasses = calculateRequiredPasses({ runs, threshold });
-  
+
+  const assertions = perAssertionResults.map(({ description, runResults }) => {
+    const passCount = runResults.filter(r => r.passed).length;
+    return {
+      description,
+      passed: passCount >= requiredPasses,
+      passCount,
+      totalRuns: runs,
+      runResults
+    };
+  });
+
   return {
-    passed: passCount >= requiredPasses,
-    passCount,
-    totalRuns: runs,
-    runResults
+    passed: assertions.every(a => a.passed),
+    assertions
   };
 };
 
 /**
- * Run AI tests with multiple parallel runs and aggregate results.
+ * Run AI tests with per-assertion isolation.
+ * Pipeline: readTestFile → extractTests (sub-agent) → per-assertion parallel execution → aggregation.
  * @param {Object} options
  * @param {string} options.filePath - Path to test file
- * @param {number} [options.runs=4] - Number of test runs
+ * @param {number} [options.runs=4] - Number of test runs per assertion
  * @param {number} [options.threshold=75] - Required pass percentage (0-100)
  * @param {Object} options.agentConfig - Agent CLI configuration
  * @param {string} options.agentConfig.command - Command to execute
  * @param {Array<string>} [options.agentConfig.args=[]] - Command arguments
  * @param {number} [options.timeout=300000] - Timeout in milliseconds (default: 5 minutes)
- * @returns {Promise<Object>} Aggregated test results
+ * @param {boolean} [options.debug=false] - Enable debug logging
+ * @param {string} [options.logFile] - Optional log file path for debug output
+ * @returns {Promise<Object>} Aggregated per-assertion test results
  */
 export const runAITests = async ({
   filePath,
   runs = 4,
   threshold = 75,
   timeout = 300000,
+  debug = false,
+  logFile,
   agentConfig = {
     command: 'claude',
     args: ['-p', '--output-format', 'json', '--no-session-persistence']
   }
 }) => {
-  const prompt = await readTestFile(filePath);
+  const logger = createDebugLogger({ debug, logFile });
   
-  const runResults = await Promise.all(
-    Array.from({ length: runs }, () => executeAgent({ agentConfig, prompt, timeout }))
+  // TODO: refactor to asyncPipe(readTestFile, extractTests({ agentConfig, timeout }))(filePath)
+  // Currently extractTests takes { testContent, testFilePath, agentConfig, timeout }, so the output of
+  // readTestFile (string) doesn't match the input shape. Currying extractTests to accept
+  // config first and return a function of testContent would enable point-free composition.
+  const testContent = await readTestFile(filePath);
+  
+  logger.log(`\nExtracting tests from: ${filePath}`);
+  logger.log(`Test content length: ${testContent.length} characters`);
+  
+  const tests = await extractTests({ testContent, testFilePath: filePath, agentConfig, timeout, debug });
+  
+  logger.log(`Extracted ${tests.length} test assertions`);
+
+  // Concurrency note: fires assertions * runs subprocesses in parallel.
+  // May need throttling (e.g. p-limit) for large test suites to avoid
+  // resource exhaustion or API rate limits.
+  const perAssertionResults = await Promise.all(
+    tests.map(({ prompt, description }, index) =>
+      Promise.all(
+        Array.from({ length: runs }, (_, runIndex) => {
+          logger.log(`\nRunning assertion ${index + 1}/${tests.length}, run ${runIndex + 1}/${runs}`);
+          logger.log(`Assertion: ${description}`);
+          return executeAgent({ agentConfig, prompt, timeout, debug, logFile });
+        })
+      ).then(runResults => ({ description, runResults }))
+    )
   );
-  
-  return aggregateResults({ runResults, threshold, runs });
+
+  logger.flush();
+  return aggregatePerAssertionResults({ perAssertionResults, threshold, runs });
 };
