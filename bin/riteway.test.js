@@ -218,6 +218,10 @@ describe('parseAIArgs()', async assert => {
       runs: 4,
       threshold: 75,
       agent: 'claude',
+      validateExtraction: false,
+      debug: false,
+      debugLog: false,
+      color: false,
       cwd: process.cwd()
     }
   });
@@ -231,6 +235,10 @@ describe('parseAIArgs()', async assert => {
       runs: 10,
       threshold: 75,
       agent: 'claude',
+      validateExtraction: false,
+      debug: false,
+      debugLog: false,
+      color: false,
       cwd: process.cwd()
     }
   });
@@ -244,6 +252,10 @@ describe('parseAIArgs()', async assert => {
       runs: 4,
       threshold: 80,
       agent: 'claude',
+      validateExtraction: false,
+      debug: false,
+      debugLog: false,
+      color: false,
       cwd: process.cwd()
     }
   });
@@ -257,6 +269,10 @@ describe('parseAIArgs()', async assert => {
       runs: 4,
       threshold: 75,
       agent: 'opencode',
+      validateExtraction: false,
+      debug: false,
+      debugLog: false,
+      color: false,
       cwd: process.cwd()
     }
   });
@@ -270,6 +286,10 @@ describe('parseAIArgs()', async assert => {
       runs: 5,
       threshold: 60,
       agent: 'cursor',
+      validateExtraction: false,
+      debug: false,
+      debugLog: false,
+      color: false,
       cwd: process.cwd()
     }
   });
@@ -283,8 +303,104 @@ describe('parseAIArgs()', async assert => {
       runs: 4,
       threshold: 75,
       agent: 'claude',
+      validateExtraction: false,
+      debug: false,
+      debugLog: false,
+      color: false,
       cwd: process.cwd()
     }
+  });
+
+  assert({
+    given: 'AI command with --validate-extraction flag',
+    should: 'parse validateExtraction as true',
+    actual: parseAIArgs(['--validate-extraction', 'test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 4,
+      threshold: 75,
+      agent: 'claude',
+      validateExtraction: true,
+      debug: false,
+      debugLog: false,
+      color: false,
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with --debug flag',
+    should: 'parse debug as true',
+    actual: parseAIArgs(['--debug', 'test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 4,
+      threshold: 75,
+      agent: 'claude',
+      validateExtraction: false,
+      debug: true,
+      debugLog: false,
+      color: false,
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with --debug-log flag',
+    should: 'parse debugLog as true and enable debug mode',
+    actual: parseAIArgs(['--debug-log', 'test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 4,
+      threshold: 75,
+      agent: 'claude',
+      validateExtraction: false,
+      debug: true,
+      debugLog: true,
+      color: false,
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with --color flag',
+    should: 'parse color as true',
+    actual: parseAIArgs(['--color', 'test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 4,
+      threshold: 75,
+      agent: 'claude',
+      validateExtraction: false,
+      debug: false,
+      debugLog: false,
+      color: true,
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with --no-color flag',
+    should: 'parse color as false',
+    actual: parseAIArgs(['--no-color', 'test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 4,
+      threshold: 75,
+      agent: 'claude',
+      validateExtraction: false,
+      debug: false,
+      debugLog: false,
+      color: false,
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with default color setting',
+    should: 'default color to false when no flag specified',
+    actual: parseAIArgs(['test.sudo']).color,
+    expected: false
   });
 });
 
@@ -311,11 +427,11 @@ describe('getAgentConfig()', async assert => {
 
   assert({
     given: 'agent name "cursor"',
-    should: 'return cursor agent configuration',
+    should: 'return cursor agent configuration using OAuth',
     actual: getAgentConfig('cursor'),
     expected: {
-      command: 'cursor-agent',
-      args: ['--output', 'json']
+      command: 'agent',
+      args: ['--print', '--output-format', 'json']
     }
   });
 
@@ -409,6 +525,36 @@ describe('runAICommand()', async assert => {
       should: 'include descriptive message',
       actual: error?.cause?.message.includes('file path'),
       expected: true
+    });
+  }
+
+  {
+    // Test path traversal attempt throws security error
+    let error;
+    try {
+      await runAICommand({ 
+        filePath: '../../../etc/passwd', 
+        runs: 4, 
+        threshold: 75, 
+        agent: 'claude',
+        cwd: process.cwd() 
+      });
+    } catch (e) {
+      error = e;
+    }
+    
+    assert({
+      given: 'path traversal attempt',
+      should: 'throw SecurityError',
+      actual: error?.cause?.name,
+      expected: 'SecurityError'
+    });
+    
+    assert({
+      given: 'path traversal attempt',
+      should: 'include PATH_TRAVERSAL code',
+      actual: error?.cause?.code,
+      expected: 'PATH_TRAVERSAL'
     });
   }
 });
