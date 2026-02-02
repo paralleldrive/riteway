@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'fs/promises';
-import { spawn } from 'child_process';
 import { basename, join } from 'path';
 import open from 'open';
+import { init } from '@paralleldrive/cuid2';
 
 /**
  * Format a date as YYYY-MM-DD.
@@ -15,36 +15,13 @@ export const formatDate = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
+const createSlug = init({ length: 5 });
+
 /**
- * Generate a unique slug using cuid2.
- * @returns {Promise<string>} Generated slug
+ * Generate a unique 5-character slug using cuid2.
+ * @returns {string} Generated slug
  */
-export const generateSlug = () => {
-  return new Promise((resolve, reject) => {
-    const proc = spawn('npx', ['@paralleldrive/cuid2', '--slug']);
-    let stdout = '';
-    let stderr = '';
-
-    proc.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    proc.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    proc.on('close', (code) => {
-      if (code !== 0) {
-        return reject(new Error(`cuid2 exited with code ${code}: ${stderr}`));
-      }
-      resolve(stdout.trim());
-    });
-
-    proc.on('error', (err) => {
-      reject(new Error(`Failed to spawn cuid2: ${err.message}`));
-    });
-  });
-};
+export const generateSlug = () => createSlug();
 
 /**
  * Generate output file path.
@@ -53,58 +30,86 @@ export const generateSlug = () => {
  * @param {string} options.date - Formatted date (YYYY-MM-DD)
  * @param {string} options.slug - Unique slug
  * @param {string} options.outputDir - Output directory path
+ * @param {string} [options.extension='.tap.md'] - File extension
  * @returns {Promise<string>} Output file path
  */
-export const generateOutputPath = async ({ testFilename, date, slug, outputDir }) => {
+export const generateOutputPath = async ({ testFilename, date, slug, outputDir, extension = '.tap.md' }) => {
   // Strip extension from filename
   const nameWithoutExt = basename(testFilename, '.sudo')
     .replace(/\.(md|txt|sudo)$/, '');
   
-  const filename = `${date}-${nameWithoutExt}-${slug}.tap.md`;
+  const filename = `${date}-${nameWithoutExt}-${slug}${extension}`;
   return join(outputDir, filename);
 };
 
 /**
- * Format test results as TAP output.
+ * ANSI color codes for terminal output.
+ */
+const COLORS = {
+  green: '\x1b[32m',
+  red: '\x1b[31m',
+  reset: '\x1b[0m'
+};
+
+/**
+ * Escape markdown special characters to prevent injection.
+ * @param {string} text - Text to escape
+ * @returns {string} Escaped text
+ */
+const escapeMarkdown = (text) => {
+  return text
+    .replace(/\\/g, '\\\\')
+    .replace(/\[/g, '\\[')
+    .replace(/\]/g, '\\]')
+    .replace(/\(/g, '\\(')
+    .replace(/\)/g, '\\)');
+};
+
+/**
+ * Format test results as TAP output with per-assertion breakdown.
  * @param {Object} results - Test results object
  * @param {boolean} results.passed - Overall pass status
- * @param {number} results.passCount - Number of passed runs
- * @param {number} results.totalRuns - Total number of runs
- * @param {Array<Object>} results.runResults - Individual run results
+ * @param {Array<Object>} results.assertions - Per-assertion results
+ * @param {Array<{path: string, caption: string}>} [results.assertions[].media] - Optional media attachments (paths and captions should be trusted/sanitized)
+ * @param {Object} [options={}] - Formatting options
+ * @param {boolean} [options.color=false] - Enable ANSI color codes
  * @returns {string} TAP formatted output
  */
-export const formatTAP = (results) => {
-  const { passCount, totalRuns, runResults } = results;
-  
+export const formatTAP = (results, { color = false } = {}) => {
+  const { assertions } = results;
+
   let tap = 'TAP version 13\n';
-  
-  // Add individual test results
-  runResults.forEach((run, index) => {
+
+  assertions.forEach((assertion, index) => {
     const testNumber = index + 1;
-    const prefix = run.passed ? 'ok' : 'not ok';
-    tap += `${prefix} ${testNumber}\n`;
+    const prefix = assertion.passed ? 'ok' : 'not ok';
+    const colorCode = color ? (assertion.passed ? COLORS.green : COLORS.red) : '';
+    const resetCode = color ? COLORS.reset : '';
+    tap += `${colorCode}${prefix} ${testNumber}${resetCode} - ${assertion.description}\n`;
+    tap += `  # pass rate: ${assertion.passCount}/${assertion.totalRuns}\n`;
     
-    // Add output as TAP diagnostic if present
-    if (run.output) {
-      const outputLines = run.output.split('\n');
-      outputLines.forEach(line => {
-        tap += `  # ${line}\n`;
+    // Add media embeds if present
+    if (assertion.media && assertion.media.length > 0) {
+      assertion.media.forEach(({ path, caption }) => {
+        const escapedCaption = escapeMarkdown(caption);
+        const escapedPath = escapeMarkdown(path);
+        tap += `  # ![${escapedCaption}](${escapedPath})\n`;
       });
     }
   });
-  
-  // Add test plan
-  tap += `1..${totalRuns}\n`;
-  
-  // Add summary
-  tap += `# tests ${totalRuns}\n`;
-  tap += `# pass  ${passCount}\n`;
-  
-  const failCount = totalRuns - passCount;
+
+  const totalAssertions = assertions.length;
+  const passedAssertions = assertions.filter(a => a.passed).length;
+
+  tap += `1..${totalAssertions}\n`;
+  tap += `# tests ${totalAssertions}\n`;
+  tap += `# pass  ${passedAssertions}\n`;
+
+  const failCount = totalAssertions - passedAssertions;
   if (failCount > 0) {
     tap += `# fail  ${failCount}\n`;
   }
-  
+
   return tap;
 };
 
@@ -123,19 +128,41 @@ export const openInBrowser = async (filePath) => {
 };
 
 /**
+ * Generate a log file path for debug output.
+ * @param {string} testFilename - Test file name
+ * @param {string} [outputDir='ai-evals'] - Output directory
+ * @returns {Promise<string>} Path to log file
+ */
+export const generateLogFilePath = async (testFilename, outputDir = 'ai-evals') => {
+  await mkdir(outputDir, { recursive: true });
+  
+  const date = formatDate();
+  const slug = await generateSlug();
+  return generateOutputPath({
+    testFilename,
+    date,
+    slug,
+    outputDir,
+    extension: '.debug.log'
+  });
+};
+
+/**
  * Record test output to file.
  * @param {Object} options
  * @param {Object} options.results - Test results
  * @param {string} options.testFilename - Test file name
  * @param {string} [options.outputDir='ai-evals'] - Output directory
  * @param {boolean} [options.openBrowser=true] - Whether to open in browser
+ * @param {boolean} [options.color=false] - Enable ANSI color codes
  * @returns {Promise<string>} Path to output file
  */
 export const recordTestOutput = async ({
   results,
   testFilename,
   outputDir = 'ai-evals',
-  openBrowser = true
+  openBrowser = true,
+  color = false
 }) => {
   // Create output directory if it doesn't exist
   await mkdir(outputDir, { recursive: true });
@@ -151,7 +178,7 @@ export const recordTestOutput = async ({
   });
   
   // Format and write TAP output
-  const tap = formatTAP(results);
+  const tap = formatTAP(results, { color });
   await writeFile(outputPath, tap, 'utf-8');
   
   // Open in browser if requested
