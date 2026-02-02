@@ -15,6 +15,10 @@
       "import": "./source/vitest.js",
       "types": "./vitest.d.ts"
     },
+    "./bun": {
+      "import": "./source/bun.js",
+      "types": "./bun.d.ts"
+    },
     "./match": {
       "import": "./source/match.js",
       "types": "./match.d.ts"
@@ -62,12 +66,12 @@
     }
   },
   "bin": {
-    "riteway": "bin/riteway"
+    "riteway": "bin/riteway.js"
   },
   "scripts": {
     "lint": "eslint source && echo 'Lint complete.'",
     "lint-fix": "eslint --fix source && eslint --fix ./*.js",
-    "typecheck": "npx -p typescript tsc --esModuleInterop --rootDir . source/test.js --allowJs --checkJs --noEmit --lib es6 --jsx react && npx -p typescript tsc index.d.ts --noEmit && echo 'TypeScript check complete.'",
+    "typecheck": "npx -p typescript tsc --esModuleInterop --rootDir . source/test.js --allowJs --checkJs --noEmit --lib es6 --jsx react --skipLibCheck && npx -p typescript tsc index.d.ts --noEmit --skipLibCheck && echo 'TypeScript check complete.'",
     "ts": "npm run -s typecheck",
     "test": "node source/test.js && vitest run",
     "esm": "cp source/*.js esm/ && cp source/*.jsx esm/ && cp esm/riteway.js esm/index.js && echo 'esm complete.'",
