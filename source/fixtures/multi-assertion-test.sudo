@@ -1,0 +1,9 @@
+import @promptUnderTest from 'ai/rules/javascript/error-causes.mdc'
+
+userPrompt = """
+Create an error cause for a database connection timeout.
+"""
+
+- Given the error cause, should include a descriptive message
+- Given the error cause, should include an error name
+- Given the error cause, should include an error code
