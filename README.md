@@ -456,3 +456,97 @@ describe('sum()', () => {
   });
 });
 ```
+
+## Bun
+
+[Bun](https://bun.sh/) has a fast, built-in test runner that is Jest-compatible. Riteway provides a Bun adapter so you can use the familiar `assert` API with Bun's test runner.
+
+### Installing
+
+First, make sure you have Bun installed. Then install Riteway into your project:
+
+```shell
+bun add --dev riteway
+```
+
+### Setup
+
+Before using `assert`, you need to call `setupRitewayBun()` once to register the custom matcher. We recommend doing this in a global setup file using Bun's `preload` option.
+
+Create a setup file (e.g., `test/setup.ts`):
+
+```ts
+import { setupRitewayBun } from 'riteway/bun';
+
+setupRitewayBun();
+```
+
+Then configure Bun to preload it. Add to your `bunfig.toml`:
+
+```toml
+[test]
+preload = ["./test/setup.ts"]
+```
+
+Or specify it via CLI:
+
+```shell
+bun test --preload ./test/setup.ts
+```
+
+### Usage
+
+In your test files, import `test`, `describe`, and `assert` from `riteway/bun`:
+
+```ts
+import { test, describe, assert } from 'riteway/bun';
+```
+
+Then run your tests with `bun test`:
+
+```shell
+bun test
+```
+
+### Example
+
+```ts
+import { test, describe, assert } from 'riteway/bun';
+
+// a function to test
+const sum = (...args) => {
+  if (args.some(v => Number.isNaN(v))) throw new TypeError('NaN');
+  return args.reduce((acc, n) => acc + n, 0);
+};
+
+describe('sum()', () => {
+  test('given: no arguments, should: return 0', () => {
+    assert({
+      given: 'no arguments',
+      should: 'return 0',
+      actual: sum(),
+      expected: 0
+    });
+  });
+
+  test('given: two numbers, should: return the correct sum', () => {
+    assert({
+      given: 'two numbers',
+      should: 'return the correct sum',
+      actual: sum(2, 3),
+      expected: 5
+    });
+  });
+});
+```
+
+### Failure Output
+
+When a test fails, the error message includes the `given` and `should` context:
+
+```
+error: Given two different numbers: should be equal
+
+Expected: 43
+Received: 42
+```

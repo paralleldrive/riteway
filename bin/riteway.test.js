@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe } from '../source/riteway.js';
 import { execSync } from 'child_process';
 
@@ -8,7 +9,7 @@ import {
   createIgnoreMatcher, 
   resolveTestFiles,
   runTests
-} from './riteway';
+} from './riteway.js';
 
 // Test utilities
 const testSubprocessExit = (command, { cwd = process.cwd() } = {}) => {
@@ -96,7 +97,7 @@ describe('createIgnoreMatcher()', async assert => {
   {
     // Test in subprocess since createIgnoreMatcher calls process.exit()
     const { exitCode, stderr } = testSubprocessExit(
-      'node -e "import(\'./bin/riteway\').then(m => m.createIgnoreMatcher({ ignore: \'nonexistent.ignore\', cwd: process.cwd() }))"'
+      'node -e "import(\'./bin/riteway.js\').then(m => m.createIgnoreMatcher({ ignore: \'nonexistent.ignore\', cwd: process.cwd() }))"'
     );
     
     assert({
