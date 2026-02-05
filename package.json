@@ -105,7 +105,7 @@
     "watch": "^1.0.2"
   },
   "dependencies": {
-    "cheerio": "1.1.2",
+    "cheerio": "1.2.0",
     "dotignore": "^0.1.2",
     "esm": "3.2.25",
     "glob": "^11.0.3",
