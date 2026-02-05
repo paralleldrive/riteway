@@ -408,50 +408,90 @@ describe('getAgentConfig()', async assert => {
   assert({
     given: 'agent name "claude"',
     should: 'return claude agent configuration',
-    actual: getAgentConfig('claude'),
+    actual: (() => {
+      const config = getAgentConfig('claude');
+      return {
+        command: config.command,
+        args: config.args,
+        hasParseOutput: config.parseOutput !== undefined
+      };
+    })(),
     expected: {
       command: 'claude',
-      args: ['-p', '--output-format', 'json', '--no-session-persistence']
+      args: ['-p', '--output-format', 'json', '--no-session-persistence'],
+      hasParseOutput: false
     }
   });
 
   assert({
     given: 'agent name "opencode"',
-    should: 'return opencode agent configuration',
-    actual: getAgentConfig('opencode'),
+    should: 'return opencode agent configuration with run subcommand',
+    actual: (() => {
+      const config = getAgentConfig('opencode');
+      return {
+        command: config.command,
+        args: config.args,
+        hasParseOutput: typeof config.parseOutput === 'function'
+      };
+    })(),
     expected: {
       command: 'opencode',
-      args: ['--output-format', 'json']
+      args: ['run', '--format', 'json'],
+      hasParseOutput: true
     }
   });
 
   assert({
     given: 'agent name "cursor"',
     should: 'return cursor agent configuration using OAuth',
-    actual: getAgentConfig('cursor'),
+    actual: (() => {
+      const config = getAgentConfig('cursor');
+      return {
+        command: config.command,
+        args: config.args,
+        hasParseOutput: config.parseOutput !== undefined
+      };
+    })(),
     expected: {
       command: 'agent',
-      args: ['--print', '--output-format', 'json']
+      args: ['--print', '--output-format', 'json'],
+      hasParseOutput: false
     }
   });
 
   assert({
     given: 'no agent name (undefined)',
     should: 'return default claude configuration',
-    actual: getAgentConfig(),
+    actual: (() => {
+      const config = getAgentConfig();
+      return {
+        command: config.command,
+        args: config.args,
+        hasParseOutput: config.parseOutput !== undefined
+      };
+    })(),
     expected: {
       command: 'claude',
-      args: ['-p', '--output-format', 'json', '--no-session-persistence']
+      args: ['-p', '--output-format', 'json', '--no-session-persistence'],
+      hasParseOutput: false
     }
   });
 
   assert({
     given: 'agent name in mixed case',
-    should: 'handle case-insensitive lookup',
-    actual: getAgentConfig('OpenCode'),
+    should: 'handle case-insensitive lookup with correct args',
+    actual: (() => {
+      const config = getAgentConfig('OpenCode');
+      return {
+        command: config.command,
+        args: config.args,
+        hasParseOutput: typeof config.parseOutput === 'function'
+      };
+    })(),
     expected: {
       command: 'opencode',
-      args: ['--output-format', 'json']
+      args: ['run', '--format', 'json'],
+      hasParseOutput: true
     }
   });
 

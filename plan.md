@@ -9,6 +9,12 @@
 
 ## Completed Epics
 
+### ✅ OpenCode Agent Support Fix Epic
+**Status**: ✅ COMPLETED (2026-02-05)  
+**File**: [`tasks/archive/2026-01-22-riteway-ai-testing-framework/2026-02-04-opencode-agent-support-fix.md`](./tasks/archive/2026-01-22-riteway-ai-testing-framework/2026-02-04-opencode-agent-support-fix.md)  
+**Goal**: Fix OpenCode agent integration to properly handle NDJSON streaming output format  
+**Result**: Successfully fixed OpenCode agent to parse NDJSON streaming output and handle markdown-wrapped JSON responses. Implemented structured error handling following error-causes.mdc standard. All 184 tests passing, live testing confirmed working.
+
 ### ✅ RiteWay AI Testing Framework Epic
 **Status**: ✅ COMPLETED (2026-01-23)  
 **File**: [`tasks/archive/2026-01-22-riteway-ai-testing-framework.md`](./tasks/archive/2026-01-22-riteway-ai-testing-framework.md)  

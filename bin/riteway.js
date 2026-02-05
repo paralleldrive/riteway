@@ -7,7 +7,7 @@ import minimist from 'minimist';
 import { globSync } from 'glob';
 import dotignore from 'dotignore';
 import { errorCauses, createError } from 'error-causes';
-import { runAITests, verifyAgentAuthentication, validateFilePath } from '../source/ai-runner.js';
+import { runAITests, verifyAgentAuthentication, validateFilePath, parseOpenCodeNDJSON } from '../source/ai-runner.js';
 import { recordTestOutput, generateLogFilePath } from '../source/test-output.js';
 
 const resolveModule = resolve.sync;
@@ -48,7 +48,8 @@ export const getAgentConfig = (agentName = 'claude') => {
     },
     opencode: {
       command: 'opencode',
-      args: ['--output-format', 'json']
+      args: ['run', '--format', 'json'],
+      parseOutput: (stdout, logger) => parseOpenCodeNDJSON(stdout, logger)
     },
     cursor: {
       command: 'agent',
