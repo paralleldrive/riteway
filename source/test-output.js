@@ -70,7 +70,6 @@ const escapeMarkdown = (text) => {
  * @param {Object} results - Test results object
  * @param {boolean} results.passed - Overall pass status
  * @param {Array<Object>} results.assertions - Per-assertion results
- * @param {Array<{path: string, caption: string}>} [results.assertions[].media] - Optional media attachments (paths and captions should be trusted/sanitized)
  * @param {Object} [options={}] - Formatting options
  * @param {boolean} [options.color=false] - Enable ANSI color codes
  * @returns {string} TAP formatted output

@@ -8,7 +8,8 @@ import {
   runAITests,
   validateFilePath,
   verifyAgentAuthentication,
-  parseStringResult
+  parseStringResult,
+  parseOpenCodeNDJSON
 } from './ai-runner.js';
 import { writeFileSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
@@ -220,6 +221,171 @@ describe('ai-runner', () => {
     });
   });
 
+  describe('parseOpenCodeNDJSON()', () => {
+    const createMockLogger = () => {
+      const logs = [];
+      return {
+        log: (...args) => logs.push(args.join(' ')),
+        logs
+      };
+    };
+
+    test('extracts text from single text event', () => {
+      const logger = createMockLogger();
+      const ndjson = '{"type":"step_start","timestamp":1770245956364}\n' +
+        '{"type":"text","part":{"text":"```json\\n{\\"status\\": \\"ok\\"}\\n```"}}\n' +
+        '{"type":"step_finish","timestamp":1770245956211}';
+      
+      const result = parseOpenCodeNDJSON(ndjson, logger);
+      
+      assert({
+        given: 'NDJSON with single text event',
+        should: 'extract text content',
+        actual: result,
+        expected: '```json\n{"status": "ok"}\n```'
+      });
+
+      assert({
+        given: 'successful text extraction',
+        should: 'log found text event',
+        actual: logger.logs.some(log => log.includes('Found text event')),
+        expected: true
+      });
+    });
+
+    test('concatenates multiple text events', () => {
+      const logger = createMockLogger();
+      const ndjson = '{"type":"text","part":{"text":"Part 1"}}\n' +
+        '{"type":"text","part":{"text":" Part 2"}}\n' +
+        '{"type":"text","part":{"text":" Part 3"}}';
+      
+      const result = parseOpenCodeNDJSON(ndjson, logger);
+      
+      assert({
+        given: 'NDJSON with multiple text events',
+        should: 'concatenate all text content',
+        actual: result,
+        expected: 'Part 1 Part 2 Part 3'
+      });
+    });
+
+    test('filters out non-text events', () => {
+      const logger = createMockLogger();
+      const ndjson = '{"type":"step_start","data":"ignored"}\n' +
+        '{"type":"text","part":{"text":"Hello"}}\n' +
+        '{"type":"step_finish","data":"ignored"}\n' +
+        '{"type":"text","part":{"text":" World"}}';
+      
+      const result = parseOpenCodeNDJSON(ndjson, logger);
+      
+      assert({
+        given: 'NDJSON with mixed event types',
+        should: 'extract only text events',
+        actual: result,
+        expected: 'Hello World'
+      });
+    });
+
+    test('skips malformed JSON lines', () => {
+      const logger = createMockLogger();
+      const ndjson = '{invalid json}\n' +
+        '{"type":"text","part":{"text":"Valid text"}}\n' +
+        'not json at all';
+      
+      const result = parseOpenCodeNDJSON(ndjson, logger);
+      
+      assert({
+        given: 'NDJSON with malformed lines',
+        should: 'skip invalid lines and process valid ones',
+        actual: result,
+        expected: 'Valid text'
+      });
+
+      assert({
+        given: 'malformed JSON',
+        should: 'log warning for failed parse',
+        actual: logger.logs.some(log => log.includes('Failed to parse NDJSON line')),
+        expected: true
+      });
+    });
+
+    test('throws error when no text events found', () => {
+      const logger = createMockLogger();
+      const ndjson = '{"type":"step_start","data":"no text here"}\n' +
+        '{"type":"step_finish","data":"still no text"}';
+      
+      let error;
+      try {
+        parseOpenCodeNDJSON(ndjson, logger);
+      } catch (e) {
+        error = e;
+      }
+      
+      assert({
+        given: 'NDJSON with no text events',
+        should: 'throw Error with cause',
+        actual: error instanceof Error && error.cause !== undefined,
+        expected: true
+      });
+
+      assert({
+        given: 'NDJSON with no text events',
+        should: 'have ParseError name in cause',
+        actual: error?.cause?.name,
+        expected: 'ParseError'
+      });
+
+      assert({
+        given: 'NDJSON with no text events',
+        should: 'have NO_TEXT_EVENTS code in cause',
+        actual: error?.cause?.code,
+        expected: 'NO_TEXT_EVENTS'
+      });
+
+      assert({
+        given: 'NDJSON with no text events',
+        should: 'include ndjsonLength in cause',
+        actual: typeof error?.cause?.ndjsonLength === 'number',
+        expected: true
+      });
+
+      assert({
+        given: 'NDJSON with no text events',
+        should: 'include linesProcessed in cause',
+        actual: error?.cause?.linesProcessed,
+        expected: 2
+      });
+    });
+
+    test('handles empty lines in NDJSON', () => {
+      const logger = createMockLogger();
+      const ndjson = '\n\n{"type":"text","part":{"text":"Hello"}}\n\n\n{"type":"text","part":{"text":" World"}}\n\n';
+      
+      const result = parseOpenCodeNDJSON(ndjson, logger);
+      
+      assert({
+        given: 'NDJSON with empty lines',
+        should: 'filter empty lines and process valid events',
+        actual: result,
+        expected: 'Hello World'
+      });
+    });
+
+    test('preserves markdown-wrapped JSON in text', () => {
+      const logger = createMockLogger();
+      const ndjson = '{"type":"text","part":{"text":"```json\\n{\\"passed\\":true}\\n```"}}';
+      
+      const result = parseOpenCodeNDJSON(ndjson, logger);
+      
+      assert({
+        given: 'text event with markdown-wrapped JSON',
+        should: 'preserve markdown formatting',
+        actual: result,
+        expected: '```json\n{"passed":true}\n```'
+      });
+    });
+  });
+
   describe('calculateRequiredPasses()', () => {
     test('calculates required passes using ceiling', () => {
       assert({
@@ -417,15 +583,22 @@ describe('ai-runner', () => {
 
       assert({
         given: 'JSON parsing error',
-        should: 'include stdout preview in error message',
-        actual: error?.message.includes('Stdout preview:'),
+        should: 'wrap in ParseError with structured metadata',
+        actual: error?.cause?.name,
+        expected: 'ParseError'
+      });
+
+      assert({
+        given: 'JSON parsing error',
+        should: 'include stdout preview in error metadata',
+        actual: error?.cause?.stdoutPreview !== undefined,
         expected: true
       });
 
       assert({
         given: 'JSON parsing error',
-        should: 'include command in error message',
-        actual: error?.message.includes('Command:'),
+        should: 'include command in error metadata',
+        actual: error?.cause?.command !== undefined,
         expected: true
       });
     });
@@ -517,6 +690,104 @@ describe('ai-runner', () => {
         given: 'no timeout specified',
         should: 'use default and complete successfully',
         actual: result.passed,
+        expected: true
+      });
+    });
+
+    test('processes NDJSON output when parseOutput is provided', async () => {
+      // Mock script that outputs NDJSON format
+      const mockScript = `
+        const line1 = JSON.stringify({type:"step_start",timestamp:1770245956364});
+        const line2 = JSON.stringify({type:"text",part:{text:'{\\"passed\\": true, \\"output\\": \\"test\\"}'}});
+        const line3 = JSON.stringify({type:"step_finish",timestamp:1770245956211});
+        console.log(line1);
+        console.log(line2);
+        console.log(line3);
+      `;
+
+      const mockAgentConfig = {
+        command: 'node',
+        args: ['-e', mockScript],
+        parseOutput: (stdout, logger) => parseOpenCodeNDJSON(stdout, logger)
+      };
+      
+      const result = await executeAgent({
+        agentConfig: mockAgentConfig,
+        prompt: 'test'
+      });
+
+      assert({
+        given: 'agent config with parseOutput for NDJSON',
+        should: 'parse NDJSON and return parsed result',
+        actual: result,
+        expected: { passed: true, output: 'test' }
+      });
+    });
+
+    test('bypasses parseOutput when not provided', async () => {
+      const mockAgentConfig = {
+        command: 'node',
+        args: ['-e', 'console.log(JSON.stringify({ passed: true, output: "direct" }))']
+        // No parseOutput function
+      };
+      
+      const result = await executeAgent({
+        agentConfig: mockAgentConfig,
+        prompt: 'test'
+      });
+
+      assert({
+        given: 'agent config without parseOutput',
+        should: 'parse JSON directly',
+        actual: result,
+        expected: { passed: true, output: 'direct' }
+      });
+    });
+
+    test('handles parseOutput errors gracefully', async () => {
+      const mockAgentConfig = {
+        command: 'node',
+        args: ['-e', 'console.log("not-ndjson")'],
+        parseOutput: () => {
+          throw new Error('Failed to parse NDJSON');
+        }
+      };
+      
+      let error;
+      try {
+        await executeAgent({
+          agentConfig: mockAgentConfig,
+          prompt: 'test'
+        });
+      } catch (err) {
+        error = err;
+      }
+
+      assert({
+        given: 'parseOutput throws error',
+        should: 'wrap in ParseError with structured metadata',
+        actual: error?.cause?.name,
+        expected: 'ParseError'
+      });
+
+      assert({
+        given: 'parseOutput throws error',
+        should: 'include error code',
+        actual: error?.cause?.code,
+        expected: 'AGENT_OUTPUT_PARSE_ERROR'
+      });
+
+      assert({
+        given: 'parseOutput throws error',
+        should: 'preserve original error as cause',
+        actual: error?.cause?.cause?.message,
+        expected: 'Failed to parse NDJSON'
+      });
+
+      assert({
+        given: 'parseOutput throws error',
+        should: 'include command context',
+        actual: error?.cause?.command !== undefined,
         expected: true
       });
     });

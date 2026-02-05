@@ -1,4 +1,5 @@
-import { describe } from 'riteway';
+// @ts-check
+import { describe } from './riteway.js';
 import { readFile, rm } from 'fs/promises';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
@@ -7,6 +8,7 @@ import { spawnSync } from 'child_process';
 import { runAITests } from './ai-runner.js';
 import { recordTestOutput } from './test-output.js';
 
+// @ts-ignore - import.meta.url is valid in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 

@@ -71,6 +71,48 @@ export const parseStringResult = (result, logger) => {
 };
 
 /**
+ * Parse OpenCode's NDJSON (newline-delimited JSON) output format.
+ * OpenCode emits multiple JSON objects separated by newlines, with different event types.
+ * We extract and concatenate all "text" events to get the final response.
+ * @param {string} ndjson - NDJSON output from OpenCode
+ * @param {Object} logger - Debug logger instance
+ * @returns {string} Concatenated text from all text events
+ */
+export const parseOpenCodeNDJSON = (ndjson, logger) => {
+  logger.log('Parsing OpenCode NDJSON output...');
+  
+  const lines = ndjson.trim().split('\n').filter(line => line.trim());
+  
+  const textEvents = lines.reduce((acc, line) => {
+    try {
+      const event = JSON.parse(line);
+      if (event.type === 'text' && event.part?.text) {
+        logger.log(`Found text event with ${event.part.text.length} characters`);
+        acc.push(event.part.text);
+      }
+    } catch (err) {
+      logger.log(`Warning: Failed to parse NDJSON line: ${err.message}`);
+    }
+    return acc;
+  }, []);
+  
+  if (textEvents.length === 0) {
+    throw createError({
+      name: 'ParseError',
+      message: 'No text events found in OpenCode output',
+      code: 'NO_TEXT_EVENTS',
+      ndjsonLength: ndjson.length,
+      linesProcessed: lines.length
+    });
+  }
+  
+  const combinedText = textEvents.join('');
+  logger.log(`Combined ${textEvents.length} text event(s) into ${combinedText.length} characters`);
+  
+  return combinedText;
+};
+
+/**
  * Read the contents of a test file.
  * @param {string} filePath - Path to the test file
  * @returns {Promise<string>} File contents
@@ -160,6 +202,7 @@ export const verifyAgentAuthentication = async ({ agentConfig, timeout = 30000, 
  * @param {Object} options.agentConfig - Agent configuration
  * @param {string} options.agentConfig.command - Command to execute
  * @param {Array<string>} [options.agentConfig.args=[]] - Command arguments
+ * @param {Function} [options.agentConfig.parseOutput] - Optional function to preprocess stdout before JSON parsing
  * @param {string} options.prompt - Prompt to send to the agent
  * @param {number} [options.timeout=300000] - Timeout in milliseconds (default: 5 minutes)
  * @param {boolean} [options.debug=false] - Enable debug logging
@@ -169,7 +212,7 @@ export const verifyAgentAuthentication = async ({ agentConfig, timeout = 30000, 
  */
 export const executeAgent = ({ agentConfig, prompt, timeout = 300000, debug = false, logFile }) => {
   return new Promise((resolve, reject) => {
-    const { command, args = [] } = agentConfig;
+    const { command, args = [], parseOutput } = agentConfig;
     const allArgs = [...args, prompt];
     const logger = createDebugLogger({ debug, logFile });
 
@@ -225,10 +268,23 @@ export const executeAgent = ({ agentConfig, prompt, timeout = 300000, debug = fa
       }
 
       try {
-        const parsed = JSON.parse(stdout);
-        // Claude CLI wraps response in envelope with "result" field
-        let result = parsed.result !== undefined ? parsed.result : parsed;
+        // Apply parseOutput function if provided (e.g., for NDJSON preprocessing)
+        const processedOutput = parseOutput ? parseOutput(stdout, logger) : stdout;
         
+        // Parse the processed output - handles both raw JSON and markdown-wrapped JSON
+        let result = parseStringResult(processedOutput, logger);
+        
+        // If result is still a string (not parsed as JSON), that's an error
+        if (typeof result === 'string') {
+          throw new Error(`Agent output is not valid JSON: ${result.slice(0, 100)}`);
+        }
+        
+        // Claude CLI wraps response in envelope with "result" field
+        if (result.result !== undefined) {
+          result = result.result;
+        }
+        
+        // If result is a string after unwrapping, try to parse it again
         logger.log(`Parsed result type: ${typeof result}`);
         if (typeof result === 'string') {
           logger.log('Result is string, attempting to parse as JSON');
@@ -244,11 +300,15 @@ export const executeAgent = ({ agentConfig, prompt, timeout = 300000, debug = fa
         logger.log('JSON parsing failed:', err.message);
         logger.flush();
         
-        reject(new Error(
-          `Failed to parse agent output as JSON: ${err.message}\n` +
-          `Command: ${command} ${args.join(' ')}\n` +
-          `Stdout preview: ${truncatedStdout}`
-        ));
+        reject(createError({
+          name: 'ParseError',
+          message: `Failed to parse agent output as JSON: ${err.message}`,
+          code: 'AGENT_OUTPUT_PARSE_ERROR',
+          command,
+          args: args.join(' '),
+          stdoutPreview: truncatedStdout,
+          cause: err
+        }));
       }
     });
 
