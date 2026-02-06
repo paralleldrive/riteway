@@ -8,7 +8,10 @@ import {
   loadModules, 
   createIgnoreMatcher, 
   resolveTestFiles,
-  runTests
+  runTests,
+  parseAIArgs,
+  runAICommand,
+  getAgentConfig
 } from './riteway.js';
 
 // Test utilities
@@ -203,4 +206,406 @@ describe('runTests()', async assert => {
     actual: await runTests({ files: [] }),
     expected: undefined
   });
+});
+
+describe('parseAIArgs()', async assert => {
+  assert({
+    given: 'AI command with test file path',
+    should: 'parse file path as first argument with defaults',
+    actual: parseAIArgs(['test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 4,
+      threshold: 75,
+      agent: 'claude',
+      validateExtraction: false,
+      debug: false,
+      debugLog: false,
+      color: false,
+      concurrency: 4,
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with --runs flag',
+    should: 'parse custom runs value',
+    actual: parseAIArgs(['--runs', '10', 'test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 10,
+      threshold: 75,
+      agent: 'claude',
+      validateExtraction: false,
+      debug: false,
+      debugLog: false,
+      color: false,
+      concurrency: 4,
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with --threshold flag',
+    should: 'parse custom threshold value',
+    actual: parseAIArgs(['--threshold', '80', 'test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 4,
+      threshold: 80,
+      agent: 'claude',
+      validateExtraction: false,
+      debug: false,
+      debugLog: false,
+      color: false,
+      concurrency: 4,
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with --agent flag',
+    should: 'parse custom agent value',
+    actual: parseAIArgs(['--agent', 'opencode', 'test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 4,
+      threshold: 75,
+      agent: 'opencode',
+      validateExtraction: false,
+      debug: false,
+      debugLog: false,
+      color: false,
+      concurrency: 4,
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with all flags',
+    should: 'parse all custom values',
+    actual: parseAIArgs(['--runs', '5', '--threshold', '60', '--agent', 'cursor', 'test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 5,
+      threshold: 60,
+      agent: 'cursor',
+      validateExtraction: false,
+      debug: false,
+      debugLog: false,
+      color: false,
+      concurrency: 4,
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with no file path',
+    should: 'return undefined filePath',
+    actual: parseAIArgs([]),
+    expected: {
+      filePath: undefined,
+      runs: 4,
+      threshold: 75,
+      agent: 'claude',
+      validateExtraction: false,
+      debug: false,
+      debugLog: false,
+      color: false,
+      concurrency: 4,
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with --validate-extraction flag',
+    should: 'parse validateExtraction as true',
+    actual: parseAIArgs(['--validate-extraction', 'test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 4,
+      threshold: 75,
+      agent: 'claude',
+      validateExtraction: true,
+      debug: false,
+      debugLog: false,
+      color: false,
+      concurrency: 4,
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with --debug flag',
+    should: 'parse debug as true',
+    actual: parseAIArgs(['--debug', 'test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 4,
+      threshold: 75,
+      agent: 'claude',
+      validateExtraction: false,
+      debug: true,
+      debugLog: false,
+      color: false,
+      concurrency: 4,
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with --debug-log flag',
+    should: 'parse debugLog as true and enable debug mode',
+    actual: parseAIArgs(['--debug-log', 'test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 4,
+      threshold: 75,
+      agent: 'claude',
+      validateExtraction: false,
+      debug: true,
+      debugLog: true,
+      color: false,
+      concurrency: 4,
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with --color flag',
+    should: 'parse color as true',
+    actual: parseAIArgs(['--color', 'test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 4,
+      threshold: 75,
+      agent: 'claude',
+      validateExtraction: false,
+      debug: false,
+      debugLog: false,
+      color: true,
+      concurrency: 4,
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with --no-color flag',
+    should: 'parse color as false',
+    actual: parseAIArgs(['--no-color', 'test.sudo']),
+    expected: {
+      filePath: 'test.sudo',
+      runs: 4,
+      threshold: 75,
+      agent: 'claude',
+      validateExtraction: false,
+      debug: false,
+      debugLog: false,
+      color: false,
+      concurrency: 4,
+      cwd: process.cwd()
+    }
+  });
+
+  assert({
+    given: 'AI command with default color setting',
+    should: 'default color to false when no flag specified',
+    actual: parseAIArgs(['test.sudo']).color,
+    expected: false
+  });
+});
+
+describe('getAgentConfig()', async assert => {
+  assert({
+    given: 'agent name "claude"',
+    should: 'return claude agent configuration',
+    actual: (() => {
+      const config = getAgentConfig('claude');
+      return {
+        command: config.command,
+        args: config.args,
+        hasParseOutput: config.parseOutput !== undefined
+      };
+    })(),
+    expected: {
+      command: 'claude',
+      args: ['-p', '--output-format', 'json', '--no-session-persistence'],
+      hasParseOutput: false
+    }
+  });
+
+  assert({
+    given: 'agent name "opencode"',
+    should: 'return opencode agent configuration with run subcommand',
+    actual: (() => {
+      const config = getAgentConfig('opencode');
+      return {
+        command: config.command,
+        args: config.args,
+        hasParseOutput: typeof config.parseOutput === 'function'
+      };
+    })(),
+    expected: {
+      command: 'opencode',
+      args: ['run', '--format', 'json'],
+      hasParseOutput: true
+    }
+  });
+
+  assert({
+    given: 'agent name "cursor"',
+    should: 'return cursor agent configuration using OAuth',
+    actual: (() => {
+      const config = getAgentConfig('cursor');
+      return {
+        command: config.command,
+        args: config.args,
+        hasParseOutput: config.parseOutput !== undefined
+      };
+    })(),
+    expected: {
+      command: 'agent',
+      args: ['--print', '--output-format', 'json'],
+      hasParseOutput: false
+    }
+  });
+
+  assert({
+    given: 'no agent name (undefined)',
+    should: 'return default claude configuration',
+    actual: (() => {
+      const config = getAgentConfig();
+      return {
+        command: config.command,
+        args: config.args,
+        hasParseOutput: config.parseOutput !== undefined
+      };
+    })(),
+    expected: {
+      command: 'claude',
+      args: ['-p', '--output-format', 'json', '--no-session-persistence'],
+      hasParseOutput: false
+    }
+  });
+
+  assert({
+    given: 'agent name in mixed case',
+    should: 'handle case-insensitive lookup with correct args',
+    actual: (() => {
+      const config = getAgentConfig('OpenCode');
+      return {
+        command: config.command,
+        args: config.args,
+        hasParseOutput: typeof config.parseOutput === 'function'
+      };
+    })(),
+    expected: {
+      command: 'opencode',
+      args: ['run', '--format', 'json'],
+      hasParseOutput: true
+    }
+  });
+
+  {
+    // Test invalid agent name throws error
+    let error;
+    try {
+      getAgentConfig('invalid-agent');
+    } catch (e) {
+      error = e;
+    }
+    
+    assert({
+      given: 'invalid agent name',
+      should: 'throw ValidationError with cause',
+      actual: error instanceof Error && error.cause !== undefined,
+      expected: true
+    });
+    
+    assert({
+      given: 'invalid agent name',
+      should: 'have correct error name',
+      actual: error?.cause?.name,
+      expected: 'ValidationError'
+    });
+    
+    assert({
+      given: 'invalid agent name',
+      should: 'include supported agents in message',
+      actual: error?.cause?.message.includes('claude') && 
+              error?.cause?.message.includes('opencode') &&
+              error?.cause?.message.includes('cursor'),
+      expected: true
+    });
+  }
+});
+
+describe('runAICommand()', async assert => {
+  {
+    // Test missing filePath throws structured error
+    let error;
+    try {
+      await runAICommand({ filePath: undefined, runs: 4, threshold: 75, cwd: process.cwd() });
+    } catch (e) {
+      error = e;
+    }
+    
+    assert({
+      given: 'options without filePath',
+      should: 'throw ValidationError with cause',
+      actual: error instanceof Error && error.cause !== undefined,
+      expected: true
+    });
+    
+    assert({
+      given: 'options without filePath',
+      should: 'have correct error name',
+      actual: error?.cause?.name,
+      expected: 'ValidationError'
+    });
+    
+    assert({
+      given: 'options without filePath',
+      should: 'have correct error code',
+      actual: error?.cause?.code,
+      expected: 'VALIDATION_ERROR'
+    });
+    
+    assert({
+      given: 'options without filePath',
+      should: 'include descriptive message',
+      actual: error?.cause?.message.includes('file path'),
+      expected: true
+    });
+  }
+
+  {
+    // Test path traversal attempt throws security error
+    let error;
+    try {
+      await runAICommand({ 
+        filePath: '../../../etc/passwd', 
+        runs: 4, 
+        threshold: 75, 
+        agent: 'claude',
+        cwd: process.cwd() 
+      });
+    } catch (e) {
+      error = e;
+    }
+    
+    assert({
+      given: 'path traversal attempt',
+      should: 'throw SecurityError',
+      actual: error?.cause?.name,
+      expected: 'SecurityError'
+    });
+    
+    assert({
+      given: 'path traversal attempt',
+      should: 'include PATH_TRAVERSAL code',
+      actual: error?.cause?.code,
+      expected: 'PATH_TRAVERSAL'
+    });
+  }
 });

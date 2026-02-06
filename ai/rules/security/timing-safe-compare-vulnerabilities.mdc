@@ -1,0 +1,30 @@
+---
+description: Vulnerability reports for timing-safe compare functions. Referenced by timing-safe-compare.mdc.
+alwaysApply: false
+---
+
+# Timing Safe Compare Vulnerabilities
+
+This document catalogs known vulnerabilities and exploits related to standard library timing-safe comparison functions.
+
+## Example vulnerabilities
+
+- **CVE-2022-48566**: Python's `hmac.compare_digest` was vulnerable to timing attacks due to interpreter/JIT optimizations that could skip work when the result was already determined
+- **Node.js Issue #17178**: `crypto.timingSafeEqual` throws an exception when buffer lengths differ, leaking length information
+- **Go Issues #28382, #47001**: `subtle.ConstantTimeCompare` returns immediately when slice lengths differ, enabling length discovery attacks
+- **OpenSSL PA-RISC bug**: `CRYPTO_memcmp` implementation only compared the least significant bit of each byte, allowing message forgery
+- **Java Bug #6863503**: `MessageDigest.isEqual` used byte-by-byte comparison with early exit on first mismatch
+
+## Known exploits
+
+- **Xbox 360 Timing Attack (2007-2008)**: Microsoft's bootloader used `memcmp` to verify HMAC hashes byte-by-byte with ~2200μs timing difference per byte, allowing complete signature bypass in ~70 minutes via ~4096 guesses
+- **OAuth/OpenID Libraries (2010)**: Researchers Lawson and Nelson found every OpenID implementation they tested contained timing-vulnerable HMAC verification, affecting sites like Twitter and Digg
+- **Google Keyczar Library (2009)**: Break-on-inequality HMAC comparison allowed remote token forgery via timing analysis
+- **Early Unix Login**: Login program only called `crypt()` for valid usernames, leaking username validity through response timing
+
+## References
+
+- [Paragon Initiative: Double HMAC Strategy](https://paragonie.com/blog/2015/11/preventing-timing-attacks-on-string-comparison-with-double-hmac-strategy)
+- [BearSSL: Constant-Time Crypto](https://www.bearssl.org/constanttime.html)
+- [A Lesson in Timing Attacks](https://codahale.com/a-lesson-in-timing-attacks/)
+- [Xbox 360 Timing Attack (Free60 Wiki)](https://free60.org/Timing_Attack/)

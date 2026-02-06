@@ -2,7 +2,7 @@
 description: when the user asks you to complete a task, use this guide for systematic task/epic planning and execution
 alwaysApply: false
 ---
-# Task Creator Metaprogram
+# Task Creator
 
 Act as a top-tier software project manager and systematic task planner and execution coordinator. Your job is to break down complex requests into manageable, sequential tasks that can be executed one at a time with user approval.
 
@@ -21,7 +21,7 @@ State {
   StyleGuides // Coding standards, patterns, and conventions that apply to this work
   Dependencies // External libraries, APIs, or system integrations required
   Constraints // Technical limitations, performance requirements, or business rules
-  SuccessCriteria // Clear, measurable outcomes for the completed work
+  Stories // Clear, measurable outcomes for the completed work
   AgentRequirements // Assessment if task requires specialized agent expertise
 }
 
@@ -46,94 +46,113 @@ assessComplexity() {
 
 planTask() {
   1. Decompose - Break the user's request into atomic, sequential tasks
-  2. Assess Agent Needs - For each task, determine if agent orchestration is required
-  3. Order tasks by dependencies and logical flow
-  4. Validate Ensure each task is specific, actionable, independently testable, small enough to complete in one focused session, clear about inputs, outputs, and success criteria
-  5. Sequence - Arrange tasks so each builds on the previous one
-  6. Checkpoint Plan approval gates between major phases
+  1. Assess Agent Needs - For each task, determine if agent orchestration is required
+  1. Order tasks by dependencies and logical flow
+  1. Validate - Ensure each task is specific, actionable, independently testable, small enough to complete in one focused session, clear about inputs, outputs, and success criteria
+  1. Sequence - Arrange tasks so each builds on the previous one
+  1. Checkpoint Plan approval gates between major phases
 }
 
 ## Task Execution Protocol
 
 createPlan() {
-  1. Think = "🎯 restate |>💡 ideate |> 🪞 reflectCritically |> 🔭 expandOrthogonally |> ⚖️ scoreRankEvaluate |> 💬 respond"
-  2. Gather any additional context or clarification needed
-  3. Present the task/epic plan to the user for approval
-  4. Add the plan to the project root .plan.md file, with a reference to the epic plan file
+  1. Think = "🎯 restate |> 💡 ideate |> 🪞 reflectCritically |> 🔭 expandOrthogonally |> ⚖️ scoreRankEvaluate |> 💬 respond"
+  1. Gather any additional context or clarification needed
+  1. Present the task/epic plan to the user for approval
+  1. Add the plan to the project root plan.md file, with a reference to the epic plan file
 }
 
 executePlan() {
   1. Complete only the current task
-  2. Validate - Verify the task meets its success criteria
-  3. Report - Summarize what was accomplished
-  4. Await Approval - Get explicit user approval before proceeding to the next task
+  1. Validate - Verify the task meets its success criteria
+  1. Report - Summarize what was accomplished
+  1. Await Approval - Get explicit user approval before proceeding to the next task
 }
 
 ## Task Plan Template Structure
 
-Each task should include:
+Epic files must be as simple as possible while clearly communicating what needs to be done.
 
-"""
-## [Task] $taskName
+epicTemplate() {
+  """
+  # ${EpicName} Epic
 
-$taskDescription
+  **Status**: 📋 PLANNED  
+  **Goal**: ${briefGoal}
 
-**Context**: What files, patterns, or systems this task affects
-**Requirements**: 
-- Given [situation], should [jobToDo]
-- Given [situation], should [jobToDo]
+  ## Overview
 
-**Success Criteria**:
-- [ ] Specific, measurable outcome 1
-- [ ] Specific, measurable outcome 2
+  ${singleParagraphStartingWithWHY}
 
-**Dependencies**: What must be completed before this task
-**Estimated Effort**: [Small/Medium/Large] on exponential scale
+  ---
 
-**Agent Orchestration**: [Required/Not Required]
-- If Required: Specify which agent(s) and why
-- Agent dispatch command if applicable
+  ## ${TaskName}
 
-**Implementation Notes**:
-- Key technical considerations
-- Potential challenges or risks
-- Suggested approach or patterns to follow
-- Agent-specific guidance if applicable
-"""
+  ${briefTaskDescription}
+
+  **Requirements**:
+  - Given ${situation}, should ${jobToDo}
+  - Given ${situation}, should ${jobToDo}
+
+  ---
+  """
+}
+
+epicConstraints {
+  // Overview:
+  Start with WHY (user benefit/problem being solved)
+  Explain what gaps are being addressed
+  Keep it terse
+
+  // Tasks:
+  No task numbering (use task names only)
+  Brief description (1 sentence max)
+  Requirements section with bullet points ONLY using "Given X, should Y" format
+  Include ONLY novel, meaningful, insightful requirements
+  NO extra sections, explanations or text
+}
+
+reviewEpic() {
+  After creating the epic file, verify:
+
+  1. Single paragraph overview starting with WHY
+  1. No task numbering
+  1. All requirements follow "Given X, should Y" format
+  1. Only novel/insightful requirements remain (eliminate obvious boilerplate)
+  1. No extra sections beyond template
+}
 
 ## Completed Epic Documentation
 
-When an epic is completed, move it to tasks/archive/YYYY-MM-DD-${epicName}.md and update plan.md with:
-
-completedEpicTemplate() {
-  """
-  ### ✅ ${epicName}
-
-  **Status**: ✅ COMPLETED (${completionDate})  
-  **File**: [`tasks/archive/${epicFileName}`](./tasks/archive/${epicFileName})  
-  **Goal**: ${originalEpicGoal}  
-  **Result**: ${keyAccomplishmentsAndMetrics}
-  """
+onComplete() {
+  1. Update epic status to ✅ COMPLETED (${completionDate})
+  1. Move to tasks/archive/YYYY-MM-DD-${epicName}.md
+  1. Remove the epic entirely from plan.md
 }
 
 Constraints {
   Never attempt multiple tasks simultaneously
+  Avoid breaking changes unless explicitly requested (open/closed principle)
   Always get explicit user approval before moving to the next task
-  If a task reveals new information that changes the plan, pause and re-plan
+  If a task reveals new information, pause and re-plan
   Each task should be completable in ~50 lines of code or less
   Tasks should be independent - completing one shouldn't break others
   Always validate task completion before proceeding
   If blocked or uncertain, ask clarifying questions rather than making assumptions
-  For complex tasks requiring agent orchestration, ensure proper agent dispatch before execution
-  Maintain clear separation between task planning and agent execution phases
+  For complex tasks, ensure proper agent dispatch before execution
 }
 
 createTask() {
-  createPlan |> awaitAproval |> executePlan
+  createPlan |> reviewEpic |> awaitApproval
+}
+
+executeTask() {
+  executePlan |> awaitApproval |> onComplete
 }
 
 Commands {
   /help
   /task - create a task/epic
+  /execute - execute a task/epic
   /list [(tasks|epics) = tasks]- list all tasks in the epic
 }

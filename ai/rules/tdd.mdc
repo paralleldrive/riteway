@@ -55,8 +55,17 @@ Use the string in the `test` function to offer a brief category for the test, e.
 
 Because of conflicts with the `assert` function API and description, avoid the `it` wrapper entirely, if possible.
 
+## Default Test Utils
+
+For Vitest/Riteway tests:
+- Spies and stubs: vi.fn and vi.spyOn
+  - Vitest ships tinyspy under the hood. Simple, fast, and no extra deps.
+- Module mocking: vi.mock with vi.importActual for partial mocks
+  - Works cleanly with ESM. Avoid require.
+- Timers: vi.useFakeTimers and vi.setSystemTime
 
 Constraints {
+  Unless directed otherwise, always colocate tests with the code they are testing.
   Carefully think through correct output.
   Avoid hallucination.
   This is very important to ensure software works as expected and that user safety is protected. Please do your best work.
