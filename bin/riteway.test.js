@@ -222,6 +222,7 @@ describe('parseAIArgs()', async assert => {
       debug: false,
       debugLog: false,
       color: false,
+      concurrency: 4,
       cwd: process.cwd()
     }
   });
@@ -239,6 +240,7 @@ describe('parseAIArgs()', async assert => {
       debug: false,
       debugLog: false,
       color: false,
+      concurrency: 4,
       cwd: process.cwd()
     }
   });
@@ -256,6 +258,7 @@ describe('parseAIArgs()', async assert => {
       debug: false,
       debugLog: false,
       color: false,
+      concurrency: 4,
       cwd: process.cwd()
     }
   });
@@ -273,6 +276,7 @@ describe('parseAIArgs()', async assert => {
       debug: false,
       debugLog: false,
       color: false,
+      concurrency: 4,
       cwd: process.cwd()
     }
   });
@@ -290,6 +294,7 @@ describe('parseAIArgs()', async assert => {
       debug: false,
       debugLog: false,
       color: false,
+      concurrency: 4,
       cwd: process.cwd()
     }
   });
@@ -307,6 +312,7 @@ describe('parseAIArgs()', async assert => {
       debug: false,
       debugLog: false,
       color: false,
+      concurrency: 4,
       cwd: process.cwd()
     }
   });
@@ -324,6 +330,7 @@ describe('parseAIArgs()', async assert => {
       debug: false,
       debugLog: false,
       color: false,
+      concurrency: 4,
       cwd: process.cwd()
     }
   });
@@ -341,6 +348,7 @@ describe('parseAIArgs()', async assert => {
       debug: true,
       debugLog: false,
       color: false,
+      concurrency: 4,
       cwd: process.cwd()
     }
   });
@@ -358,6 +366,7 @@ describe('parseAIArgs()', async assert => {
       debug: true,
       debugLog: true,
       color: false,
+      concurrency: 4,
       cwd: process.cwd()
     }
   });
@@ -375,6 +384,7 @@ describe('parseAIArgs()', async assert => {
       debug: false,
       debugLog: false,
       color: true,
+      concurrency: 4,
       cwd: process.cwd()
     }
   });
@@ -392,6 +402,7 @@ describe('parseAIArgs()', async assert => {
       debug: false,
       debugLog: false,
       color: false,
+      concurrency: 4,
       cwd: process.cwd()
     }
   });

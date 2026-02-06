@@ -555,5 +555,49 @@ userPrompt = """test"""`;
         expected: true
       });
     });
+
+    test('rejects import path traversal attempts', async () => {
+      const extractedData = [
+        {
+          id: 1,
+          description: 'Given a test, should pass',
+          userPrompt: 'test',
+          requirement: 'should pass'
+        }
+      ];
+
+      const mockAgentConfig = {
+        command: 'node',
+        args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
+      };
+
+      const testContent = 'import @promptUnderTest from "../../../../.env"\n\n- Given test, should pass';
+
+      let error;
+      try {
+        await extractTests({
+          testContent,
+          testFilePath: '/project/test/test.sudo',
+          agentConfig: mockAgentConfig,
+          timeout: 5000
+        });
+      } catch (err) {
+        error = err;
+      }
+
+      assert({
+        given: 'import with path traversal',
+        should: 'throw SecurityError',
+        actual: error?.cause?.name,
+        expected: 'SecurityError'
+      });
+
+      assert({
+        given: 'import with path traversal',
+        should: 'have IMPORT_PATH_TRAVERSAL code',
+        actual: error?.cause?.code,
+        expected: 'IMPORT_PATH_TRAVERSAL'
+      });
+    });
   });
 });
