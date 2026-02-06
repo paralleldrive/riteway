@@ -1,4 +1,5 @@
-import { executeAgent } from './ai-runner.js';
+import { executeAgent, validateFilePath } from './ai-runner.js';
+import { createError } from 'error-causes';
 import { readFile } from 'fs/promises';
 import { resolve } from 'path';
 
@@ -316,11 +317,24 @@ export const extractTests = async ({ testContent, testFilePath, agentConfig, tim
       }
       const projectRoot = process.cwd();
       const importedContents = await Promise.all(
-        importPaths.map(path => {
+        importPaths.map(async path => {
           // Resolve import paths relative to project root, not test file directory
           const resolvedPath = resolve(projectRoot, path);
           if (debug) {
             console.error(`[DEBUG] Reading import: ${path} -> ${resolvedPath}`);
+          }
+          // Validate import path to prevent path traversal attacks
+          try {
+            validateFilePath(resolvedPath, projectRoot);
+          } catch (error) {
+            throw createError({
+              name: 'SecurityError',
+              message: `Import path traversal detected: ${path}`,
+              code: 'IMPORT_PATH_TRAVERSAL',
+              path,
+              resolvedPath,
+              cause: error
+            });
           }
           return readFile(resolvedPath, 'utf-8');
         })

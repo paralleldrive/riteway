@@ -137,7 +137,7 @@ export const calculateRequiredPasses = ({ runs = 4, threshold = 75 } = {}) => {
       runs
     });
   }
-  if (threshold < 0 || threshold > 100) {
+  if (!Number.isFinite(threshold) || threshold < 0 || threshold > 100) {
     throw createError({
       name: 'ValidationError',
       message: 'threshold must be between 0 and 100',
@@ -367,6 +367,7 @@ export const aggregatePerAssertionResults = ({ perAssertionResults, threshold, r
  * @param {string} options.agentConfig.command - Command to execute
  * @param {Array<string>} [options.agentConfig.args=[]] - Command arguments
  * @param {number} [options.timeout=300000] - Timeout in milliseconds (default: 5 minutes)
+ * @param {number} [options.concurrency=4] - Maximum concurrent test executions
  * @param {boolean} [options.debug=false] - Enable debug logging
  * @param {string} [options.logFile] - Optional log file path for debug output
  * @returns {Promise<Object>} Aggregated per-assertion test results
@@ -376,6 +377,7 @@ export const runAITests = async ({
   runs = 4,
   threshold = 75,
   timeout = 300000,
+  concurrency = 4,
   debug = false,
   logFile,
   agentConfig = {
@@ -398,20 +400,51 @@ export const runAITests = async ({
   
   logger.log(`Extracted ${tests.length} test assertions`);
 
-  // Concurrency note: fires assertions * runs subprocesses in parallel.
-  // May need throttling (e.g. p-limit) for large test suites to avoid
-  // resource exhaustion or API rate limits.
-  const perAssertionResults = await Promise.all(
-    tests.map(({ prompt, description }, index) =>
-      Promise.all(
-        Array.from({ length: runs }, (_, runIndex) => {
-          logger.log(`\nRunning assertion ${index + 1}/${tests.length}, run ${runIndex + 1}/${runs}`);
-          logger.log(`Assertion: ${description}`);
-          return executeAgent({ agentConfig, prompt, timeout, debug, logFile });
-        })
-      ).then(runResults => ({ description, runResults }))
-    )
+  // Simple concurrency limiter to avoid resource exhaustion
+  const limitConcurrency = async (tasks, limit) => {
+    const results = [];
+    const executing = [];
+    
+    for (const task of tasks) {
+      const promise = task().then(result => {
+        executing.splice(executing.indexOf(promise), 1);
+        return result;
+      });
+      
+      results.push(promise);
+      executing.push(promise);
+      
+      if (executing.length >= limit) {
+        await Promise.race(executing);
+      }
+    }
+    
+    return Promise.all(results);
+  };
+
+  // Create all test execution tasks
+  const testTasks = tests.flatMap(({ prompt, description }, index) =>
+    Array.from({ length: runs }, (_, runIndex) => async () => {
+      logger.log(`\nRunning assertion ${index + 1}/${tests.length}, run ${runIndex + 1}/${runs}`);
+      logger.log(`Assertion: ${description}`);
+      return executeAgent({ agentConfig, prompt, timeout, debug, logFile }).then(result => ({
+        assertionIndex: index,
+        description,
+        result
+      }));
+    })
   );
+
+  // Execute all tasks with concurrency limit
+  const executionResults = await limitConcurrency(testTasks, concurrency);
+
+  // Group results by assertion
+  const perAssertionResults = tests.map(({ description }, index) => {
+    const runResults = executionResults
+      .filter(({ assertionIndex }) => assertionIndex === index)
+      .map(({ result }) => result);
+    return { description, runResults };
+  });
 
   logger.flush();
   return aggregatePerAssertionResults({ perAssertionResults, threshold, runs });

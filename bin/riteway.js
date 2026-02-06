@@ -85,13 +85,16 @@ export const parseArgs = (argv) => {
 
 export const parseAIArgs = (argv) => {
   const opts = minimist(argv, {
-    string: ['runs', 'threshold', 'agent'],
+    string: ['runs', 'threshold', 'agent', 'concurrency'],
     boolean: ['validate-extraction', 'debug', 'debug-log', 'color', 'no-color'],
     default: { runs: 4, threshold: 75, agent: 'claude', 'validate-extraction': false, debug: false, 'debug-log': false }
   });
 
   // Color defaults to false, users can explicitly enable with --color
   const color = opts['no-color'] ? false : (opts.color || false);
+
+  // Concurrency defaults to 4 if not specified
+  const concurrency = opts.concurrency ? Number(opts.concurrency) : 4;
 
   return {
     filePath: opts._[0],
@@ -102,11 +105,12 @@ export const parseAIArgs = (argv) => {
     debug: opts.debug || opts['debug-log'], // --debug-log implies --debug
     debugLog: opts['debug-log'],
     color,
+    concurrency,
     cwd: process.cwd()
   };
 };
 
-export const runAICommand = async ({ filePath, runs, threshold, agent, debug, debugLog, color, cwd }) => {
+export const runAICommand = async ({ filePath, runs, threshold, agent, debug, debugLog, color, concurrency, cwd }) => {
   if (!filePath) {
     throw createError({
       ...ValidationError,
@@ -153,15 +157,25 @@ export const runAICommand = async ({ filePath, runs, threshold, agent, debug, de
       runs,
       threshold,
       agentConfig,
+      concurrency,
       debug,
       logFile
     });
 
-    const outputPath = await recordTestOutput({
-      results,
-      testFilename,
-      color
-    });
+    let outputPath;
+    try {
+      outputPath = await recordTestOutput({
+        results,
+        testFilename,
+        color
+      });
+    } catch (error) {
+      throw createError({
+        ...OutputError,
+        message: `Failed to record test output: ${error.message}`,
+        cause: error
+      });
+    }
 
     const { assertions } = results;
     const passedAssertions = assertions.filter(a => a.passed).length;
@@ -305,6 +319,7 @@ AI Test Options:
   --runs N                  Number of test runs per assertion (default: 4)
   --threshold P             Required pass percentage 0-100 (default: 75)
   --agent NAME              AI agent to use: claude, opencode, cursor (default: claude)
+  --concurrency N           Max concurrent test executions (default: 4)
   --validate-extraction     Validate extraction output with judge sub-agent
   --debug                   Enable debug output to console
   --debug-log               Enable debug output and save to auto-generated log file

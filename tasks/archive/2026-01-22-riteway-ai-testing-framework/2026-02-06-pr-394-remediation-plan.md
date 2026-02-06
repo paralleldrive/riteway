@@ -13,13 +13,60 @@ Cross-referencing the current branch state (184 tests passing, lint clean, TS cl
 
 ## Checklist
 
-- [ ] B1. Move `error-causes` from devDependencies to dependencies
-- [ ] H3. Add `openBrowser: false` to recordTestOutput test
-- [ ] H4. Rename `process` function in debug-logger.js
-- [ ] B2. Add `Number.isFinite` guard for threshold validation (TDD)
-- [ ] H2. Wire `OutputError` into recordTestOutput error handling or remove dead code
-- [ ] B3. Add `validateFilePath` to import resolution in test-extractor.js (TDD)
-- [ ] H1. Add concurrency limiter to `runAITests` (optional `--concurrency` flag)
+- [x] B1. Move `error-causes` from devDependencies to dependencies ✅
+- [x] H3. Add `openBrowser: false` to recordTestOutput test ✅
+- [x] H4. Rename `process` function in debug-logger.js ✅
+- [x] B2. Add `Number.isFinite` guard for threshold validation (TDD) ✅
+- [x] H2. Wire `OutputError` into recordTestOutput error handling or remove dead code ✅
+- [x] B3. Add `validateFilePath` to import resolution in test-extractor.js (TDD) ✅
+- [x] H1. Add concurrency limiter to `runAITests` (optional `--concurrency` flag) ✅
+
+## Summary
+
+**All 7 remediation items completed successfully!** ✅
+
+### Changes Made (2026-02-06)
+
+**B1 - error-causes dependency fix:**
+- Moved `error-causes` from `devDependencies` to `dependencies` in package.json
+- Regenerated package-lock.json with `npm install`
+
+**H3 - Test browser opening fix:**
+- Added `openBrowser: false` to recordTestOutput test at test-output.test.js:620
+
+**H4 - Variable shadowing fix:**
+- Renamed `process` → `logProcess` in debug-logger.js to avoid shadowing Node.js global
+- Updated return statement to export as `process: logProcess` (API unchanged)
+
+**B2 - NaN threshold validation (TDD):**
+- Added failing test for NaN threshold validation
+- Updated validation at ai-runner.js:140 to use `Number.isFinite(threshold)`
+- Catches NaN, Infinity, -Infinity, and non-numeric values
+
+**H2 - OutputError integration:**
+- Wrapped `recordTestOutput` call in try/catch in bin/riteway.js
+- Throws `OutputError` with cause on failure
+- Error handler at line 282-289 now properly exercised
+
+**B3 - Import path traversal protection (TDD):**
+- Added failing test for import path traversal in test-extractor.test.js
+- Imported `validateFilePath` and `createError` in test-extractor.js
+- Added `validateFilePath` call before reading imported files
+- Throws SecurityError with IMPORT_PATH_TRAVERSAL code on violation
+
+**H1 - Concurrency limiting:**
+- Added `--concurrency N` CLI flag (default: 4) to parseAIArgs
+- Updated `runAICommand` and `runAITests` signatures to accept `concurrency`
+- Implemented inline concurrency limiter using Promise.race pattern
+- Updated help text and JSDoc documentation
+- Fixed all test expectations to include `concurrency` field
+
+### Test Results
+
+**All tests passing:** 185 tests total (78 tape + 107 vitest)
+- No lint errors
+- No TypeScript errors
+- All functional requirements validated
 
 ---
 

@@ -38,7 +38,7 @@ export const createDebugLogger = ({ debug = false, logFile } = {}) => {
     log(`Command: ${cmd} ${args.join(' ')}`);
   };
 
-  const process = (data) => {
+  const logProcess = (data) => {
     log('Process:', data);
   };
 
@@ -55,5 +55,5 @@ export const createDebugLogger = ({ debug = false, logFile } = {}) => {
     buffer.length = 0;
   };
 
-  return { log, command, process, result, flush };
+  return { log, command, process: logProcess, result, flush };
 };

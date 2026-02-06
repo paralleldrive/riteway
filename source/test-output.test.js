@@ -617,7 +617,8 @@ describe('test-output', () => {
         const outputPath = await recordTestOutput({
           results: createTestResults(),
           testFilename: 'test.sudo',
-          outputDir: testDir
+          outputDir: testDir,
+          openBrowser: false
         });
 
         assert({

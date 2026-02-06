@@ -515,6 +515,36 @@ describe('ai-runner', () => {
         expected: 'INVALID_THRESHOLD'
       });
     });
+
+    test('validates threshold is a finite number', () => {
+      let error;
+      try {
+        calculateRequiredPasses({ runs: 4, threshold: NaN });
+      } catch (err) {
+        error = err;
+      }
+
+      assert({
+        given: 'NaN threshold',
+        should: 'throw ValidationError',
+        actual: error?.cause?.name,
+        expected: 'ValidationError'
+      });
+
+      assert({
+        given: 'NaN threshold',
+        should: 'have INVALID_THRESHOLD code',
+        actual: error?.cause?.code,
+        expected: 'INVALID_THRESHOLD'
+      });
+
+      assert({
+        given: 'NaN threshold',
+        should: 'have clear error message',
+        actual: error?.message,
+        expected: 'threshold must be between 0 and 100'
+      });
+    });
   });
 
   describe('executeAgent()', () => {
