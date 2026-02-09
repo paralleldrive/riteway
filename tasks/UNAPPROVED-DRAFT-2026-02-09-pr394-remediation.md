@@ -26,7 +26,7 @@ This new plan addresses **janhesters' human review** (2026-02-09), which identif
 
 ### Retained from Feb 6
 - B1-B3, H1-H4 fixes remain in the codebase (already committed)
-- Some of those fixes (e.g., B3 `validateFilePath` in test-extractor, H1 concurrency limiter) may become unnecessary or change scope after the architecture refactor
+- Several of those fixes will become unnecessary after the architecture refactor: B3 `validateFilePath` is removed (comment #18 — AI agent handles imports), imperative `parseImports` is removed (comment #17 — deterministic parsing reduces flexibility). H1 concurrency limiter may change scope.
 
 ---
 
@@ -43,9 +43,9 @@ This new plan addresses **janhesters' human review** (2026-02-09), which identif
 
 **Architecture diagrams acknowledged:**
 
-1. **[Diagram 1 — Orchestrator dispatch](https://github.com/user-attachments/assets/7f45f7e9-83b3-4ebc-bbde-d295a108e9c7)** (comment #17): Shows the orchestrator reading test files, resolving imports, and dispatching to the AI subagent. The orchestrator is deterministic; the AI call is the only non-deterministic step.
+1. **[Diagram 1 — Orchestrator dispatch](https://github.com/user-attachments/assets/7f45f7e9-83b3-4ebc-bbde-d295a108e9c7)** (comment #17): Shows the orchestrator agent reading test files, resolving imports, and dispatching to subagents. The orchestrator is an AI agent that handles these tasks dynamically.
 
-2. **[Diagram 2 — 3-actor pipeline (PREFERRED/LATEST)](https://github.com/user-attachments/assets/3e444a3f-2d88-408a-8240-fe1f51ac3326)** (comment #19): Shows the full 5-step, 3-actor pipeline: Orchestrator reads and parses deterministically, Result Generator executes the prompt, Judge evaluates per-assertion, Orchestrator aggregates TAP output.
+2. **[Diagram 2 — 3-actor pipeline (PREFERRED/LATEST)](https://github.com/user-attachments/assets/3e444a3f-2d88-408a-8240-fe1f51ac3326)** (comment #19): Shows the full 5-step, 3-actor pipeline: Orchestrator agent (AI) reads and understands test files, Result Generator executes the prompt, Judge evaluates per-assertion, CLI harness aggregates TAP output.
 
 ---
 
@@ -73,22 +73,30 @@ This new plan addresses **janhesters' human review** (2026-02-09), which identif
 
 ### The 5-Step, 3-Actor Pipeline
 
-The architecture is a **3-actor pipeline** (Orchestrator, Actual Result Generator, Judge) executed in **5 steps**. This is NOT 2 actors — the current implementation incorrectly combines execution and evaluation into one AI call. The new architecture separates them cleanly.
+The architecture is a **3-actor pipeline** (Orchestrator Agent, Actual Result Generator, Judge) executed in **5 steps**. This is NOT 2 actors — the current implementation incorrectly combines execution and evaluation into one AI call. The new architecture separates them cleanly.
+
+**Critical distinction:** The orchestrator is an **AI agent**, not deterministic imperative code. Comment #17 explicitly states: *"The main orchestrator **agent** should pull in the prompt file and then dispatch a subagent with a specific prompt. The deterministic parsing reduces the flexibility of the testing surface."* The orchestrator agent dynamically understands test files, resolves imports, and identifies assertions — no regex or YAML parsers needed. The only deterministic/imperative code is the CLI harness and the TAP aggregation.
 
 | Step | Actor | What Happens |
 |------|-------|-------------|
-| **Step 1** | Orchestrator (deterministic) | Reads Test File + Prompt Under Test file. Resolves imports. Parses assertions deterministically (YAML list or markdown bullets with regex). Combines Prompt Under Test + User Prompt. |
+| **Step 1** | Orchestrator Agent (AI) | Receives the test file as a prompt. Dynamically understands the file structure. Reads and resolves `import @path` references using its file-reading capabilities. Identifies assertions and user prompt. Combines Prompt Under Test + User Prompt. |
 | **Step 2** | Actual Result Generator (AI subagent) | Receives Prompt Under Test + User Prompt. Executes the prompt. Writes actual results into files. Returns result file locations to orchestrator. |
-| **Step 3** | Orchestrator (deterministic) | Gets result file locations. For EACH assertion, dispatches a separate Judge subagent with: (1) Prompt Under Test, (2) User Prompt, (3) Actual Result file path, (4) One assertion. |
+| **Step 3** | Orchestrator Agent (dispatch) | Gets result file locations. For EACH assertion, dispatches a separate Judge subagent with: (1) Prompt Under Test, (2) User Prompt, (3) Actual Result file path, (4) One assertion. |
 | **Step 4** | Judge Agent (AI subagent, per-assertion) | Reads the actual result file. Evaluates whether the actual result satisfies the assertion. Returns TAP output for that single assertion. |
-| **Step 5** | Orchestrator (deterministic) | Aggregates individual TAP outputs. Produces final aggregated TAP output. Delivers to user. |
+| **Step 5** | CLI Harness (deterministic code) | Aggregates individual TAP outputs. Produces final aggregated TAP output. Delivers to user. |
 
 ```
-Orchestrator (deterministic) — Step 1
-  ├─ Read test file + prompt under test file
-  ├─ Resolve imports (deterministic)
-  ├─ Parse assertions deterministically (YAML/markdown regex)
-  └─ Combine Prompt Under Test + User Prompt
+CLI Harness (deterministic) — Invocation
+  ├─ Parses CLI args (file path, runs, threshold, agent)
+  ├─ Spawns Orchestrator Agent with test file path
+  └─ Passes configuration
+        │
+        ▼
+Orchestrator Agent (AI) — Step 1
+  ├─ Reads test file (dynamically, via tool/file access)
+  ├─ Understands imports, reads imported prompt-under-test files
+  ├─ Identifies assertions from test file (no regex — AI understands the format)
+  └─ Combines Prompt Under Test + User Prompt
         │
         ▼
 Actual Result Generator (AI subagent) — Step 2
@@ -98,7 +106,7 @@ Actual Result Generator (AI subagent) — Step 2
   └─ Returns result file locations
         │
         ▼
-Orchestrator (deterministic) — Step 3
+Orchestrator Agent (dispatch) — Step 3
   ├─ Receives result file locations
   └─ For EACH assertion, dispatches separate Judge subagent
         │ (with: prompt under test, user prompt, result file path, one assertion)
@@ -109,7 +117,7 @@ Judge Agent (AI subagent, per-assertion) — Step 4
   └─ Returns TAP for that single assertion (ok 1 ... / not ok 1 ...)
         │
         ▼
-Orchestrator (deterministic) — Step 5
+CLI Harness (deterministic) — Step 5
   ├─ Aggregates individual TAP outputs
   ├─ Produces final aggregated TAP output
   └─ Delivers to user
@@ -117,8 +125,9 @@ Orchestrator (deterministic) — Step 5
 
 This directly aligns with:
 - **Epic requirement** (Task 2): "should pass entire file to AI agent (don't parse — it's a prompt)"
+- **Comment #17**: "The deterministic parsing reduces the flexibility of the testing surface" — the AI agent adapts to whatever test file format it encounters
 - **[vision.md](../vision.md)**: "The standard testing framework for AI Driven Development and software agents" — simplicity and agent-first design
-- **[javascript.mdc](../ai/rules/javascript/javascript.mdc)**: "One job per function; separate mapping from IO" — the orchestrator handles IO, the Result Generator executes, the Judge evaluates
+- **[javascript.mdc](../ai/rules/javascript/javascript.mdc)**: "One job per function; separate mapping from IO" — the orchestrator agent handles understanding/dispatch, the Result Generator executes, the Judge evaluates
 - **[AGENTS.md](../AGENTS.md)**: Progressive discovery principle — only consume what's needed
 - **[please.mdc](../ai/rules/please.mdc)**: "Do ONE THING at a time" — each actor has a single responsibility
 
@@ -126,38 +135,38 @@ This directly aligns with:
 
 | Aspect | Current Implementation | 3-Actor Pipeline | Gap |
 |--------|----------------------|-------------------|-----|
-| Test file reading | `readTestFile` reads file | Orchestrator reads file | Minimal — function survives |
-| Prompt extraction | **Phase 1**: `buildExtractionPrompt` → AI → `parseExtractionResult` | **No Phase 1** — orchestrator parses deterministically | **Critical** — entire extraction pipeline removed |
-| Import resolution | AI parses imports in Phase 1 | Orchestrator resolves imports deterministically | **Major** — logic moves from AI to orchestrator |
+| Test file handling | `readTestFile` reads file, then AI extracts metadata | Orchestrator **agent** receives file as prompt, dynamically understands it | **Critical** — file is a prompt, not data to parse |
+| Prompt extraction | **Phase 1**: `buildExtractionPrompt` → AI → `parseExtractionResult` | **No Phase 1** — orchestrator agent understands test file natively | **Critical** — entire extraction pipeline removed |
+| Import resolution | Imperative `parseImports()` regex + `validateFilePath()` | Orchestrator agent reads imports dynamically (AI file access) | **Critical** — no imperative import parsing; comment #18 confirms `validateFilePath` unnecessary |
+| Assertion parsing | AI extracts structured metadata in Phase 1 | Orchestrator agent identifies assertions dynamically from test file | **Major** — no regex/YAML assertion parser needed |
 | Prompt execution | Combined with evaluation in one AI call | **Step 2**: Dedicated Result Generator subagent | **Major** — execution separated from evaluation |
 | Evaluation | **Phase 2**: Per-assertion `buildEvaluationPrompt` → AI | **Step 4**: Per-assertion Judge subagent (separate from execution) | **Major** — evaluation is now isolated from execution |
 | Output parsing | `parseStringResult` (multi-strategy JSON) | TAP per single assertion — trivially parseable | **Critical** — multi-strategy parsing removed |
-| Aggregation | `aggregatePerAssertionResults` | Orchestrator aggregates TAP (Step 5) | Moderate — restructured for TAP instead of JSON |
+| Aggregation | `aggregatePerAssertionResults` | CLI harness aggregates TAP (Step 5) | Moderate — restructured for TAP instead of JSON |
 | Failure testing | None | Failure fixture with wrong Prompt Under Test | **New** — not currently implemented |
 
 ### What Survives (Confirmed)
 
 | Function | File | Status |
 |----------|------|--------|
-| `readTestFile` | ai-runner.js | Survives — orchestrator reads files (Step 1) |
-| `executeAgent` | ai-runner.js | Survives, simplified — used for both Result Generator (Step 2) and Judge (Step 4) calls |
-| `calculateRequiredPasses` | ai-runner.js | Survives as-is — threshold math unchanged |
-| `aggregatePerAssertionResults` | ai-runner.js | Survives, restructured — aggregates TAP instead of JSON (Step 5) |
-| `runAITests` | ai-runner.js | Survives, restructured — 5-step pipeline |
-| `parseImports` | test-extractor.js | Survives — deterministic import parsing (may need syntax update for `import @path` format) |
+| `executeAgent` | ai-runner.js | Survives, simplified — used to spawn the orchestrator agent, Result Generator (Step 2), and Judge (Step 4) CLI subprocesses |
+| `calculateRequiredPasses` | ai-runner.js | Survives as-is — threshold math unchanged (CLI harness) |
+| `aggregatePerAssertionResults` | ai-runner.js | Survives, restructured — aggregates TAP instead of JSON (Step 5, CLI harness) |
+| `runAITests` | ai-runner.js | Survives, restructured — spawns orchestrator agent, collects results |
 | `parseOpenCodeNDJSON` | ai-runner.js | **MUST KEEP** — OpenCode CLI wire protocol parsing (see NDJSON warning below) |
-| `validateFilePath` | ai-runner.js | Survives — orchestrator resolves imports, needs path safety |
 | `createDebugLogger` | ai-runner.js | Survives — debugging infrastructure |
 
 ### NDJSON Warning — Critical Distinction
 
 > **User caution:** "if it references the existing NDJSON implementation ensure you read existing documentation about why this was necessary for the opencode CLI responses"
 
-`parseOpenCodeNDJSON` parses the **agent's wire protocol** — how the OpenCode CLI formats its stdout. This is NOT AI response content parsing. This function MUST SURVIVE the architecture refactor.
+`parseOpenCodeNDJSON` parses the **agent's wire protocol** — how the OpenCode CLI formats its stdout. This is NOT AI response content parsing. This function MUST SURVIVE the architecture refactor (in the CLI harness layer).
 
-The "no multi-strategy parsing" directive applies to parsing **AI response content** (like `parseStringResult`), NOT agent wire protocols.
+The "no multi-strategy parsing" directive applies to parsing **AI response content** (like `parseStringResult`), NOT agent wire protocols. The "deterministic parsing reduces flexibility" critique (#17) applies to parsing **test file content** with regex — the orchestrator agent handles that dynamically.
 
 - **REMOVE**: `parseStringResult` — multi-strategy AI content parsing (replaced by trivial TAP parsing)
+- **REMOVE**: `parseImports` — imperative regex import parsing (orchestrator agent handles imports dynamically)
+- **REMOVE**: `validateFilePath` — unnecessary when AI agent handles file access (comment #18)
 - **KEEP**: `parseOpenCodeNDJSON` — OpenCode CLI wire protocol parsing (required for OpenCode agent support)
 
 ### What Gets Removed (Confirmed)
@@ -169,28 +178,29 @@ The "no multi-strategy parsing" directive applies to parsing **AI response conte
 | `parseExtractionResult` | ai-runner.js | Phase 1 elimination — no AI extraction phase |
 | `extractJSONFromMarkdown` | ai-runner.js | No markdown JSON extraction needed |
 | `tryParseJSON` | ai-runner.js | No speculative JSON parsing needed |
-| `extractTests` | test-extractor.js | Entire two-phase pipeline replaced |
-| `buildEvaluationPrompt` | ai-runner.js | Replaced by Result Generator prompt (Step 2) + Judge prompt (Step 4) — separate concerns |
+| `extractTests` | test-extractor.js | Entire two-phase pipeline replaced — orchestrator agent handles this dynamically |
+| `buildEvaluationPrompt` | ai-runner.js | Orchestrator agent assembles prompts for Result Generator and Judge dynamically |
+| `parseImports` | test-extractor.js | Orchestrator agent reads imports dynamically — no regex parsing needed (comment #17: "deterministic parsing reduces flexibility") |
+| `validateFilePath` | ai-runner.js | Unnecessary when orchestrator agent handles imports — comment #18: "We likely won't need this, if we let the AI extract the prompt under test" |
+| `readTestFile` | ai-runner.js | Orchestrator agent reads files via its own capabilities — utility function unnecessary |
 
 ### What Gets Added (Confirmed)
 
 | Component | Description |
 |-----------|-------------|
-| **Deterministic assertion parser** | Regex or YAML parser — orchestrator parses assertions from test file (Step 1) |
-| **Result Generator prompt builder** | Assembles Prompt Under Test + User Prompt for execution (Step 2) |
-| **Judge prompt builder** | Assembles prompt under test + user prompt + actual result file path + single assertion for evaluation (Step 3/4) |
-| **TAP single-assertion parser** | Trivially parseable — `ok 1 ...` or `not ok 1 ...` (Step 4 output) |
-| **TAP aggregator** | Combines individual TAP outputs into final aggregated TAP (Step 5) |
-| **Result file management** | Write actual results to files, pass locations from Result Generator back to orchestrator |
+| **Orchestrator agent prompt/instructions** | System prompt that instructs the orchestrator AI agent how to: read test files, resolve imports, identify assertions, dispatch Result Generator and Judge subagents. The orchestrator operates declaratively — no imperative parsing code. |
+| **TAP single-assertion parser** | Trivially parseable — `ok 1 ...` or `not ok 1 ...` (Step 4 output, in CLI harness) |
+| **TAP aggregator** | Combines individual TAP outputs into final aggregated TAP (Step 5, in CLI harness) |
+| **Result file management** | Write actual results to files, pass locations from Result Generator back to orchestrator agent |
 | **Failure fixture** | `wrong-prompt-test.sudo` with deliberately wrong Prompt Under Test (e.g., "Make everything brown") |
 
 ### Approach (TDD per [tdd.mdc](../ai/rules/tdd.mdc))
 
 1. **Write failure fixture first** — create a `.sudo` test file with a deliberately wrong Prompt Under Test (e.g., instructions to "Make everything brown") that should fail assertions
-2. **Write tests for the new orchestrator flow** — test that the orchestrator reads file, resolves imports, parses assertions deterministically, assembles prompt, dispatches to Result Generator, dispatches per-assertion to Judge
-3. **Write tests for TAP output parsing** — test that single-assertion TAP is parsed trivially and aggregated correctly
-4. **Implement 5-step pipeline** — make tests pass with minimal code
-5. **Remove dead code** — delete extraction pipeline, multi-strategy parsing (keep `parseOpenCodeNDJSON`)
+2. **Design orchestrator agent prompt** — write the system prompt/instructions that tell the orchestrator AI agent how to read test files, resolve imports, identify assertions, and dispatch subagents. This is the core of the architecture — the orchestrator is an AI agent, not imperative code.
+3. **Write tests for TAP output parsing** — test that single-assertion TAP is parsed trivially and aggregated correctly (CLI harness level)
+4. **Implement 5-step pipeline** — CLI harness spawns orchestrator agent, collects TAP results
+5. **Remove dead code** — delete extraction pipeline, multi-strategy parsing, imperative import parsing (keep `parseOpenCodeNDJSON`)
 6. **Verify existing tests** — ensure all surviving tests still pass
 7. **Run failure fixture** — verify that wrong-prompt tests correctly fail
 
@@ -199,8 +209,8 @@ The "no multi-strategy parsing" directive applies to parsing **AI response conte
 > **Q1-Q7 are now ALL RESOLVED.** No open questions remain.
 
 **Q1. Who resolves imports — orchestrator or AI agent?** RESOLVED
-- **Answer:** The **orchestrator** resolves imports. It reads both the Test File and the Prompt Under Test file, combines them, and passes them to the Actual Result Generator subagent.
-- Comment #17 ([diagram 1](https://github.com/user-attachments/assets/7f45f7e9-83b3-4ebc-bbde-d295a108e9c7)) confirmed: orchestrator reads and resolves.
+- **Answer:** The **orchestrator agent** (which IS an AI agent) resolves imports dynamically. It reads both the Test File and the Prompt Under Test file, combines them, and passes them to the Actual Result Generator subagent. There is no imperative `parseImports()` regex — the AI agent understands the import syntax and reads the referenced files using its own capabilities.
+- Comment #17 confirmed: "The main orchestrator **agent** should pull in the prompt file and then dispatch a subagent." Comment #18 confirmed: "We likely won't need [`validateFilePath`], if we let the AI extract the prompt under test."
 
 **Q2. What is the expected AI output format?** RESOLVED
 - **Answer:** **TAP output** is preferred for all assertion judgements and final aggregation. The Judge returns TAP for a single assertion (`ok 1 ...` or `not ok 1 ...`), which is trivially parseable. The orchestrator aggregates TAP.
@@ -525,10 +535,10 @@ Replace all ad-hoc `createError` calls and `new Error()` calls with spread of de
 | D4 | Use Zod for schema validation | Reviewer suggested it; robust, well-maintained | #3, [zod.dev](https://zod.dev) |
 | D5 | Connect Zod errors to error-causes | Consistent error handling pattern | #3, #4, [error-causes.mdc](../ai/rules/javascript/error-causes.mdc) |
 | D6 | Remove IIFEs in favor of API change (Option A) | SDA + KISS per javascript.mdc — change `getAgentConfig` return value so tests assert directly; test `parseOutput` behavior separately for OpenCode | #9-#13, [javascript.mdc](../ai/rules/javascript/javascript.mdc), Q7 |
-| D7 | Orchestrator resolves imports | Deterministic, secure, confirmed by user | #17, #18 — **RESOLVED** |
+| D7 | Orchestrator **agent** (AI) resolves imports dynamically | AI agent handles file reading/importing — no imperative regex parsing; "deterministic parsing reduces flexibility" (#17); `validateFilePath` unnecessary (#18) | #17, #18 — **RESOLVED** |
 | D8 | Eliminate multi-strategy AI content parsing | "Any parsing step is probably wrong" | #19 |
 | D9 | Import syntax: `import @path` (no from/variable) | Cleaner, simpler — just references a file path | #17, Q5 answer |
-| D10 | Assertion format: YAML preferred, markdown bullets acceptable | Orchestrator parses deterministically with regex | Q2/Q3 answers |
+| D10 | Assertion format: YAML preferred, markdown bullets acceptable | Orchestrator agent (AI) understands assertions dynamically — no regex parser needed | Q2/Q3 answers |
 | D11 | Judge reads result files directly | Orchestrator passes file paths, judge reads them | Architecture Step 3/4 |
 | D12 | Keep `parseOpenCodeNDJSON` | Wire protocol parsing, not AI content parsing — required for OpenCode agent support | NDJSON warning |
 | D13 | Failure fixture: wrong Prompt Under Test | Tests that framework correctly reports failures (e.g., "Make everything brown") | Q4 answer |
@@ -615,7 +625,7 @@ Replace all ad-hoc `createError` calls and `new Error()` calls with spread of de
 
 | # | Question | Status | Answer |
 |---|----------|--------|--------|
-| **Q1** | **Who resolves imports — orchestrator or AI agent?** | RESOLVED | Orchestrator resolves imports. Reads both Test File and Prompt Under Test file, combines them, passes to Result Generator. |
+| **Q1** | **Who resolves imports — orchestrator or AI agent?** | RESOLVED | The orchestrator IS an AI agent. It dynamically reads both Test File and Prompt Under Test file, combines them, passes to Result Generator. No imperative `parseImports()` or `validateFilePath()` — the AI agent handles imports via its own file-reading capabilities. |
 | **Q2** | **What is the expected AI output format?** | RESOLVED | TAP output. Judge returns TAP for a single assertion (`ok 1 ...` / `not ok 1 ...`), trivially parseable. Orchestrator aggregates TAP. |
 | **Q3** | **Does per-assertion evaluation survive?** | RESOLVED | Yes. Each assertion gets its own separate Judge subagent call (Step 4) to prevent context muddying. |
 | **Q4** | **How should the failure fixture be designed?** | RESOLVED | Wrong Prompt Under Test (e.g., "Make everything brown") — should obviously fail assertions. |
@@ -631,8 +641,9 @@ The reviewer's architecture is **more faithful** to:
 - The **epic requirement** ("don't parse" — pass entire file to AI agent)
 - The **vision** (simplicity, agent-first design)
 - **javascript.mdc** principles (one job per function, composition, KISS)
+- **Comment #17**: "The deterministic parsing reduces the flexibility of the testing surface"
 
-The current two-phase approach was a pragmatic workaround for output reliability that introduced the very parsing the epic said to avoid. The 3-actor pipeline eliminates this contradiction by cleanly separating execution (Result Generator) from evaluation (Judge), with the orchestrator handling all deterministic work.
+The current two-phase approach was a pragmatic workaround for output reliability that introduced the very parsing the epic said to avoid. The 3-actor pipeline eliminates this contradiction by cleanly separating execution (Result Generator) from evaluation (Judge), with the **orchestrator as an AI agent** that dynamically understands test files — not imperative code with regex parsers. The only deterministic/imperative code is the CLI harness (args, TAP aggregation, output).
 
 ---
 
