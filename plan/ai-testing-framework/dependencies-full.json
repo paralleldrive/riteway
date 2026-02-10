@@ -1,0 +1,66 @@
+{
+  "../bin/riteway.js": [
+    "ai-runner.js",
+    "test-output.js"
+  ],
+  "../bin/riteway.test.js": [
+    "../bin/riteway.js",
+    "riteway.js"
+  ],
+  "ai-runner.js": [
+    "debug-logger.js",
+    "test-extractor.js"
+  ],
+  "ai-runner.test.js": [
+    "ai-runner.js",
+    "vitest.js"
+  ],
+  "bun.js": [],
+  "bun.test.js": [
+    "bun.js"
+  ],
+  "debug-logger.js": [],
+  "debug-logger.test.js": [
+    "debug-logger.js",
+    "vitest.js"
+  ],
+  "e2e.test.js": [
+    "ai-runner.js",
+    "riteway.js",
+    "test-output.js"
+  ],
+  "fixtures/verify-media-embed.js": [
+    "test-output.js"
+  ],
+  "index.js": [
+    "riteway.js"
+  ],
+  "match-test.js": [
+    "match.js",
+    "riteway.js"
+  ],
+  "match.js": [],
+  "render-component.js": [],
+  "riteway.js": [],
+  "test-extractor.js": [
+    "ai-runner.js"
+  ],
+  "test-extractor.test.js": [
+    "test-extractor.js",
+    "vitest.js"
+  ],
+  "test-output.js": [],
+  "test-output.test.js": [
+    "test-output.js",
+    "vitest.js"
+  ],
+  "test.js": [
+    "../bin/riteway.test.js",
+    "e2e.test.js",
+    "match-test.js",
+    "riteway.js"
+  ],
+  "vitest.js": [
+    "vitest.js"
+  ]
+}
