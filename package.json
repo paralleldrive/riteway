@@ -96,6 +96,8 @@
     "@types/react": "^19.2.2",
     "eslint": "^9.37.0",
     "eslint-plugin-react": "^7.37.5",
+    "jscpd": "^4.0.8",
+    "madge": "^8.0.0",
     "react": "^19.2.0",
     "release-it": "^19.0.5",
     "tap-nirvana": "1.1.0",
