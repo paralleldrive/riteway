@@ -1,0 +1,60 @@
+---
+description: JWT security review - flag insecure patterns
+alwaysApply: false
+---
+# JWT Security Review
+
+**AVOID JWT if you can.** Prefer opaque tokens with server-side sessions.
+
+Patterns {
+  ## Session State
+  any(refresh token rotation, refresh reuse detection, jti denylist, jti revocation, 
+      token bound to session, token bound to device, logout invalidates token server-side) 
+    => Critical: Prefer opaque tokens with server-side sessions. You're tracking state anyway.
+
+  ## Storage & Transport
+  (token in localStorage or sessionStorage) => Critical: XSS vulnerable. Use httpOnly Secure SameSite=Strict cookies.
+  (token in URL or query params) => Critical: Leaks via logs, Referer, browser history, analytics.
+  (token logged or sent to analytics) => Critical: Scrub tokens from all logging pipelines.
+  (SameSite=None or missing CSRF protection) => Critical: CSRF exposure. Use SameSite=Strict or add CSRF tokens.
+
+  ## Algorithm & Signature
+  (JWT 'none' algorithm) => Critical: Signature bypass. Reject unsigned tokens.
+  (JWT verification disabled) => Critical: Always verify signatures.
+  (jwt.decode without verify) => Critical: Use jwt.verify().
+  (alg from token used to select verification) => Critical: Alg confusion. Strict allowlist + key type must match algorithm.
+  (HS256 or symmetric algorithm) => Critical: Use asymmetric algorithms (RS256/ES256).
+
+  ## Verification Failure Handling
+  (verification failure allows anonymous access) => Critical: Fail closed. Invalid token = no access.
+  (verification failure allows partial or degraded access) => Critical: Fail closed. Invalid token = no access.
+
+  ## Token Purpose
+  (ID token used as access token) => Critical: Wrong token type. Use access tokens (typ: at+jwt) for API auth.
+  (typ header not validated) => Critical: Reject tokens without expected typ. Prevents token confusion.
+
+  ## Key Handling
+  (kid used to fetch key from untrusted source) => Critical: SSRF/key injection. Allowlist kid values.
+  (JWKS URL derived from iss without strict allowlist) => Critical: Attacker-controlled keys. Pin JWKS URLs.
+  (JWKS endpoint not pinned or cached) => Warn: Cache JWKS with TTL. Validate kid against known set.
+  (multi-issuer: verification keys shared across issuers) => Critical: Issuer key isolation required. One keyset per issuer.
+
+  ## Claims Validation
+  (iss not validated) => Critical: Confused deputy. Verify issuer matches expected value.
+  (aud not validated) => Critical: Token reuse across services. Verify audience includes this service.
+  (exp not validated) => Critical: Always check exp claim.
+  (nbf present and not validated) => Critical: If present, must validate. Reject on failure.
+  (iat present and not validated) => Critical: If present, must validate. Reject on failure.
+  (nbf and iat not checked when absent) => Warn: Consider requiring nbf/iat. Validate with ≤60s clock skew.
+
+  ## Authorization
+  (roles or scopes trusted without server check) => Critical: Claims are assertions, not policy. Server must enforce.
+
+  ## Cookie Hardening
+  (cookie missing __Host- prefix) => Warn: Use __Host- to enforce Secure, Path=/, no Domain.
+  (cookie Domain set to parent domain) => Warn: Subdomain hijacking. Omit Domain or use __Host-.
+
+  ## Lifetime
+  (access token lifetime >= 1 day) => Critical: Max 15 min for stateless JWT.
+  (access token lifetime > 15 min and < 1 day) => Warn: Shorter is better. 15 min max recommended.
+}
