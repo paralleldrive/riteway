@@ -1106,6 +1106,6 @@ Delta:                           +4 calls (+24%)
 - [PR #394 remediation](./2026-02-09-pr394-remediation.md) -- Tasks 2-7
 - [Requirements conflict analysis](../plan/ai-testing-framework/requirements-conflict-analysis.md) -- Epic vs implementation gaps
 - [Original epic](./archive/2026-01-22-riteway-ai-testing-framework/2026-01-22-riteway-ai-testing-framework.md) -- Original task breakdown
-- [Existing flowchart](../plan/ai-testing-framework/flowchart.md) -- Current architecture diagram
+- [Existing flowchart](../plan/ai-testing-framework/archive/flowchart.md) -- Previous architecture diagram (archived)
 - [PR #394](https://github.com/paralleldrive/riteway/pull/394) -- Pull request under review
 - [janhesters review](https://github.com/paralleldrive/riteway/pull/394#pullrequestreview-3764740159) -- Review being remediated

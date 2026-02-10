@@ -16,7 +16,7 @@
 
 ### Critical Finding
 
-The two-agent architecture proposal is in **DIRECT CONFLICT** with the approved PR #394 remediation plan (tasks/2026-02-09-pr394-remediation.md). The remediation plan's **Task 1** (MUST BE RESOLVED FIRST) specifies a **3-actor architecture** with an orchestrator AI agent that dynamically understands test files, while this proposal refines the existing two-phase extraction pipeline that the remediation plan explicitly says to **REMOVE**.
+The two-agent architecture proposal is in **DIRECT CONFLICT** with the approved PR #394 remediation plan (tasks/archive/2026-01-22-riteway-ai-testing-framework/2026-02-09-pr394-remediation.md). The remediation plan's **Task 1** (MUST BE RESOLVED FIRST) specifies a **3-actor architecture** with an orchestrator AI agent that dynamically understands test files, while this proposal refines the existing two-phase extraction pipeline that the remediation plan explicitly says to **REMOVE**.
 
 > **RESOLVED:** User explicitly chose the two-agent approach over the 3-actor orchestrator. Remediation Task 1 is considered outdated/too heavy-handed. This proposal proceeds.
 
@@ -29,7 +29,7 @@ The two-agent architecture proposal is in **DIRECT CONFLICT** with the approved 
 ### BLOCKER #1: Architectural Conflict with Approved Remediation Plan
 
 **File References:**
-- `tasks/2026-02-09-pr394-remediation.md:52-189` (Task 1: Architecture Refactor)
+- `tasks/archive/2026-01-22-riteway-ai-testing-framework/2026-02-09-pr394-remediation.md:52-189` (Task 1: Architecture Refactor, archived)
 - `plan/ai-testing-framework/requirements-conflict-analysis.md:1-403` (Requirements conflict analysis)
 
 **Issue:**

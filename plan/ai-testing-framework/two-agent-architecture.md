@@ -1055,5 +1055,5 @@ Steps 1-4 are pure additions with no breaking changes. Steps 5-11 are the breaki
 
 - [Eric's PR comment requirements](https://github.com/paralleldrive/riteway/pull/394#pullrequestreview-3764740159) — Two-agent pattern specification
 - [Requirements conflict analysis](./requirements-conflict-analysis.md) — Detailed comparison of epic, prompt, and implementation
-- [PR #394 remediation plan](../../tasks/2026-02-09-pr394-remediation.md) — Full remediation plan (Task 1)
+- [PR #394 remediation plan](../../tasks/archive/2026-01-22-riteway-ai-testing-framework/2026-02-09-pr394-remediation.md) — Full remediation plan (archived — Task 1 superseded by this two-agent approach)
 - [vision.md](../../vision.md) — "The standard testing framework for AI Driven Development and software agents"
