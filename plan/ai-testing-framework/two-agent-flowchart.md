@@ -1,234 +1,237 @@
-# AI Testing Framework - Two-Agent Architecture Flowchart
+# AI Testing Framework - Two-Agent Architecture Flowchart (As-Built)
 
-This flowchart illustrates the high-level architecture and decision flow of the AI testing framework using the two-agent pattern (result agent + judge agent).
+> **Updated:** 2026-02-11 | Reflects actual implementation on branch `riteway-ai-testing-framework-implementation`
+
+This flowchart illustrates the implemented architecture and decision flow of the AI testing framework using the two-agent pattern (result agent + judge agent).
 
 ```mermaid
 flowchart TD
-    Start([User executes test]) --> ParseArgs[Parse CLI Arguments]
-    ParseArgs --> ValidatePath{Valid file path?}
+    Start([riteway ai file.sudo]) --> ParseArgs[parseAIArgs<br/>Zod schema validation]
+    ParseArgs --> ValidateZod{Zod valid?}
 
-    ValidatePath -->|No| ErrorPath[Throw SecurityError]
-    ValidatePath -->|Yes| CheckAuth{Verify agent authentication}
+    ValidateZod -->|No| ZodError[Throw ValidationError]
+    ValidateZod -->|Yes| ValidatePath[validateFilePath<br/>resolve + check traversal]
+    ValidatePath --> PathOK{Path within<br/>base directory?}
 
-    CheckAuth -->|Failed| AuthError[Display authentication error & exit]
-    CheckAuth -->|Success| ReadFile[Read test file content]
+    PathOK -->|No| PathError[Throw SecurityError<br/>PATH_TRAVERSAL]
+    PathOK -->|Yes| LoadConfig{--agent-config<br/>provided?}
 
-    ReadFile --> Extraction[Extraction: Agent-Directed Analysis]
+    LoadConfig -->|Yes| LoadCustom[loadAgentConfig<br/>read + Zod validate]
+    LoadConfig -->|No| BuiltIn[getAgentConfig<br/>claude / opencode / cursor]
 
-    Extraction --> BuildExtractPrompt[Build extraction prompt]
-    BuildExtractPrompt --> ExecuteExtract[Execute extraction agent]
-    ExecuteExtract --> ParseExtract[Parse NDJSON/JSON output]
-    ParseExtract --> ValidateExtract{Valid extraction result?}
+    LoadCustom --> Auth[verifyAgentAuthentication<br/>smoke test prompt]
+    BuiltIn --> Auth
 
-    ValidateExtract -->|No| ParseError[Throw ParseError]
-    ValidateExtract -->|Yes| CheckFields{All required fields present?<br>userPrompt, assertions, importPaths}
+    Auth --> AuthOK{Auth<br/>succeeded?}
+    AuthOK -->|No| AuthError[Display auth guidance<br/>and exit]
+    AuthOK -->|Yes| ReadFile[readTestFile]
 
-    CheckFields -->|No| ValidationError[Throw ValidationError]
-    CheckFields -->|Yes| CheckImports{Agent identified<br>importPaths?}
+    ReadFile --> ExtractTests
 
-    CheckImports -->|Yes| ResolveImports[Resolve import paths relative to project root]
-    ResolveImports --> ValidateImportPaths{Paths valid?}
-    ValidateImportPaths -->|No| PathTraversalError[Throw SecurityError]
-    ValidateImportPaths -->|Yes| ReadImports[Read imported files]
-    ReadImports --> ReadResult{Read succeeded?}
-    ReadResult -->|No| PromptReadFailed[Throw PROMPT_READ_FAILED<br>with original error as cause]
-    ReadResult -->|Yes| BuildContext[Build promptUnderTest context]
+    subgraph Extraction["Phase 1-2: Extraction Layer"]
+        ExtractTests[extractTests] --> BuildExtractPrompt[buildExtractionPrompt<br/>instructs JSON response:<br/>userPrompt, importPaths, assertions]
+        BuildExtractPrompt --> ExecExtract[executeAgent<br/>rawOutput: false<br/>JSON via unwrapAgentResult]
+        ExecExtract --> ParseResult[parseExtractionResult<br/>validate shape]
+        ParseResult --> CheckImports{importPaths<br/>non-empty?}
+        CheckImports -->|Yes| ResolveImports[resolveImportPaths<br/>readFile each path<br/>concatenate contents]
+        ResolveImports --> BuildContext[promptUnderTest =<br/>concatenated file contents]
+        CheckImports -->|No| ValidatePromptUT{promptUnderTest<br/>present?}
+        ValidatePromptUT -->|No| MissingPrompt[Throw MISSING_PROMPT_UNDER_TEST]
+        ValidatePromptUT -->|Yes| BuildContext
+        BuildContext --> ValidateUP{userPrompt<br/>non-empty?}
+        ValidateUP -->|No| MissingUP[Throw MISSING_USER_PROMPT]
+        ValidateUP -->|Yes| ValidateAssert{assertions<br/>non-empty?}
+        ValidateAssert -->|No| NoAssert[Throw NO_ASSERTIONS_FOUND]
+        ValidateAssert -->|Yes| ReturnStructured[Return: userPrompt<br/>promptUnderTest, assertions]
+    end
 
-    CheckImports -->|No| ValidatePrompt{promptUnderTest present?}
-    ValidatePrompt -->|No| MissingPrompt[Throw MISSING_PROMPT_UNDER_TEST]
-    ValidatePrompt -->|Yes| BuildContext
+    ReturnStructured --> BuildResultPrompt[buildResultPrompt<br/>userPrompt + promptUnderTest<br/>instructs plain text response]
+    BuildResultPrompt --> CalcRequired[calculateRequiredPasses<br/>Math.ceil runs * threshold / 100]
+    CalcRequired --> InitConc[limitConcurrency<br/>controls max concurrent runs]
 
-    BuildContext --> ValidateUserPrompt{userPrompt non-empty?}
-    ValidateUserPrompt -->|No| MissingUserPrompt[Throw MISSING_USER_PROMPT]
-    ValidateUserPrompt -->|Yes| ValidateAssertions{assertions non-empty?}
-    ValidateAssertions -->|No| NoAssertions[Throw NO_ASSERTIONS_FOUND]
-    ValidateAssertions -->|Yes| ReturnStructured[Return structured data:<br>userPrompt, promptUnderTest, assertions]
+    subgraph Exec["Execution Layer: Two-Agent Pattern"]
+        RunLoop{More runs<br/>to execute?}
+        ResultAgent[Result Agent: GENERATE ONLY<br/>executeAgent rawOutput: true<br/>prompt as CLI argument]
+        PlainText[Entire stdout IS the result<br/>no JSON parsing]
 
-    ReturnStructured --> BuildResultPrompt[buildResultPrompt<br>instructs plain text response]
-    BuildResultPrompt --> CalcRequired[Calculate required passes from threshold]
-    CalcRequired --> InitConcurrency[Initialize concurrency limiter]
-    InitConcurrency --> RunExecution[Run Execution: Two-Agent Pattern]
+        RunLoop -->|Yes| ResultAgent
+        ResultAgent --> PlainText
 
-    RunExecution --> RunLoop{More runs?}
+        subgraph Judge["Promise.all — All judges parallel within run"]
+            JudgeLoop[For each assertion] --> BuildJudge[buildJudgePrompt<br/>result + ONE requirement +<br/>userPrompt + promptUnderTest]
+            BuildJudge --> SpawnJudge[Judge Agent: EVALUATE ONLY<br/>executeAgent rawOutput: true]
+            SpawnJudge --> ParseYAML[parseTAPYAML<br/>extract --- delimited block<br/>parse key-value pairs]
+            ParseYAML --> Normalize[normalizeJudgment<br/>validate object, defaults<br/>clamp score 0..100]
+            Normalize --> StoreJudgment[Store: passed, actual<br/>expected, score]
+        end
 
-    RunLoop -->|Yes| CheckLimit{At concurrency limit?}
-    CheckLimit -->|Yes| WaitForSlot[Wait for available slot]
-    WaitForSlot --> ResultAgent[Result Agent: Generate Only]
-    CheckLimit -->|No| ResultAgent
+        PlainText --> JudgeLoop
+        StoreJudgment --> RunLoop
+    end
 
-    ResultAgent --> SpawnResult[Spawn agent subprocess]
-    SpawnResult --> SendResultPrompt[Send result prompt via stdin]
-    SendResultPrompt --> WaitResult[Wait for agent response]
-    WaitResult --> ResultTimeout{Timeout?}
+    InitConc --> RunLoop
 
-    ResultTimeout -->|Yes| KillResult[Kill process]
-    KillResult --> TimeoutError[Throw TimeoutError]
+    subgraph Agg["Aggregation Layer"]
+        GroupResults[Group results by assertion<br/>across all runs]
+        AggLoop[For each assertion] --> CountPasses[passCount =<br/>runs where passed]
+        CountPasses --> CalcScore[averageScore =<br/>mean of scores, 2dp]
+        CalcScore --> CheckThresh{passCount >=<br/>required?}
+        CheckThresh -->|Yes| MarkPass[passed = true]
+        CheckThresh -->|No| MarkFail[passed = false]
+        MarkPass --> NextAssert{More?}
+        MarkFail --> NextAssert
+        NextAssert -->|Yes| AggLoop
+        GroupResults --> AggLoop
+    end
 
-    ResultTimeout -->|No| ResultExitCode{Exit code = 0?}
-    ResultExitCode -->|No| ProcError[Throw AgentProcessError]
-    ResultExitCode -->|Yes| UnwrapResult[Unwrap JSON envelope<br>rawOutput: true]
-    UnwrapResult --> PlainText[Plain text result<br>entire stdout IS the result]
+    RunLoop -->|No| GroupResults
 
-    PlainText --> JudgePhase[Judge Agents: Evaluate via Promise.all]
+    NextAssert -->|No| CheckAll{All assertions<br/>passed?}
+    CheckAll -->|Yes| OverallPass[passed = true]
+    CheckAll -->|No| OverallFail[passed = false]
 
-    JudgePhase --> JudgeLoop[For each assertion in parallel]
-    JudgeLoop --> BuildJudge[buildJudgePrompt<br>result + ONE requirement + context]
-    BuildJudge --> SpawnJudge[Spawn judge agent subprocess]
-    SpawnJudge --> SendJudgePrompt[Send judge prompt via stdin]
-    SendJudgePrompt --> WaitJudge[Wait for judge response]
-    WaitJudge --> JudgeTimeout{Timeout?}
+    subgraph Output["Output Layer"]
+        FormatTAP[formatTAP<br/>pass rate, avg score<br/>actual, expected diagnostics]
+        RecordOutput[recordTestOutput<br/>write .tap.md file]
+        DisplayReport[formatAssertionReport<br/>console output]
+        FormatTAP --> RecordOutput --> DisplayReport
+    end
 
-    JudgeTimeout -->|Yes| KillJudge[Kill process]
-    KillJudge --> JudgeTimeoutErr[Throw TimeoutError]
-
-    JudgeTimeout -->|No| JudgeExitCode{Exit code = 0?}
-    JudgeExitCode -->|No| JudgeProcError[Throw AgentProcessError]
-    JudgeExitCode -->|Yes| UnwrapJudge[Unwrap JSON envelope<br>rawOutput: true]
-    UnwrapJudge --> ParseYAML[parseTAPYAML]
-    ParseYAML --> ValidYAML{Valid TAP YAML block?}
-
-    ValidYAML -->|No| YAMLError[Throw JUDGE_INVALID_TAP_YAML]
-    ValidYAML -->|Yes| Normalize[normalizeJudgment]
-    Normalize --> CheckObject{Response is object?}
-    CheckObject -->|No| InvalidResponse[Throw JUDGE_INVALID_RESPONSE]
-    CheckObject -->|Yes| ApplyDefaults[Apply safe defaults<br>log warnings for missing fields]
-    ApplyDefaults --> StoreJudgment[Store judgment:<br>passed, actual, expected, score]
-
-    StoreJudgment --> RunLoop
-
-    RunLoop -->|No| GroupResults[Group results by assertion across all runs]
-    GroupResults --> AggregateLoop[For each assertion]
-
-    AggregateLoop --> CountPasses[Count passing runs]
-    CountPasses --> CalcScore[Calculate averageScore]
-    CalcScore --> CheckThreshold{Passes >= required?}
-
-    CheckThreshold -->|Yes| MarkPass[Mark assertion as passed]
-    CheckThreshold -->|No| MarkFail[Mark assertion as failed]
-
-    MarkPass --> NextAssertion{More assertions?}
-    MarkFail --> NextAssertion
-
-    NextAssertion -->|Yes| AggregateLoop
-    NextAssertion -->|No| CheckOverall{All assertions passed?}
-
-    CheckOverall -->|Yes| OverallPass[Set overall passed = true]
-    CheckOverall -->|No| OverallFail[Set overall passed = false]
-
-    OverallPass --> FormatTAP[Format results as TAP<br>with score, actual, expected diagnostics]
+    OverallPass --> FormatTAP
     OverallFail --> FormatTAP
 
-    FormatTAP --> GeneratePath[Generate output path with date + slug]
-    GeneratePath --> CreateDir[Create output directory]
-    CreateDir --> WriteFile[Write TAP to file]
-    WriteFile --> DisplayPath[Display output path]
-    DisplayPath --> FlushLogs[Flush debug logs]
-    FlushLogs --> ExitCode{Overall passed?}
+    DisplayReport --> ExitCode{Overall<br/>passed?}
+    ExitCode -->|Yes| Exit0([Exit code 0])
+    ExitCode -->|No| Exit1([Exit code 1<br/>throw AITestError])
 
-    ExitCode -->|Yes| Exit0([Exit with code 0])
-    ExitCode -->|No| Exit1([Exit with code 1])
-
-    ErrorPath --> ExitErr([Exit with error])
+    ZodError --> ExitErr([Exit with error])
+    PathError --> ExitErr
     AuthError --> ExitErr
-    ParseError --> ExitErr
-    ValidationError --> ExitErr
-    PathTraversalError --> ExitErr
-    PromptReadFailed --> ExitErr
     MissingPrompt --> ExitErr
-    MissingUserPrompt --> ExitErr
-    NoAssertions --> ExitErr
-    TimeoutError --> ExitErr
-    ProcError --> ExitErr
-    JudgeTimeoutErr --> ExitErr
-    JudgeProcError --> ExitErr
-    YAMLError --> ExitErr
-    InvalidResponse --> ExitErr
+    MissingUP --> ExitErr
+    NoAssert --> ExitErr
+    ExecExtract -.->|ExtractionParseError| ExitErr
+    ParseResult -.->|ExtractionValidationError| ExitErr
+    ResolveImports -.->|PROMPT_READ_FAILED| ExitErr
+    ResultAgent -.->|TimeoutError / AgentProcessError| ExitErr
+    SpawnJudge -.->|TimeoutError / AgentProcessError| ExitErr
+    ParseYAML -.->|JUDGE_INVALID_TAP_YAML| ExitErr
+    Normalize -.->|JUDGE_INVALID_RESPONSE| ExitErr
 
-    style Start fill:#90EE90
-    style Exit0 fill:#90EE90
-    style Exit1 fill:#FFB6C1
-    style ExitErr fill:#FF6B6B
-    style Extraction fill:#87CEEB
-    style RunExecution fill:#87CEEB
-    style ResultAgent fill:#DDA0DD
-    style JudgePhase fill:#F0E68C
-    style FormatTAP fill:#F0E68C
+    style Start fill:#90EE90,color:#000
+    style Exit0 fill:#90EE90,color:#000
+    style Exit1 fill:#FFB6C1,color:#000
+    style ExitErr fill:#FF6B6B,color:#000
+    style Extraction fill:#E8F4FD,stroke:#87CEEB,color:#000
+    style Exec fill:#F3E8F9,stroke:#DDA0DD,color:#000
+    style Judge fill:#FFF8DC,stroke:#F0E68C,color:#000
+    style Agg fill:#F0FFF0,stroke:#90EE90,color:#000
+    style Output fill:#FFFACD,stroke:#F0E68C,color:#000
 ```
+
+## Module Map
+
+| Module | File | Role |
+|--------|------|------|
+| **CLI** | `bin/riteway.js` | Entry point, routes `riteway ai` to AI command |
+| **AI Command** | `source/ai-command.js` | `parseAIArgs`, `runAICommand`, `formatAssertionReport`, `defaults` |
+| **AI Runner** | `source/ai-runner.js` | `executeAgent`, `runAITests`, `readTestFile`, `verifyAgentAuthentication` |
+| **Test Extractor** | `source/test-extractor.js` | `buildExtractionPrompt`, `buildResultPrompt`, `buildJudgePrompt`, `extractTests` |
+| **Extraction Parser** | `source/extraction-parser.js` | `parseExtractionResult`, `resolveImportPaths`, `tryParseJSON`, `extractJSONFromMarkdown` |
+| **TAP YAML** | `source/tap-yaml.js` | `parseTAPYAML` |
+| **Aggregation** | `source/aggregation.js` | `normalizeJudgment`, `calculateRequiredPasses`, `aggregatePerAssertionResults` |
+| **Agent Parser** | `source/agent-parser.js` | `parseStringResult`, `parseOpenCodeNDJSON`, `unwrapAgentResult` |
+| **Agent Config** | `source/agent-config.js` | `getAgentConfig`, `loadAgentConfig` |
+| **Concurrency** | `source/limit-concurrency.js` | `limitConcurrency` |
+| **Test Output** | `source/test-output.js` | `formatTAP`, `recordTestOutput` |
+| **Validation** | `source/validation.js` | `validateFilePath`, `verifyAgentAuthentication` |
+| **Errors** | `source/ai-errors.js` | `errorCauses` registry for all AI error types |
+| **Debug** | `source/debug-logger.js` | `createDebugLogger` |
 
 ## Architecture Layers
 
-### 1. Input Validation Layer
-- CLI argument parsing with Zod schema validation
-- File path validation (prevent path traversal)
-- Agent authentication verification
+### 1. Input Validation Layer (`ai-command.js`, `validation.js`)
+- CLI argument parsing with Zod schema validation (`parseAIArgs`)
+- Centralized defaults: `{ runs: 4, threshold: 75, concurrency: 4, agent: 'claude', color: false }`
+- File path validation prevents directory traversal (`validateFilePath`)
+- Agent config loading: built-in (claude/opencode/cursor) or custom JSON file
+- Authentication smoke test before running any tests (`verifyAgentAuthentication`)
 
-### 2. Extraction Layer (Agent-Directed)
-- AI agent parses test file and identifies import paths declaratively
-- No regex import parsing (parseImports removed)
-- Returns structured metadata: userPrompt, importPaths, assertions
-- Validates all required fields present and non-empty
-- Import errors preserve original error as cause
+### 2. Extraction Layer (`test-extractor.js`, `extraction-parser.js`)
+- AI agent parses test file and identifies import paths declaratively (no regex)
+- `buildExtractionPrompt` accepts any assertion format (SudoLang, natural language, YAML, bullets)
+- Agent returns JSON: `{ userPrompt, importPaths[], assertions[] }`
+- `parseExtractionResult` validates shape (userPrompt exists, importPaths is array, assertions is array with id + requirement)
+- `resolveImportPaths` reads agent-identified files, concatenates into `promptUnderTest`
+- Import errors wrap original error as `cause` (no `access()` pre-check race condition)
+- Fail-fast validation: `userPrompt`, `promptUnderTest`, `assertions` all required non-empty
 
-### 3. Execution Layer (Two-Agent Pattern)
+### 3. Execution Layer (`ai-runner.js`, two-agent pattern)
 
 **Result Agent: Generate Only**
-- Receives userPrompt + promptUnderTest
-- Returns plain text (entire stdout IS the result)
-- Called once per run (same result shared across all judges)
-- rawOutput: true bypasses JSON parsing
+- Receives `userPrompt` + `promptUnderTest` via `buildResultPrompt`
+- Returns plain text (`rawOutput: true` -- entire stdout IS the result)
+- Called once per run (same result shared across all judges in that run)
+- No JSON parsing, no structure constraints
 
-**Judge Agent: Evaluate Only (parallel via Promise.all)**
-- Receives result + ONE requirement + full context
-- Returns TAP YAML diagnostic block
+**Judge Agent: Evaluate Only (parallel via `Promise.all`)**
+- Receives result + ONE requirement + full context via `buildJudgePrompt`
+- Returns TAP YAML diagnostic block (`rawOutput: true`)
+- `parseTAPYAML` extracts `---` delimited block, parses key-value pairs
+- `normalizeJudgment` validates object, applies safe defaults, clamps score 0..100, logs warnings
 - Called once per assertion per run (all judges parallel within a run)
-- parseTAPYAML extracts structured judgment
-- normalizeJudgment applies safe defaults, logs warnings
 
-**Concurrency Control**
-- limitConcurrency applies ACROSS runs (prevents API exhaustion)
-- Promise.all used WITHIN each run (judges are independent)
+**Concurrency Control (`limit-concurrency.js`)**
+- `limitConcurrency` controls max concurrent runs (default: 4)
+- `Promise.all` runs all judges in parallel within each run
+- Runs are independent; judges within a run share the same result
 
-### 4. Aggregation Layer
+### 4. Aggregation Layer (`aggregation.js`)
 - Groups results by assertion across all runs
-- Calculates pass rate and averageScore per assertion
-- Applies threshold: `Math.ceil(runs * threshold / 100)`
-- Determines overall pass/fail status
+- `calculateRequiredPasses`: `Math.ceil(runs * threshold / 100)`
+- Per assertion: `passCount`, `totalRuns`, `averageScore` (rounded 2dp)
+- `passed = passCount >= requiredPasses`
+- Overall: `passed = all assertions passed`
 
-### 5. Output Layer
-- TAP formatting with score, actual, expected diagnostics
-- Timestamped output files with unique slugs
-- Debug log file generation
+### 5. Output Layer (`test-output.js`, `ai-command.js`)
+- `formatTAP`: TAP with pass rate, avg score, actual, expected diagnostics
+- `recordTestOutput`: writes `.tap.md` file with timestamped path + slug
+- `formatAssertionReport`: console output per assertion (colored if `--color`)
+- Exit code 0 (all pass) or exit code 1 (any fail, throws `AITestError`)
 
-## Key Decision Points
+## Agent Wire Formats
 
-### Path Validation
-Prevents directory traversal attacks by validating all file paths against base directory.
+Different agent CLIs return different wire formats, handled transparently:
 
-### Agent-Directed Import Resolution
-The extraction agent identifies import paths declaratively. The CLI reads the files and builds promptUnderTest context. Path traversal validation prevents security issues.
+| Agent | Wire Format | Handler |
+|-------|-------------|---------|
+| **Claude CLI** | `{ result: "..." }` JSON envelope | `unwrapAgentResult` |
+| **OpenCode** | NDJSON with `type: "text"` events | `parseOpenCodeNDJSON` then `unwrapAgentResult` |
+| **Cursor** | Direct JSON | `unwrapAgentResult` |
 
-### Required Field Validation
-After extraction, three fields are validated as non-empty:
-- **promptUnderTest**: Every test must import the prompt under test
-- **userPrompt**: Every test must define a user prompt (inline or imported)
-- **assertions**: Every test must include at least one assertion
+The `rawOutput: true` flag (used by result + judge agents) unwraps the envelope and returns the raw string. The extraction agent uses normal JSON parsing via `unwrapAgentResult`.
 
-### Two-Agent Separation
-The result agent generates output without self-evaluation bias. The judge agent evaluates independently with full context. Same result is shared across all judges in a run for consistency.
+## Error Registry (`ai-errors.js`)
 
-### TAP YAML Parsing
-Judge returns TAP YAML diagnostic block (--- delimited) instead of JSON:
-- No multi-strategy JSON parsing needed
-- Trivially parseable: split on --- markers, parse key-value pairs
-- Aligns with TAP diagnostic format the framework already produces
+All errors use the `errorCauses` pattern with structured metadata:
 
-### Agent Output Handling
-Different agents return different wire formats:
-- **Claude CLI**: Wrapped in `{result: ...}` envelope
-- **OpenCode**: NDJSON (newline-delimited JSON) with text events
-- **Cursor**: Direct JSON
-
-The framework handles all formats transparently via `parseOutput` functions. The `rawOutput: true` flag unwraps the envelope and returns the raw string for result and judge agents.
+| Error Type | Code | Thrown By |
+|------------|------|-----------|
+| `ParseError` | `PARSE_FAILURE` | JSON parse failures |
+| `ParseError` | `JUDGE_INVALID_TAP_YAML` | `parseTAPYAML` -- no valid `---` block |
+| `ParseError` | `JUDGE_INVALID_RESPONSE` | `normalizeJudgment` -- non-object input |
+| `ValidationError` | `VALIDATION_FAILURE` | Zod schema failures, general validation |
+| `ValidationError` | `MISSING_PROMPT_UNDER_TEST` | `extractTests` -- no prompt imported |
+| `ValidationError` | `MISSING_USER_PROMPT` | `extractTests` -- no user prompt |
+| `ValidationError` | `NO_ASSERTIONS_FOUND` | `extractTests` -- empty assertions |
+| `ValidationError` | `PROMPT_READ_FAILED` | `resolveImportPaths` -- file read error (preserves cause) |
+| `SecurityError` | `SECURITY_VIOLATION` / `PATH_TRAVERSAL` | `validateFilePath` |
+| `TimeoutError` | `AGENT_TIMEOUT` | `executeAgent` -- agent exceeded timeout |
+| `AgentProcessError` | `AGENT_PROCESS_FAILURE` | `executeAgent` -- non-zero exit code |
+| `ExtractionParseError` | `EXTRACTION_PARSE_FAILURE` | `tryParseJSON` -- extraction JSON parse |
+| `ExtractionValidationError` | `EXTRACTION_VALIDATION_FAILURE` | `parseExtractionResult` -- invalid shape |
+| `AITestError` | `AI_TEST_ERROR` | `runAICommand` -- overall test failure |
+| `OutputError` | `OUTPUT_ERROR` | `recordTestOutput` -- file write error |
 
 ## Agent Call Count
 
@@ -244,3 +247,43 @@ Delta:                            +4 calls (+24%)
 ```
 
 The additional calls are the cost of separation of concerns and result consistency.
+
+## Sequence Diagram (Single Run)
+
+```
+            CLI            Extraction       Result         Judge
+             |              Agent            Agent          Agent(s)
+             |                |                |              |
+readTestFile |                |                |              |
+             |                |                |              |
+extractTests |--prompt------->|                |              |
+             |<-{ userPrompt, |                |              |
+             |  importPaths,  |                |              |
+             |  assertions }  |                |              |
+             |                |                |              |
+resolveImport|                |                |              |
+Paths        |                |                |              |
+             |                |                |              |
+buildResult  |                |                |              |
+Prompt       |--resultPrompt----------------->|              |
+             |<--plain text: "color scheme..." |              |
+             |              (raw response)     |              |
+             |                                 |              |
+Promise.all  |  (all judges in parallel)       |              |
+             |                                 |              |
+assertion 1: |--judgePrompt(+result)------------------------>|
+assertion 2: |--judgePrompt(+same result)-------------------->|
+assertion 3: |--judgePrompt(+same result)-------------------->|
+assertion 4: |--judgePrompt(+same result)-------------------->|
+             |                                 |              |
+             |<--TAP YAML: ---                               |
+             |   passed: true, actual, expected, score        |
+             |   ---                                          |
+             |<--(all 4 judge responses arrive in parallel)   |
+             |                                 |              |
+parseTAPYAML |                                 |              |
+normalize    |                                 |              |
+aggregate    |                                 |              |
+formatTAP    |                                 |              |
+recordOutput |                                 |              |
+```
