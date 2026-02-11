@@ -825,29 +825,42 @@ describe('ai-runner', () => {
   });
 
   describe('runAITests()', () => {
-    // Mock agent that handles both extraction and execution calls.
-    // Extraction calls (containing '<test-file-contents>') return extraction result object.
-    // Execution calls return { passed: true }.
-    const createDualMockArgs = ({ extractedTests, executionResult = { passed: true } } = {}) => {
+    // Mock agent for two-agent pattern:
+    // - Extraction calls (containing '<test-file-contents>') return extraction result (JSON)
+    // - Result agent calls (containing 'CONTEXT (Prompt Under Test)') return plain text
+    // - Judge agent calls (containing 'ACTUAL RESULT TO EVALUATE') return TAP YAML
+    const createTwoAgentMockArgs = ({
+      extractedTests,
+      resultText = 'Mock result from agent',
+      judgmentPassed = true,
+      judgmentScore = 85
+    } = {}) => {
       const extractionResult = {
         userPrompt: 'What is 2+2?',
         importPaths: ['package.json'], // Use existing file from project root
         assertions: extractedTests
       };
+      const tapYAML = `---
+passed: ${judgmentPassed}
+actual: "Mock actual output"
+expected: "Mock expected output"
+score: ${judgmentScore}
+---`;
+
       return [
         '-e',
         `const prompt = process.argv[process.argv.length - 1];
         if (prompt.includes('<test-file-contents>')) {
           console.log(JSON.stringify(${JSON.stringify(extractionResult)}));
-        } else {
-          console.log(JSON.stringify(${JSON.stringify(executionResult)}));
+        } else if (prompt.includes('ACTUAL RESULT TO EVALUATE')) {
+          console.log(\`${tapYAML}\`);
+        } else if (prompt.includes('CONTEXT (Prompt Under Test)')) {
+          console.log(${JSON.stringify(resultText)});
         }`
       ];
     };
 
-    // T7 breaking change: extractTests now returns { userPrompt, promptUnderTest, assertions }
-    // instead of array. T8 will update runAITests to handle new shape. Re-enable after T8.
-    test.skip('extracts tests and returns per-assertion results', async () => {
+    test('extracts tests and returns per-assertion results', async () => {
       const testDir = join(tmpdir(), 'riteway-test-' + createSlug());
 
       try {
@@ -866,7 +879,7 @@ describe('ai-runner', () => {
           threshold: 50,
           agentConfig: {
             command: 'node',
-            args: createDualMockArgs({ extractedTests })
+            args: createTwoAgentMockArgs({ extractedTests })
           }
         });
 
@@ -895,9 +908,7 @@ describe('ai-runner', () => {
       }
     });
 
-    // T7 breaking change: extractTests now returns { userPrompt, promptUnderTest, assertions }
-    // instead of array. T8 will update runAITests to handle new shape. Re-enable after T8.
-    test.skip('runs each assertion independently with N runs', async () => {
+    test('runs each assertion independently with N runs', async () => {
       const testDir = join(tmpdir(), 'riteway-test-' + createSlug());
 
       try {
@@ -915,7 +926,7 @@ describe('ai-runner', () => {
           threshold: 75,
           agentConfig: {
             command: 'node',
-            args: createDualMockArgs({ extractedTests })
+            args: createTwoAgentMockArgs({ extractedTests })
           }
         });
 
@@ -937,9 +948,7 @@ describe('ai-runner', () => {
       }
     });
 
-    // T7 breaking change: extractTests now returns { userPrompt, promptUnderTest, assertions }
-    // instead of array. T8 will update runAITests to handle new shape. Re-enable after T8.
-    test.skip('fails when an assertion does not meet threshold', async () => {
+    test('fails when an assertion does not meet threshold', async () => {
       const testDir = join(tmpdir(), 'riteway-test-' + createSlug());
 
       try {
@@ -957,9 +966,10 @@ describe('ai-runner', () => {
           threshold: 75,
           agentConfig: {
             command: 'node',
-            args: createDualMockArgs({
+            args: createTwoAgentMockArgs({
               extractedTests,
-              executionResult: { passed: false }
+              judgmentPassed: false,
+              judgmentScore: 25
             })
           }
         });
@@ -976,6 +986,46 @@ describe('ai-runner', () => {
           should: 'have passCount 0',
           actual: result.assertions[0].passCount,
           expected: 0
+        });
+      } finally {
+        rmSync(testDir, { recursive: true, force: true });
+      }
+    });
+
+    test('includes averageScore in result', async () => {
+      const testDir = join(tmpdir(), 'riteway-test-' + createSlug());
+
+      try {
+        mkdirSync(testDir, { recursive: true });
+        const testFile = join(testDir, 'test.sudo');
+        writeFileSync(testFile, '- Given a test, should pass');
+
+        const extractedTests = [
+          { id: 1, description: 'Given a test, should pass', requirement: 'should pass' }
+        ];
+
+        const result = await runAITests({
+          filePath: testFile,
+          runs: 2,
+          threshold: 50,
+          agentConfig: {
+            command: 'node',
+            args: createTwoAgentMockArgs({ extractedTests, judgmentScore: 85 })
+          }
+        });
+
+        assert({
+          given: 'test with score 85 on both runs',
+          should: 'include averageScore property',
+          actual: typeof result.assertions[0].averageScore,
+          expected: 'number'
+        });
+
+        assert({
+          given: 'test with score 85 on both runs',
+          should: 'calculate correct average score',
+          actual: result.assertions[0].averageScore,
+          expected: 85
         });
       } finally {
         rmSync(testDir, { recursive: true, force: true });
@@ -1354,6 +1404,15 @@ describe('ai-runner', () => {
   describe('normalizeJudgment()', () => {
     const createMockLogger = () => ({
       log: vi.fn()
+    });
+
+    test('is exported as a function', () => {
+      assert({
+        given: 'ai-runner module',
+        should: 'export normalizeJudgment',
+        actual: typeof normalizeJudgment,
+        expected: 'function'
+      });
     });
 
     test('passes through complete valid input unchanged', () => {

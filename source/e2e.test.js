@@ -20,9 +20,7 @@ const cliCheck = spawnSync('claude', ['-p', '--output-format', 'json', '--no-ses
 
 const isClaudeAuthenticated = cliCheck.status === 0;
 
-// T7 breaking change: extractTests now returns { userPrompt, promptUnderTest, assertions }
-// instead of array. runAITests needs updating in T8. Skip until then.
-const testRunner = describe.skip;
+const testRunner = isClaudeAuthenticated ? describe : describe.skip;
 
 testRunner('e2e: full workflow with real agent', async (assert) => {
   if (!isClaudeAuthenticated) {
@@ -120,6 +118,20 @@ testRunner('e2e: full workflow with real agent', async (assert) => {
     should: 'have 2 runResults',
     actual: results.assertions[0].runResults.length,
     expected: 2
+  });
+
+  assert({
+    given: 'first assertion with score data',
+    should: 'have averageScore property',
+    actual: typeof results.assertions[0].averageScore,
+    expected: 'number'
+  });
+
+  assert({
+    given: 'first assertion averageScore',
+    should: 'be between 0 and 100',
+    actual: results.assertions[0].averageScore >= 0 && results.assertions[0].averageScore <= 100,
+    expected: true
   });
 
   // Record test output to file

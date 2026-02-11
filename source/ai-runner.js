@@ -2,7 +2,7 @@ import { readFile } from 'fs/promises';
 import { spawn } from 'child_process';
 import { resolve, relative } from 'path';
 import { createError } from 'error-causes';
-import { extractTests } from './test-extractor.js';
+import { extractTests, buildResultPrompt, buildJudgePrompt, parseTAPYAML } from './test-extractor.js';
 import { createDebugLogger } from './debug-logger.js';
 
 /**
@@ -235,7 +235,7 @@ export const verifyAgentAuthentication = async ({ agentConfig, timeout = 30000, 
 };
 
 /**
- * Execute an agent CLI subprocess and return parsed JSON output.
+ * Execute an agent CLI subprocess and return parsed JSON output or raw string.
  * @param {Object} options
  * @param {Object} options.agentConfig - Agent configuration
  * @param {string} options.agentConfig.command - Command to execute
@@ -245,10 +245,11 @@ export const verifyAgentAuthentication = async ({ agentConfig, timeout = 30000, 
  * @param {number} [options.timeout=300000] - Timeout in milliseconds (default: 5 minutes)
  * @param {boolean} [options.debug=false] - Enable debug logging
  * @param {string} [options.logFile] - Optional log file path for debug output
- * @returns {Promise<Object>} Parsed JSON response from agent
- * @throws {Error} If JSON parsing fails or subprocess errors
+ * @param {boolean} [options.rawOutput=false] - If true, return raw stdout string without JSON parsing
+ * @returns {Promise<Object|string>} Parsed JSON response from agent or raw string if rawOutput is true
+ * @throws {Error} If JSON parsing fails (when rawOutput=false) or subprocess errors
  */
-export const executeAgent = ({ agentConfig, prompt, timeout = 300000, debug = false, logFile }) => {
+export const executeAgent = ({ agentConfig, prompt, timeout = 300000, debug = false, logFile, rawOutput = false }) => {
   return new Promise((resolve, reject) => {
     const { command, args = [], parseOutput } = agentConfig;
     const allArgs = [...args, prompt];
@@ -308,30 +309,59 @@ export const executeAgent = ({ agentConfig, prompt, timeout = 300000, debug = fa
       try {
         // Apply parseOutput function if provided (e.g., for NDJSON preprocessing)
         const processedOutput = parseOutput ? parseOutput(stdout, logger) : stdout;
-        
+
+        // If rawOutput is requested, unwrap JSON envelope and return as raw string
+        if (rawOutput) {
+          logger.log('Raw output requested - unwrapping JSON envelope');
+
+          // Claude CLI --output-format json wraps plain text responses in { result: "..." }
+          let result = processedOutput;
+
+          if (processedOutput.trim().startsWith('{')) {
+            try {
+              const parsed = JSON.parse(processedOutput);
+              if (parsed.result !== undefined) {
+                result = parsed.result;
+                logger.log('Unwrapped JSON envelope');
+              }
+            } catch {
+              // Not JSON — use raw output as-is
+              logger.log('Not a JSON envelope, using raw output');
+            }
+          }
+
+          if (typeof result !== 'string') {
+            throw new Error(`Raw output requested but result is not a string: ${typeof result}`);
+          }
+
+          logger.log(`Returning raw output (${result.length} characters)`);
+          logger.flush();
+          return resolve(result);
+        }
+
         // Parse the processed output - handles both raw JSON and markdown-wrapped JSON
         let result = parseStringResult(processedOutput, logger);
-        
+
         // If result is still a string (not parsed as JSON), that's an error
         if (typeof result === 'string') {
           throw new Error(`Agent output is not valid JSON: ${result.slice(0, 100)}`);
         }
-        
+
         // Claude CLI wraps response in envelope with "result" field
         if (result.result !== undefined) {
           result = result.result;
         }
-        
+
         // If result is a string after unwrapping, try to parse it again
         logger.log(`Parsed result type: ${typeof result}`);
         if (typeof result === 'string') {
           logger.log('Result is string, attempting to parse as JSON');
           result = parseStringResult(result, logger);
         }
-        
+
         logger.result(result);
         logger.flush();
-        
+
         resolve(result);
       } catch (err) {
         const truncatedStdout = stdout.length > 500 ? stdout.slice(0, 500) + '...' : stdout;
@@ -363,6 +393,34 @@ export const executeAgent = ({ agentConfig, prompt, timeout = 300000, debug = fa
   });
 };
 
+
+/**
+ * Simple concurrency limiter to avoid resource exhaustion.
+ * Executes tasks with a maximum concurrency limit.
+ * @param {Array<Function>} tasks - Array of async task functions
+ * @param {number} limit - Maximum number of concurrent tasks
+ * @returns {Promise<Array>} Results from all tasks
+ */
+const limitConcurrency = async (tasks, limit) => {
+  const results = [];
+  const executing = [];
+
+  for (const task of tasks) {
+    const promise = task().then(result => {
+      executing.splice(executing.indexOf(promise), 1);
+      return result;
+    });
+
+    results.push(promise);
+    executing.push(promise);
+
+    if (executing.length >= limit) {
+      await Promise.race(executing);
+    }
+  }
+
+  return Promise.all(results);
+};
 
 /**
  * Aggregate results from per-assertion test runs.
@@ -403,8 +461,8 @@ export const aggregatePerAssertionResults = ({ perAssertionResults, threshold, r
 };
 
 /**
- * Run AI tests with per-assertion isolation.
- * Pipeline: readTestFile → extractTests (sub-agent) → per-assertion parallel execution → aggregation.
+ * Run AI tests with two-agent pattern: result agent + judge agent.
+ * Pipeline: readTestFile → extractTests → result agent (once per run) → judge agents (per assertion, parallel) → aggregation.
  * @param {Object} options
  * @param {string} options.filePath - Path to test file
  * @param {number} [options.runs=4] - Number of test runs per assertion
@@ -413,7 +471,7 @@ export const aggregatePerAssertionResults = ({ perAssertionResults, threshold, r
  * @param {string} options.agentConfig.command - Command to execute
  * @param {Array<string>} [options.agentConfig.args=[]] - Command arguments
  * @param {number} [options.timeout=300000] - Timeout in milliseconds (default: 5 minutes)
- * @param {number} [options.concurrency=4] - Maximum concurrent test executions
+ * @param {number} [options.concurrency=4] - Maximum concurrent test executions (across runs)
  * @param {boolean} [options.debug=false] - Enable debug logging
  * @param {string} [options.logFile] - Optional log file path for debug output
  * @returns {Promise<Object>} Aggregated per-assertion test results
@@ -432,65 +490,85 @@ export const runAITests = async ({
   }
 }) => {
   const logger = createDebugLogger({ debug, logFile });
-  
-  // TODO: refactor to asyncPipe(readTestFile, extractTests({ agentConfig, timeout }))(filePath)
-  // Currently extractTests takes { testContent, testFilePath, agentConfig, timeout }, so the output of
-  // readTestFile (string) doesn't match the input shape. Currying extractTests to accept
-  // config first and return a function of testContent would enable point-free composition.
+
   const testContent = await readTestFile(filePath);
-  
+
   logger.log(`\nExtracting tests from: ${filePath}`);
   logger.log(`Test content length: ${testContent.length} characters`);
-  
-  const tests = await extractTests({ testContent, testFilePath: filePath, agentConfig, timeout, debug });
-  
-  logger.log(`Extracted ${tests.length} test assertions`);
 
-  // Simple concurrency limiter to avoid resource exhaustion
-  const limitConcurrency = async (tasks, limit) => {
-    const results = [];
-    const executing = [];
-    
-    for (const task of tasks) {
-      const promise = task().then(result => {
-        executing.splice(executing.indexOf(promise), 1);
-        return result;
-      });
-      
-      results.push(promise);
-      executing.push(promise);
-      
-      if (executing.length >= limit) {
-        await Promise.race(executing);
-      }
-    }
-    
-    return Promise.all(results);
-  };
-
-  // Create all test execution tasks
-  const testTasks = tests.flatMap(({ prompt, description }, index) =>
-    Array.from({ length: runs }, (_, runIndex) => async () => {
-      logger.log(`\nRunning assertion ${index + 1}/${tests.length}, run ${runIndex + 1}/${runs}`);
-      logger.log(`Assertion: ${description}`);
-      return executeAgent({ agentConfig, prompt, timeout, debug, logFile }).then(result => ({
-        assertionIndex: index,
-        description,
-        result
-      }));
-    })
-  );
-
-  // Execute all tasks with concurrency limit
-  const executionResults = await limitConcurrency(testTasks, concurrency);
-
-  // Group results by assertion
-  const perAssertionResults = tests.map(({ description }, index) => {
-    const runResults = executionResults
-      .filter(({ assertionIndex }) => assertionIndex === index)
-      .map(({ result }) => result);
-    return { description, runResults };
+  // Phase 1: Extract structured test data with agent-directed imports
+  const { userPrompt, promptUnderTest, assertions } = await extractTests({
+    testContent,
+    testFilePath: filePath,
+    agentConfig,
+    timeout,
+    debug
   });
+
+  logger.log(`Extracted ${assertions.length} assertions`);
+
+  // Build result prompt once (shared across all runs)
+  const resultPrompt = buildResultPrompt({ userPrompt, promptUnderTest });
+
+  // Build run tasks - limitConcurrency ACROSS runs only
+  const runTasks = Array.from({ length: runs }, (_, runIndex) => async () => {
+    logger.log(`\nRun ${runIndex + 1}/${runs}: Calling result agent...`);
+
+    // Step 1: Call result agent ONCE per run - returns plain text (no JSON parsing)
+    const result = await executeAgent({
+      agentConfig,
+      prompt: resultPrompt,
+      timeout,
+      debug,
+      logFile,
+      rawOutput: true
+    });
+
+    logger.log(`Result obtained (${result.length} chars). Judging ${assertions.length} assertions...`);
+
+    // Step 2: Call judge agent for EACH assertion - ALL PARALLEL within a run
+    const judgments = await Promise.all(
+      assertions.map(async (assertion, assertionIndex) => {
+        const judgePrompt = buildJudgePrompt({
+          userPrompt,
+          promptUnderTest,
+          result,
+          requirement: assertion.requirement,
+          description: assertion.description
+        });
+
+        logger.log(`  Assertion ${assertionIndex + 1}/${assertions.length}: ${assertion.description}`);
+
+        const judgeOutput = await executeAgent({
+          agentConfig,
+          prompt: judgePrompt,
+          timeout,
+          debug,
+          logFile,
+          rawOutput: true
+        });
+
+        // Parse TAP YAML and normalize
+        const parsed = parseTAPYAML(judgeOutput);
+        return normalizeJudgment(parsed, {
+          description: assertion.description,
+          runIndex,
+          logger
+        });
+      })
+    );
+
+    return judgments;
+  });
+
+  // Limit concurrency ACROSS runs, not within runs
+  const allRunJudgments = await limitConcurrency(runTasks, concurrency);
+
+  // Group by assertion across all runs
+  const perAssertionResults = assertions.map(({ description }, assertionIndex) => ({
+    description,
+    runResults: allRunJudgments.map(runJudgments => runJudgments[assertionIndex])
+  }));
 
   logger.flush();
   return aggregatePerAssertionResults({ perAssertionResults, threshold, runs });
