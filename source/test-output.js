@@ -43,15 +43,6 @@ export const generateOutputPath = async ({ testFilename, date, slug, outputDir, 
 };
 
 /**
- * ANSI color codes for terminal output.
- */
-const COLORS = {
-  green: '\x1b[32m',
-  red: '\x1b[31m',
-  reset: '\x1b[0m'
-};
-
-/**
  * Escape markdown special characters to prevent injection.
  * @param {string} text - Text to escape
  * @returns {string} Escaped text
@@ -70,11 +61,9 @@ const escapeMarkdown = (text) => {
  * @param {Object} results - Test results object
  * @param {boolean} results.passed - Overall pass status
  * @param {Array<Object>} results.assertions - Per-assertion results
- * @param {Object} [options={}] - Formatting options
- * @param {boolean} [options.color=false] - Enable ANSI color codes
  * @returns {string} TAP formatted output
  */
-export const formatTAP = (results, { color = false } = {}) => {
+export const formatTAP = (results) => {
   const { assertions } = results;
 
   let tap = 'TAP version 13\n';
@@ -82,9 +71,7 @@ export const formatTAP = (results, { color = false } = {}) => {
   assertions.forEach((assertion, index) => {
     const testNumber = index + 1;
     const prefix = assertion.passed ? 'ok' : 'not ok';
-    const colorCode = color ? (assertion.passed ? COLORS.green : COLORS.red) : '';
-    const resetCode = color ? COLORS.reset : '';
-    tap += `${colorCode}${prefix} ${testNumber}${resetCode} - ${assertion.description}\n`;
+    tap += `${prefix} ${testNumber} - ${assertion.description}\n`;
     tap += `  # pass rate: ${assertion.passCount}/${assertion.totalRuns}\n`;
 
     // Add average score if available

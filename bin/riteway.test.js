@@ -12,6 +12,7 @@ import {
   parseAIArgs,
   runAICommand,
   getAgentConfig,
+  loadAgentConfig,
   defaults,
   formatAssertionReport
 } from './riteway.js';
@@ -744,4 +745,116 @@ describe('formatAssertionReport()', async assert => {
     }).includes('\x1b['),
     expected: false
   });
+});
+
+describe('loadAgentConfig()', async assert => {
+  {
+    const config = await loadAgentConfig('./source/fixtures/test-agent-config.json');
+
+    assert({
+      given: 'a valid agent config JSON file',
+      should: 'return parsed agent configuration',
+      actual: config,
+      expected: {
+        command: 'my-agent',
+        args: ['--print', '--format', 'json']
+      }
+    });
+  }
+
+  {
+    const error = await Try(loadAgentConfig, './source/fixtures/invalid-agent-config.txt');
+
+    assert({
+      given: 'a file with invalid JSON',
+      should: 'throw ValidationError',
+      actual: error?.cause?.name,
+      expected: 'ValidationError'
+    });
+
+    assert({
+      given: 'a file with invalid JSON',
+      should: 'have AGENT_CONFIG_PARSE_ERROR code',
+      actual: error?.cause?.code,
+      expected: 'AGENT_CONFIG_PARSE_ERROR'
+    });
+  }
+
+  {
+    const error = await Try(loadAgentConfig, './source/fixtures/no-command-agent-config.json');
+
+    assert({
+      given: 'a config file missing the command field',
+      should: 'throw ValidationError',
+      actual: error?.cause?.name,
+      expected: 'ValidationError'
+    });
+
+    assert({
+      given: 'a config file missing the command field',
+      should: 'have AGENT_CONFIG_VALIDATION_ERROR code',
+      actual: error?.cause?.code,
+      expected: 'AGENT_CONFIG_VALIDATION_ERROR'
+    });
+  }
+
+  {
+    const error = await Try(loadAgentConfig, './nonexistent/path.json');
+
+    assert({
+      given: 'a nonexistent config file path',
+      should: 'throw ValidationError',
+      actual: error?.cause?.name,
+      expected: 'ValidationError'
+    });
+
+    assert({
+      given: 'a nonexistent config file path',
+      should: 'have AGENT_CONFIG_READ_ERROR code',
+      actual: error?.cause?.code,
+      expected: 'AGENT_CONFIG_READ_ERROR'
+    });
+  }
+});
+
+describe('parseAIArgs() with --agent-config', async assert => {
+  {
+    const parsed = parseAIArgs(['--agent-config', './my-agent.json', 'test.sudo']);
+
+    assert({
+      given: 'AI command with --agent-config flag',
+      should: 'include agentConfigPath in parsed args',
+      actual: parsed.agentConfigPath,
+      expected: './my-agent.json'
+    });
+  }
+
+  {
+    const error = Try(parseAIArgs, ['--agent', 'opencode', '--agent-config', './my-agent.json', 'test.sudo']);
+
+    assert({
+      given: 'both --agent and --agent-config flags',
+      should: 'throw ValidationError for mutual exclusion',
+      actual: error?.cause?.name,
+      expected: 'ValidationError'
+    });
+
+    assert({
+      given: 'both --agent and --agent-config flags',
+      should: 'have INVALID_AI_ARGS code',
+      actual: error?.cause?.code,
+      expected: 'INVALID_AI_ARGS'
+    });
+  }
+
+  {
+    const parsed = parseAIArgs(['test.sudo']);
+
+    assert({
+      given: 'AI command without --agent-config',
+      should: 'not include agentConfigPath in parsed args',
+      actual: parsed.agentConfigPath,
+      expected: undefined
+    });
+  }
 });

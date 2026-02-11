@@ -7,6 +7,7 @@ import { dirname } from 'path';
 import { spawnSync } from 'child_process';
 import { runAITests } from './ai-runner.js';
 import { recordTestOutput } from './test-output.js';
+import { loadAgentConfig } from '../bin/riteway.js';
 
 // @ts-ignore - import.meta.url is valid in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -230,4 +231,54 @@ testRunner('e2e: full workflow with real agent', async (assert) => {
   } catch {
     // Ignore cleanup errors
   }
+});
+
+testRunner('e2e: --agent-config JSON file flow', async (assert) => {
+  if (!isClaudeAuthenticated) {
+    console.log('⚠️  Skipping E2E tests: Claude CLI not authenticated. Run: claude setup-token');
+    return;
+  }
+
+  const configPath = join(__dirname, 'fixtures', 'claude-agent-config.json');
+  const testFilePath = join(__dirname, 'fixtures', 'multi-assertion-test.sudo');
+
+  // Load agent config from JSON file (same path as --agent-config CLI flag)
+  const agentConfig = await loadAgentConfig(configPath);
+
+  assert({
+    given: 'a claude agent config loaded from JSON file',
+    should: 'return config with command and args',
+    actual: { command: agentConfig.command, args: agentConfig.args },
+    expected: { command: 'claude', args: ['-p', '--output-format', 'json', '--no-session-persistence'] }
+  });
+
+  // Run AI tests using the file-loaded config
+  const results = await runAITests({
+    filePath: testFilePath,
+    runs: 2,
+    threshold: 75,
+    timeout: 180000,
+    agentConfig
+  });
+
+  assert({
+    given: 'AI tests run with agent config loaded from JSON file',
+    should: 'return aggregated results object',
+    actual: typeof results,
+    expected: 'object'
+  });
+
+  assert({
+    given: 'AI tests run with agent config loaded from JSON file',
+    should: 'have passed boolean property',
+    actual: typeof results.passed,
+    expected: 'boolean'
+  });
+
+  assert({
+    given: 'per-assertion results from file-loaded agent config',
+    should: 'return assertions array with 3 items',
+    actual: results.assertions.length,
+    expected: 3
+  });
 });

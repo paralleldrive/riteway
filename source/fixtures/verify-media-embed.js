@@ -68,19 +68,11 @@ const main = async () => {
   console.log('This script demonstrates the markdown media embed functionality');
   console.log('in TAP output format.\n');
   
-  // Format as TAP without color for file output
-  const tapOutput = formatTAP(mockResults, { color: false });
-  
+  const tapOutput = formatTAP(mockResults);
+
   console.log('TAP Output with Media Embeds:\n');
   console.log('─'.repeat(60));
   console.log(tapOutput);
-  console.log('─'.repeat(60));
-  
-  // Also format with color for terminal display
-  const coloredTapOutput = formatTAP(mockResults, { color: true });
-  console.log('\nColored TAP Output:\n');
-  console.log('─'.repeat(60));
-  console.log(coloredTapOutput);
   console.log('─'.repeat(60));
   
   // Write to verification output file

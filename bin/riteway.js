@@ -2,6 +2,7 @@
 
 import { resolve as resolvePath, basename } from 'path';
 import { readFileSync } from 'fs';
+import { readFile } from 'fs/promises';
 import resolve from 'resolve';
 import minimist from 'minimist';
 import { globSync } from 'glob';
@@ -80,6 +81,64 @@ export const getAgentConfig = (agentName = 'claude') => {
   return config;
 };
 
+/**
+ * Zod schema for agent config file validation.
+ * Only command and args are supported — Zod strips unknown keys by default,
+ * so properties like parseOutput (which is a function, not serializable to JSON)
+ * are silently ignored. Custom agents use default stdout parsing.
+ */
+const agentConfigFileSchema = z.object({
+  command: z.string().min(1, { error: 'command is required' }),
+  args: z.array(z.string()).default([])
+});
+
+/**
+ * Load and validate an agent configuration from a JSON file.
+ * @param {string} configPath - Path to the JSON config file
+ * @returns {Promise<Object>} Validated agent config with command and args
+ */
+export const loadAgentConfig = async (configPath) => {
+  let raw;
+  try {
+    raw = await readFile(configPath, 'utf-8');
+  } catch (err) {
+    throw createError({
+      ...ValidationError,
+      message: `Failed to read agent config file: ${configPath}`,
+      code: 'AGENT_CONFIG_READ_ERROR',
+      cause: err
+    });
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    throw createError({
+      ...ValidationError,
+      message: `Agent config file is not valid JSON: ${configPath}`,
+      code: 'AGENT_CONFIG_PARSE_ERROR',
+      cause: err
+    });
+  }
+
+  try {
+    return agentConfigFileSchema.parse(parsed);
+  } catch (zodError) {
+    const issues = zodError.issues || zodError.errors;
+    const errorMessage = issues
+      ? issues.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')
+      : zodError.message || 'Validation failed';
+
+    throw createError({
+      ...ValidationError,
+      message: `Invalid agent config: ${errorMessage}`,
+      code: 'AGENT_CONFIG_VALIDATION_ERROR',
+      cause: zodError
+    });
+  }
+};
+
 export const parseArgs = (argv) => {
   const opts = minimist(argv, {
     alias: { r: 'require', i: 'ignore' },
@@ -111,6 +170,7 @@ const aiArgsSchema = z.object({
   agent: z.enum(['claude', 'opencode', 'cursor'], {
     error: 'agent must be one of: claude, opencode, cursor'
   }),
+  agentConfigPath: z.string().optional(),
   concurrency: z.number().int().positive({
     error: 'concurrency must be a positive integer'
   }),
@@ -122,8 +182,20 @@ const aiArgsSchema = z.object({
 });
 
 export const parseAIArgs = (argv) => {
+  // Mutual exclusion: --agent and --agent-config cannot both be explicitly provided
+  const hasExplicitAgent = argv.includes('--agent');
+  const hasAgentConfig = argv.includes('--agent-config');
+
+  if (hasExplicitAgent && hasAgentConfig) {
+    throw createError({
+      ...ValidationError,
+      code: 'INVALID_AI_ARGS',
+      message: '--agent and --agent-config are mutually exclusive'
+    });
+  }
+
   const opts = minimist(argv, {
-    string: ['runs', 'threshold', 'agent', 'concurrency'],
+    string: ['runs', 'threshold', 'agent', 'concurrency', 'agent-config'],
     boolean: ['validate-extraction', 'debug', 'debug-log', 'color'],
     default: {
       runs: defaults.runs,
@@ -138,12 +210,14 @@ export const parseAIArgs = (argv) => {
 
   // Concurrency defaults if not specified
   const concurrency = opts.concurrency ? Number(opts.concurrency) : defaults.concurrency;
+  const agentConfigPath = opts['agent-config'] || undefined;
 
   const parsed = {
     filePath: opts._[0],
     runs: Number(opts.runs),
     threshold: Number(opts.threshold),
     agent: opts.agent,
+    ...(agentConfigPath ? { agentConfigPath } : {}),
     validateExtraction: opts['validate-extraction'],
     debug: opts.debug || opts['debug-log'], // --debug-log implies --debug
     debugLog: opts['debug-log'],
@@ -162,12 +236,18 @@ export const parseAIArgs = (argv) => {
       : zodError.message || 'Validation failed';
 
     throw createError({
-      name: 'ValidationError',
+      ...ValidationError,
       code: 'INVALID_AI_ARGS',
       message: errorMessage,
       cause: zodError
     });
   }
+};
+
+const ANSI = {
+  green: '\x1b[32m',
+  red: '\x1b[31m',
+  reset: '\x1b[0m'
 };
 
 /**
@@ -182,12 +262,12 @@ export const parseAIArgs = (argv) => {
  */
 export const formatAssertionReport = ({ passed, description, passCount, totalRuns, color = false }) => {
   const status = passed ? 'PASS' : 'FAIL';
-  const colorCode = color ? (passed ? '\x1b[32m' : '\x1b[31m') : '';
-  const resetCode = color ? '\x1b[0m' : '';
+  const colorCode = color ? (passed ? ANSI.green : ANSI.red) : '';
+  const resetCode = color ? ANSI.reset : '';
   return `  ${colorCode}[${status}]${resetCode} ${description} (${passCount}/${totalRuns} runs)`;
 };
 
-export const runAICommand = async ({ filePath, runs, threshold, agent, debug, debugLog, color, concurrency, cwd }) => {
+export const runAICommand = async ({ filePath, runs, threshold, agent, agentConfigPath, debug, debugLog, color, concurrency, cwd }) => {
   if (!filePath) {
     throw createError({
       ...ValidationError,
@@ -199,13 +279,21 @@ export const runAICommand = async ({ filePath, runs, threshold, agent, debug, de
     // Validate and resolve the test file path
     const fullPath = validateFilePath(filePath, cwd);
     const testFilename = basename(filePath);
-    const agentConfig = getAgentConfig(agent);
+    // agentConfigPath is not restricted by validateFilePath — unlike test file paths,
+    // config files are explicitly user-supplied and may live outside the project directory.
+    const agentConfig = agentConfigPath
+      ? await loadAgentConfig(agentConfigPath)
+      : getAgentConfig(agent);
 
     // Generate log file path if --debug-log is enabled
     const logFile = debugLog ? await generateLogFilePath(testFilename) : undefined;
 
+    const agentLabel = agentConfigPath
+      ? `custom (${agentConfigPath})`
+      : agent;
+
     console.log(`Running AI tests: ${testFilename}`);
-    console.log(`Configuration: ${runs} runs, ${threshold}% threshold, agent: ${agent}`);
+    console.log(`Configuration: ${runs} runs, ${threshold}% threshold, agent: ${agentLabel}`);
     if (debug) {
       console.log(`Debug mode: enabled`);
       if (logFile) {
@@ -214,7 +302,7 @@ export const runAICommand = async ({ filePath, runs, threshold, agent, debug, de
     }
 
     // Verify agent authentication before running tests
-    console.log(`\nVerifying ${agent} agent authentication...`);
+    console.log(`\nVerifying ${agentLabel} agent authentication...`);
     const authResult = await verifyAgentAuthentication({
       agentConfig,
       timeout: 30000,
@@ -338,14 +426,15 @@ const mainAIRunner = asyncPipe(
 const handleAIError = handleAIRunnerErrors({
   ValidationError: ({ message, code }) => {
     console.error(`❌ Validation failed: ${message}`);
-    console.error('\nUsage: riteway ai <file> [--runs N] [--threshold P] [--agent NAME] [--validate-extraction] [--debug] [--debug-log] [--color]');
+    console.error('\nUsage: riteway ai <file> [--runs N] [--threshold P] [--agent NAME | --agent-config FILE] [--validate-extraction] [--debug] [--debug-log] [--color]');
     console.error(`  --runs N               Number of test runs per assertion (default: ${defaults.runs})`);
     console.error(`  --threshold P          Required pass percentage 0-100 (default: ${defaults.threshold})`);
     console.error(`  --agent NAME           AI agent: claude, opencode, cursor (default: ${defaults.agent})`);
+    console.error('  --agent-config FILE    Path to custom agent config JSON (mutually exclusive with --agent)');
     console.error('  --validate-extraction  Validate extraction with judge sub-agent');
     console.error('  --debug                Enable debug output to console');
     console.error('  --debug-log            Enable debug output and save to auto-generated log file');
-    console.error(`  --color                Enable ANSI color codes in TAP output (default: ${defaults.color ? 'enabled' : 'disabled'})`);
+    console.error(`  --color                Enable ANSI color codes in terminal output (default: ${defaults.color ? 'enabled' : 'disabled'})`);
     console.error('\nAuthentication: Run agent-specific OAuth setup:');
     console.error("  Claude:  'claude setup-token'");
     console.error("  Cursor:  'agent login'");
@@ -388,11 +477,12 @@ AI Test Options:
   --runs N                  Number of test runs per assertion (default: ${defaults.runs})
   --threshold P             Required pass percentage 0-100 (default: ${defaults.threshold})
   --agent NAME              AI agent to use: claude, opencode, cursor (default: ${defaults.agent})
+  --agent-config FILE       Path to custom agent config JSON {"command","args"} (mutually exclusive with --agent)
   --concurrency N           Max concurrent test executions (default: ${defaults.concurrency})
   --validate-extraction     Validate extraction output with judge sub-agent
   --debug                   Enable debug output to console
   --debug-log               Enable debug output and save to auto-generated log file
-  --color                   Enable ANSI color codes in TAP output (default: ${defaults.color ? 'enabled' : 'disabled'})
+  --color                   Enable ANSI color codes in terminal output (default: ${defaults.color ? 'enabled' : 'disabled'})
 
 Authentication:
   All agents use OAuth authentication (no API keys required):
@@ -409,6 +499,7 @@ Examples:
   riteway ai prompts/test.sudo --debug
   riteway ai prompts/test.sudo --debug-log
   riteway ai prompts/test.sudo --color
+  riteway ai prompts/test.sudo --agent-config ./my-agent.json
     `);
     process.exit(0);
   }
