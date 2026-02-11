@@ -120,6 +120,44 @@ export const parseOpenCodeNDJSON = (ndjson, logger) => {
 export const readTestFile = (filePath) => readFile(filePath, 'utf-8');
 
 /**
+ * Normalize a judge response with safe defaults, logging, and error handling.
+ * This function normalizes a judge response (already parsed from TAP YAML) to ensure
+ * consistent structure with safe defaults for missing fields.
+ * @param {Object} raw - Raw judge response (already parsed from TAP YAML)
+ * @param {Object} options
+ * @param {string} options.description - Test assertion description
+ * @param {number} options.runIndex - Zero-based run index
+ * @param {Object} options.logger - Logger instance with log() method
+ * @returns {Object} Normalized judgment with passed, actual, expected, score fields
+ * @throws {Error} If raw is not an object (null, string, undefined, etc.)
+ */
+export const normalizeJudgment = (raw, { description, runIndex, logger }) => {
+  // Fail loud on non-object input per error-causes.md
+  if (typeof raw !== 'object' || raw === null) {
+    throw createError({
+      name: 'ParseError',
+      message: 'Judge returned non-object response',
+      code: 'JUDGE_INVALID_RESPONSE',
+      description,
+      runIndex,
+      rawResponse: raw
+    });
+  }
+
+  // Log warning when applying defaults for missing fields
+  if (raw?.actual === undefined || raw?.expected === undefined) {
+    logger.log(`Warning: Judge response missing fields for "${description}" run ${runIndex + 1}`);
+  }
+
+  return {
+    passed: raw?.passed === true,
+    actual: raw?.actual ?? 'No actual provided',
+    expected: raw?.expected ?? 'No expected provided',
+    score: Number.isFinite(raw?.score) ? Math.max(0, Math.min(100, raw.score)) : 0
+  };
+};
+
+/**
  * Calculate the number of passes required to meet the threshold.
  * Uses ceiling to ensure threshold is met or exceeded.
  * @param {Object} options
@@ -341,11 +379,17 @@ export const aggregatePerAssertionResults = ({ perAssertionResults, threshold, r
 
   const assertions = perAssertionResults.map(({ description, runResults }) => {
     const passCount = runResults.filter(r => r.passed).length;
+
+    // Calculate average score across all runs, defaulting missing scores to 0
+    const totalScore = runResults.reduce((sum, r) => sum + (r.score ?? 0), 0);
+    const averageScore = Math.round((totalScore / runResults.length) * 100) / 100;
+
     return {
       description,
       passed: passCount >= requiredPasses,
       passCount,
       totalRuns: runs,
+      averageScore,
       runResults
     };
   });

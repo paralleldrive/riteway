@@ -1,4 +1,4 @@
-import { describe, test } from 'vitest';
+import { describe, test, vi } from 'vitest';
 import { assert } from './vitest.js';
 import {
   readTestFile,
@@ -9,7 +9,8 @@ import {
   validateFilePath,
   verifyAgentAuthentication,
   parseStringResult,
-  parseOpenCodeNDJSON
+  parseOpenCodeNDJSON,
+  normalizeJudgment
 } from './ai-runner.js';
 import { writeFileSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
@@ -1198,6 +1199,492 @@ describe('ai-runner', () => {
         should: 'include totalRuns per assertion',
         actual: result.assertions[0].totalRuns,
         expected: 2
+      });
+    });
+
+    test('calculates averageScore from run results', () => {
+      const perAssertionResults = [
+        {
+          description: 'test with scores',
+          runResults: [
+            { passed: true, score: 85 },
+            { passed: true, score: 95 },
+            { passed: true, score: 90 }
+          ]
+        }
+      ];
+
+      const result = aggregatePerAssertionResults({
+        perAssertionResults,
+        threshold: 50,
+        runs: 3
+      });
+
+      assert({
+        given: 'run results with scores 85, 95, 90',
+        should: 'calculate average score as 90',
+        actual: result.assertions[0].averageScore,
+        expected: 90
+      });
+    });
+
+    test('rounds averageScore to 2 decimal places', () => {
+      const perAssertionResults = [
+        {
+          description: 'test with fractional average',
+          runResults: [
+            { passed: true, score: 85 },
+            { passed: true, score: 90 },
+            { passed: false, score: 88 }
+          ]
+        }
+      ];
+
+      const result = aggregatePerAssertionResults({
+        perAssertionResults,
+        threshold: 50,
+        runs: 3
+      });
+
+      // Average: (85 + 90 + 88) / 3 = 87.666... rounds to 87.67
+      assert({
+        given: 'run results with scores 85, 90, 88',
+        should: 'round average score to 87.67',
+        actual: result.assertions[0].averageScore,
+        expected: 87.67
+      });
+    });
+
+    test('defaults missing score values to 0 in average', () => {
+      const perAssertionResults = [
+        {
+          description: 'test with some missing scores',
+          runResults: [
+            { passed: true, score: 90 },
+            { passed: true }, // missing score
+            { passed: true, score: 80 }
+          ]
+        }
+      ];
+
+      const result = aggregatePerAssertionResults({
+        perAssertionResults,
+        threshold: 50,
+        runs: 3
+      });
+
+      // Average: (90 + 0 + 80) / 3 = 56.666... rounds to 56.67
+      assert({
+        given: 'run results with one missing score',
+        should: 'treat missing score as 0 and calculate average as 56.67',
+        actual: result.assertions[0].averageScore,
+        expected: 56.67
+      });
+    });
+
+    test('handles all missing scores by defaulting to 0', () => {
+      const perAssertionResults = [
+        {
+          description: 'test with all missing scores',
+          runResults: [
+            { passed: true },
+            { passed: false },
+            { passed: true }
+          ]
+        }
+      ];
+
+      const result = aggregatePerAssertionResults({
+        perAssertionResults,
+        threshold: 50,
+        runs: 3
+      });
+
+      assert({
+        given: 'run results with all missing scores',
+        should: 'calculate average score as 0',
+        actual: result.assertions[0].averageScore,
+        expected: 0
+      });
+    });
+  });
+
+  describe('normalizeJudgment()', () => {
+    const createMockLogger = () => ({
+      log: vi.fn()
+    });
+
+    test('passes through complete valid input unchanged', () => {
+      const logger = createMockLogger();
+      const raw = {
+        passed: true,
+        actual: 'Result from agent',
+        expected: 'Expected output',
+        score: 85
+      };
+
+      const result = normalizeJudgment(raw, {
+        description: 'test assertion',
+        runIndex: 0,
+        logger
+      });
+
+      assert({
+        given: 'complete valid judgment with passed: true',
+        should: 'preserve passed as true',
+        actual: result.passed,
+        expected: true
+      });
+
+      assert({
+        given: 'complete valid judgment',
+        should: 'preserve actual value',
+        actual: result.actual,
+        expected: 'Result from agent'
+      });
+
+      assert({
+        given: 'complete valid judgment',
+        should: 'preserve expected value',
+        actual: result.expected,
+        expected: 'Expected output'
+      });
+
+      assert({
+        given: 'complete valid judgment with score 85',
+        should: 'preserve score value',
+        actual: result.score,
+        expected: 85
+      });
+    });
+
+    test('defaults passed to false when missing', () => {
+      const logger = createMockLogger();
+      const raw = {
+        actual: 'Result',
+        expected: 'Expected',
+        score: 50
+      };
+
+      const result = normalizeJudgment(raw, {
+        description: 'test',
+        runIndex: 0,
+        logger
+      });
+
+      assert({
+        given: 'judgment missing passed field',
+        should: 'default passed to false',
+        actual: result.passed,
+        expected: false
+      });
+    });
+
+    test('defaults passed to false when explicitly false', () => {
+      const logger = createMockLogger();
+      const raw = {
+        passed: false,
+        actual: 'Result',
+        expected: 'Expected',
+        score: 50
+      };
+
+      const result = normalizeJudgment(raw, {
+        description: 'test',
+        runIndex: 0,
+        logger
+      });
+
+      assert({
+        given: 'judgment with passed: false',
+        should: 'keep passed as false',
+        actual: result.passed,
+        expected: false
+      });
+    });
+
+    test('defaults missing actual and expected fields with warning', () => {
+      const logger = createMockLogger();
+      const raw = {
+        passed: true,
+        score: 100
+      };
+
+      const result = normalizeJudgment(raw, {
+        description: 'test assertion',
+        runIndex: 2,
+        logger
+      });
+
+      assert({
+        given: 'judgment missing actual',
+        should: 'default actual to "No actual provided"',
+        actual: result.actual,
+        expected: 'No actual provided'
+      });
+
+      assert({
+        given: 'judgment missing expected',
+        should: 'default expected to "No expected provided"',
+        actual: result.expected,
+        expected: 'No expected provided'
+      });
+
+      assert({
+        given: 'judgment missing actual and expected',
+        should: 'log warning with description and run number',
+        actual: logger.log.mock.calls[0][0],
+        expected: 'Warning: Judge response missing fields for "test assertion" run 3'
+      });
+    });
+
+    test('logs warning when only actual is missing', () => {
+      const logger = createMockLogger();
+      const raw = {
+        passed: true,
+        expected: 'Expected value',
+        score: 90
+      };
+
+      normalizeJudgment(raw, {
+        description: 'my test',
+        runIndex: 0,
+        logger
+      });
+
+      assert({
+        given: 'judgment missing actual',
+        should: 'log warning',
+        actual: logger.log.mock.calls.length > 0,
+        expected: true
+      });
+    });
+
+    test('logs warning when only expected is missing', () => {
+      const logger = createMockLogger();
+      const raw = {
+        passed: true,
+        actual: 'Actual value',
+        score: 90
+      };
+
+      normalizeJudgment(raw, {
+        description: 'my test',
+        runIndex: 1,
+        logger
+      });
+
+      assert({
+        given: 'judgment missing expected',
+        should: 'log warning',
+        actual: logger.log.mock.calls.length > 0,
+        expected: true
+      });
+    });
+
+    test('clamps score above 100 to 100', () => {
+      const logger = createMockLogger();
+      const raw = {
+        passed: true,
+        actual: 'Result',
+        expected: 'Expected',
+        score: 150
+      };
+
+      const result = normalizeJudgment(raw, {
+        description: 'test',
+        runIndex: 0,
+        logger
+      });
+
+      assert({
+        given: 'judgment with score 150',
+        should: 'clamp to 100',
+        actual: result.score,
+        expected: 100
+      });
+    });
+
+    test('clamps negative score to 0', () => {
+      const logger = createMockLogger();
+      const raw = {
+        passed: false,
+        actual: 'Result',
+        expected: 'Expected',
+        score: -50
+      };
+
+      const result = normalizeJudgment(raw, {
+        description: 'test',
+        runIndex: 0,
+        logger
+      });
+
+      assert({
+        given: 'judgment with score -50',
+        should: 'clamp to 0',
+        actual: result.score,
+        expected: 0
+      });
+    });
+
+    test('defaults non-finite score to 0', () => {
+      const logger = createMockLogger();
+      const raw = {
+        passed: true,
+        actual: 'Result',
+        expected: 'Expected',
+        score: NaN
+      };
+
+      const result = normalizeJudgment(raw, {
+        description: 'test',
+        runIndex: 0,
+        logger
+      });
+
+      assert({
+        given: 'judgment with NaN score',
+        should: 'default to 0',
+        actual: result.score,
+        expected: 0
+      });
+    });
+
+    test('defaults missing score to 0', () => {
+      const logger = createMockLogger();
+      const raw = {
+        passed: true,
+        actual: 'Result',
+        expected: 'Expected'
+      };
+
+      const result = normalizeJudgment(raw, {
+        description: 'test',
+        runIndex: 0,
+        logger
+      });
+
+      assert({
+        given: 'judgment missing score',
+        should: 'default to 0',
+        actual: result.score,
+        expected: 0
+      });
+    });
+
+    test('throws ParseError on null input', () => {
+      const logger = createMockLogger();
+      let error;
+
+      try {
+        normalizeJudgment(null, {
+          description: 'test assertion',
+          runIndex: 1,
+          logger
+        });
+      } catch (e) {
+        error = e;
+      }
+
+      assert({
+        given: 'null input',
+        should: 'throw Error with cause',
+        actual: error instanceof Error && error.cause !== undefined,
+        expected: true
+      });
+
+      assert({
+        given: 'null input',
+        should: 'have ParseError name in cause',
+        actual: error?.cause?.name,
+        expected: 'ParseError'
+      });
+
+      assert({
+        given: 'null input',
+        should: 'have JUDGE_INVALID_RESPONSE code in cause',
+        actual: error?.cause?.code,
+        expected: 'JUDGE_INVALID_RESPONSE'
+      });
+
+      assert({
+        given: 'null input',
+        should: 'include description in cause',
+        actual: error?.cause?.description,
+        expected: 'test assertion'
+      });
+
+      assert({
+        given: 'null input',
+        should: 'include runIndex in cause',
+        actual: error?.cause?.runIndex,
+        expected: 1
+      });
+
+      assert({
+        given: 'null input',
+        should: 'include rawResponse in cause',
+        actual: error?.cause?.rawResponse,
+        expected: null
+      });
+    });
+
+    test('throws ParseError on string input', () => {
+      const logger = createMockLogger();
+      let error;
+
+      try {
+        normalizeJudgment('not an object', {
+          description: 'test',
+          runIndex: 0,
+          logger
+        });
+      } catch (e) {
+        error = e;
+      }
+
+      assert({
+        given: 'string input',
+        should: 'have ParseError name in cause',
+        actual: error?.cause?.name,
+        expected: 'ParseError'
+      });
+
+      assert({
+        given: 'string input',
+        should: 'have JUDGE_INVALID_RESPONSE code in cause',
+        actual: error?.cause?.code,
+        expected: 'JUDGE_INVALID_RESPONSE'
+      });
+    });
+
+    test('throws ParseError on undefined input', () => {
+      const logger = createMockLogger();
+      let error;
+
+      try {
+        normalizeJudgment(undefined, {
+          description: 'test',
+          runIndex: 0,
+          logger
+        });
+      } catch (e) {
+        error = e;
+      }
+
+      assert({
+        given: 'undefined input',
+        should: 'have ParseError name in cause',
+        actual: error?.cause?.name,
+        expected: 'ParseError'
+      });
+
+      assert({
+        given: 'undefined input',
+        should: 'have JUDGE_INVALID_RESPONSE code in cause',
+        actual: error?.cause?.code,
+        expected: 'JUDGE_INVALID_RESPONSE'
       });
     });
   });
