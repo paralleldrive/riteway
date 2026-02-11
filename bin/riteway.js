@@ -170,6 +170,20 @@ export const parseAIArgs = (argv) => {
   }
 };
 
+/**
+ * Pure function to format a single assertion report line
+ * @param {Object} assertion - Assertion result object
+ * @param {boolean} assertion.passed - Whether the assertion passed
+ * @param {string} assertion.description - Assertion description
+ * @param {number} assertion.passCount - Number of passing runs
+ * @param {number} assertion.totalRuns - Total number of runs
+ * @returns {string} Formatted assertion report line
+ */
+export const formatAssertionReport = ({ passed, description, passCount, totalRuns }) => {
+  const status = passed ? 'PASS' : 'FAIL';
+  return `  [${status}] ${description} (${passCount}/${totalRuns} runs)`;
+};
+
 export const runAICommand = async ({ filePath, runs, threshold, agent, debug, debugLog, color, concurrency, cwd }) => {
   if (!filePath) {
     throw createError({
@@ -198,10 +212,10 @@ export const runAICommand = async ({ filePath, runs, threshold, agent, debug, de
 
     // Verify agent authentication before running tests
     console.log(`\nVerifying ${agent} agent authentication...`);
-    const authResult = await verifyAgentAuthentication({ 
-      agentConfig, 
+    const authResult = await verifyAgentAuthentication({
+      agentConfig,
       timeout: 30000,
-      debug 
+      debug
     });
 
     if (!authResult.success) {
@@ -222,20 +236,17 @@ export const runAICommand = async ({ filePath, runs, threshold, agent, debug, de
       logFile
     });
 
-    let outputPath;
-    try {
-      outputPath = await recordTestOutput({
-        results,
-        testFilename,
-        color
-      });
-    } catch (error) {
+    const outputPath = await recordTestOutput({
+      results,
+      testFilename,
+      color
+    }).catch(error => {
       throw createError({
         ...OutputError,
         message: `Failed to record test output: ${error.message}`,
         cause: error
       });
-    }
+    });
 
     const { assertions } = results;
     const passedAssertions = assertions.filter(a => a.passed).length;
@@ -246,10 +257,7 @@ export const runAICommand = async ({ filePath, runs, threshold, agent, debug, de
       console.log(`Debug log recorded: ${logFile}`);
     }
     console.log(`Assertions: ${passedAssertions}/${totalAssertions} passed`);
-    assertions.forEach(a => {
-      const status = a.passed ? 'PASS' : 'FAIL';
-      console.log(`  [${status}] ${a.description} (${a.passCount}/${a.totalRuns} runs)`);
-    });
+    console.log(assertions.map(formatAssertionReport).join('\n'));
 
     if (!results.passed) {
       const passRate = Math.round(passedAssertions / totalAssertions * 100);

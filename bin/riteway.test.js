@@ -12,7 +12,8 @@ import {
   parseAIArgs,
   runAICommand,
   getAgentConfig,
-  defaults
+  defaults,
+  formatAssertionReport
 } from './riteway.js';
 
 // Test utilities
@@ -667,4 +668,42 @@ describe('runAICommand()', async assert => {
       expected: 'PATH_TRAVERSAL'
     });
   }
+});
+
+describe('formatAssertionReport()', async assert => {
+  assert({
+    given: 'a passing assertion',
+    should: 'format with PASS status',
+    actual: formatAssertionReport({
+      passed: true,
+      description: 'test assertion',
+      passCount: 4,
+      totalRuns: 4
+    }),
+    expected: '  [PASS] test assertion (4/4 runs)'
+  });
+
+  assert({
+    given: 'a failing assertion',
+    should: 'format with FAIL status',
+    actual: formatAssertionReport({
+      passed: false,
+      description: 'test assertion',
+      passCount: 2,
+      totalRuns: 4
+    }),
+    expected: '  [FAIL] test assertion (2/4 runs)'
+  });
+
+  assert({
+    given: 'an assertion with partial success',
+    should: 'format with correct pass/total ratio',
+    actual: formatAssertionReport({
+      passed: false,
+      description: 'partial pass',
+      passCount: 3,
+      totalRuns: 5
+    }),
+    expected: '  [FAIL] partial pass (3/5 runs)'
+  });
 });
