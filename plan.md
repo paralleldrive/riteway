@@ -2,6 +2,11 @@
 
 ## Current Epics
 
+### 📋 PR #394 Remediation Epic
+**Status**: 📋 PLANNED
+**File**: [`tasks/2026-02-11-pr394-remediation-epic.md`](./tasks/2026-02-11-pr394-remediation-epic.md)
+**Goal**: Address all outstanding PR review concerns, code quality issues, and file size violations before merge
+
 ### 📋 Context7 GitHub Action Integration Epic
 **Status**: 📋 PLANNING - Awaiting Approval  
 **File**: [`tasks/2025-01-27-context7-github-action-epic.md`](./tasks/2025-01-27-context7-github-action-epic.md)  
