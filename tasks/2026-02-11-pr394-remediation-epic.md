@@ -1,6 +1,6 @@
 # PR #394 Remediation Epic
 
-**Status**: 🚧 IN PROGRESS (Wave 1 ✅ DONE, Wave 2 next)
+**Status**: 🚧 IN PROGRESS (Wave 1 ✅, Wave 2 ✅, Wave 3 next)
 **Goal**: Address all outstanding PR review concerns, code quality issues, and file size violations before merge
 
 ## Overview
@@ -50,7 +50,7 @@ Eliminate the redundant `description` field from extraction output. The "Given X
 
 ## Wave 2 — Code Quality (all parallel, after Wave 1)
 
-## Refactor `formatTAP` to Avoid Mutation
+## Refactor `formatTAP` to Avoid Mutation — ✅ DONE
 
 Replace the 14 `tap +=` string mutations in `formatTAP` with an immutable array-join pattern.
 
@@ -60,7 +60,7 @@ Replace the 14 `tap +=` string mutations in `formatTAP` with an immutable array-
 
 ---
 
-## Convert Error-Testing try/catch to `Try` Helper
+## Convert Error-Testing try/catch to `Try` Helper — ✅ DONE
 
 Replace ~27 `let error; try { fn() } catch(e) { error = e; }` blocks in test files with the riteway `Try` helper.
 
@@ -71,7 +71,7 @@ Replace ~27 `let error; try { fn() } catch(e) { error = e; }` blocks in test fil
 
 ---
 
-## Code Style Cleanup in `parseAIArgs`
+## Code Style Cleanup in `parseAIArgs` — ✅ DONE
 
 Eliminate mutations and extract duplicated Zod error formatting.
 
