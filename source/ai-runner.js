@@ -250,6 +250,41 @@ export const verifyAgentAuthentication = async ({ agentConfig, timeout = 30000, 
 };
 
 /**
+ * Unwrap agent result from potential JSON envelope and parse nested JSON.
+ * Handles Claude CLI's envelope format { result: "..." } and nested JSON strings.
+ * Pure function with no mutation - performs full unwrapping in a single pass.
+ * @param {string} processedOutput - Preprocessed stdout from agent
+ * @param {Object} logger - Debug logger instance
+ * @returns {Object} Unwrapped and parsed result
+ * @throws {Error} If output is not valid JSON after all parsing attempts
+ */
+const unwrapAgentResult = (processedOutput, logger) => {
+  // Step 1: Parse the initial output
+  const parsed = parseStringResult(processedOutput, logger);
+
+  // Step 2: If parsing kept it as a string, that's an error (not valid JSON)
+  if (typeof parsed === 'string') {
+    throw createError({
+      ...ParseError,
+      message: `Agent output is not valid JSON: ${parsed.slice(0, 100)}`,
+      outputPreview: parsed.slice(0, 100)
+    });
+  }
+
+  // Step 3: Unwrap envelope if present (Claude CLI wraps in { result: ... })
+  const unwrapped = parsed.result !== undefined ? parsed.result : parsed;
+
+  // Step 4: If unwrapped value is a string, try parsing it as JSON again
+  logger.log(`Parsed result type: ${typeof unwrapped}`);
+  if (typeof unwrapped === 'string') {
+    logger.log('Result is string, attempting to parse as JSON');
+    return parseStringResult(unwrapped, logger);
+  }
+
+  return unwrapped;
+};
+
+/**
  * Execute an agent CLI subprocess and return parsed JSON output or raw string.
  * @param {Object} options
  * @param {Object} options.agentConfig - Agent configuration
@@ -370,29 +405,8 @@ export const executeAgent = ({ agentConfig, prompt, timeout = 300000, debug = fa
           return resolve(result);
         }
 
-        // Parse the processed output - handles both raw JSON and markdown-wrapped JSON
-        let result = parseStringResult(processedOutput, logger);
-
-        // If result is still a string (not parsed as JSON), that's an error
-        if (typeof result === 'string') {
-          throw createError({
-            ...ParseError,
-            message: `Agent output is not valid JSON: ${result.slice(0, 100)}`,
-            outputPreview: result.slice(0, 100)
-          });
-        }
-
-        // Claude CLI wraps response in envelope with "result" field
-        if (result.result !== undefined) {
-          result = result.result;
-        }
-
-        // If result is a string after unwrapping, try to parse it again
-        logger.log(`Parsed result type: ${typeof result}`);
-        if (typeof result === 'string') {
-          logger.log('Result is string, attempting to parse as JSON');
-          result = parseStringResult(result, logger);
-        }
+        // Parse and unwrap the processed output - handles envelope unwrapping and nested JSON
+        const result = unwrapAgentResult(processedOutput, logger);
 
         logger.result(result);
         logger.flush();
@@ -571,8 +585,7 @@ export const runAITests = async ({
           userPrompt,
           promptUnderTest,
           result,
-          requirement: assertion.requirement,
-          description: assertion.description
+          requirement: assertion.description
         });
 
         logger.log(`  Assertion ${assertionIndex + 1}/${assertions.length}: ${assertion.description}`);

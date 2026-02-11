@@ -219,10 +219,9 @@ userPrompt = """
       const userPrompt = 'What is 2 + 2?';
       const promptUnderTest = 'You are a math helper.';
       const result = '4';
-      const requirement = 'should return correct answer';
-      const description = 'Given simple addition, should return correct answer';
+      const requirement = 'Given simple addition, should return correct answer';
 
-      const output = buildJudgePrompt({ userPrompt, promptUnderTest, result, requirement, description });
+      const output = buildJudgePrompt({ userPrompt, promptUnderTest, result, requirement });
 
       assert({
         given: 'result string',
@@ -232,19 +231,18 @@ userPrompt = """
       });
     });
 
-    test('includes ONE requirement/description', () => {
+    test('includes ONE requirement', () => {
       const userPrompt = 'What is 2 + 2?';
       const promptUnderTest = 'You are a math helper.';
       const result = '4';
-      const requirement = 'should return correct answer';
-      const description = 'Given simple addition, should return correct answer';
+      const requirement = 'Given simple addition, should return correct answer';
 
-      const output = buildJudgePrompt({ userPrompt, promptUnderTest, result, requirement, description });
+      const output = buildJudgePrompt({ userPrompt, promptUnderTest, result, requirement });
 
       assert({
-        given: 'requirement and description',
-        should: 'include description in output',
-        actual: output.includes(description),
+        given: 'requirement',
+        should: 'include requirement in output',
+        actual: output.includes(requirement),
         expected: true
       });
 
@@ -260,10 +258,9 @@ userPrompt = """
       const userPrompt = 'What is 2 + 2?';
       const promptUnderTest = 'You are a math helper.';
       const result = '4';
-      const requirement = 'should return correct answer';
-      const description = 'Given simple addition, should return correct answer';
+      const requirement = 'Given simple addition, should return correct answer';
 
-      const output = buildJudgePrompt({ userPrompt, promptUnderTest, result, requirement, description });
+      const output = buildJudgePrompt({ userPrompt, promptUnderTest, result, requirement });
 
       assert({
         given: 'promptUnderTest',
@@ -298,10 +295,9 @@ userPrompt = """
       const userPrompt = 'What is 2 + 2?';
       const promptUnderTest = 'You are a math helper.';
       const result = '4';
-      const requirement = 'should return correct answer';
-      const description = 'Given simple addition, should return correct answer';
+      const requirement = 'Given simple addition, should return correct answer';
 
-      const output = buildJudgePrompt({ userPrompt, promptUnderTest, result, requirement, description });
+      const output = buildJudgePrompt({ userPrompt, promptUnderTest, result, requirement });
 
       assert({
         given: 'judge prompt',
@@ -647,36 +643,57 @@ score: 75
     test('throws on malformed non-JSON input', () => {
       const malformed = 'This is not JSON at all';
 
+      let error;
+      try {
+        parseExtractionResult(malformed);
+      } catch (err) {
+        error = err;
+      }
+
       assert({
         given: 'non-JSON input',
-        should: 'throw an error',
-        actual: (() => {
-          try {
-            parseExtractionResult(malformed);
-            return 'no error';
-          } catch (err) {
-            return err.message;
-          }
-        })(),
-        expected: 'Failed to parse extraction result as JSON'
+        should: 'throw ParseError',
+        actual: error?.cause?.name,
+        expected: 'ParseError'
+      });
+
+      assert({
+        given: 'non-JSON input',
+        should: 'have EXTRACTION_PARSE_FAILURE code',
+        actual: error?.cause?.code,
+        expected: 'EXTRACTION_PARSE_FAILURE'
+      });
+
+      assert({
+        given: 'non-JSON input',
+        should: 'preserve original parse error as cause',
+        actual: error?.cause?.cause !== undefined,
+        expected: true
       });
     });
 
     test('throws when result does not have required structure', () => {
       const invalidStructure = JSON.stringify({ id: 1, description: 'test', prompt: 'test' });
 
+      let error;
+      try {
+        parseExtractionResult(invalidStructure);
+      } catch (err) {
+        error = err;
+      }
+
       assert({
         given: 'extraction result with invalid structure',
-        should: 'throw an error',
-        actual: (() => {
-          try {
-            parseExtractionResult(invalidStructure);
-            return 'no error';
-          } catch (err) {
-            return err.message !== undefined;
-          }
-        })(),
-        expected: true
+        should: 'throw ValidationError',
+        actual: error?.cause?.name,
+        expected: 'ValidationError'
+      });
+
+      assert({
+        given: 'extraction result with invalid structure',
+        should: 'have EXTRACTION_VALIDATION_FAILURE code',
+        actual: error?.cause?.code,
+        expected: 'EXTRACTION_VALIDATION_FAILURE'
       });
     });
 
@@ -686,17 +703,31 @@ score: 75
         assertions: []
       });
 
+      let error;
+      try {
+        parseExtractionResult(missingFields);
+      } catch (err) {
+        error = err;
+      }
+
       assert({
         given: 'extraction result missing importPaths field',
-        should: 'throw an error indicating missing field',
-        actual: (() => {
-          try {
-            parseExtractionResult(missingFields);
-            return 'no error';
-          } catch (err) {
-            return err.message !== undefined;
-          }
-        })(),
+        should: 'throw ValidationError',
+        actual: error?.cause?.name,
+        expected: 'ValidationError'
+      });
+
+      assert({
+        given: 'extraction result missing importPaths field',
+        should: 'have EXTRACTION_VALIDATION_FAILURE code',
+        actual: error?.cause?.code,
+        expected: 'EXTRACTION_VALIDATION_FAILURE'
+      });
+
+      assert({
+        given: 'extraction result missing importPaths field',
+        should: 'have descriptive error message',
+        actual: error?.message?.includes('importPaths'),
         expected: true
       });
     });
@@ -710,17 +741,31 @@ score: 75
         ]
       });
 
+      let error;
+      try {
+        parseExtractionResult(missingAssertionFields);
+      } catch (err) {
+        error = err;
+      }
+
       assert({
         given: 'assertion missing the requirement field',
-        should: 'throw an error indicating the missing field',
-        actual: (() => {
-          try {
-            parseExtractionResult(missingAssertionFields);
-            return 'no error';
-          } catch (err) {
-            return err.message.includes('requirement');
-          }
-        })(),
+        should: 'throw ValidationError',
+        actual: error?.cause?.name,
+        expected: 'ValidationError'
+      });
+
+      assert({
+        given: 'assertion missing the requirement field',
+        should: 'have EXTRACTION_VALIDATION_FAILURE code',
+        actual: error?.cause?.code,
+        expected: 'EXTRACTION_VALIDATION_FAILURE'
+      });
+
+      assert({
+        given: 'assertion missing the requirement field',
+        should: 'have error message indicating missing field',
+        actual: error?.message?.includes('requirement'),
         expected: true
       });
     });

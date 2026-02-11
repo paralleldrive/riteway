@@ -1,7 +1,16 @@
 import { executeAgent, validateFilePath } from './ai-runner.js';
-import { createError } from 'error-causes';
+import { errorCauses, createError } from 'error-causes';
 import { readFile } from 'fs/promises';
 import { resolve } from 'path';
+
+/**
+ * Error definitions for test extraction parsing and validation
+ */
+const [extractorErrors] = errorCauses({
+  ParseError: { code: 'EXTRACTION_PARSE_FAILURE', message: 'Failed to parse extraction result' },
+  ValidationError: { code: 'EXTRACTION_VALIDATION_FAILURE', message: 'Invalid extraction result' }
+});
+const { ParseError, ValidationError } = extractorErrors;
 
 /**
  * Test Extractor Module
@@ -139,11 +148,10 @@ Your entire output IS the result.`;
  * @param {string} options.userPrompt - The original user prompt that produced the result
  * @param {string} options.promptUnderTest - The imported prompt content (context/guide)
  * @param {string} options.result - The raw output from the result agent (plain text)
- * @param {string} options.requirement - The specific requirement to evaluate
- * @param {string} options.description - Full assertion text
+ * @param {string} options.requirement - The requirement to evaluate against (e.g., "Given X, should Y")
  * @returns {string} A prompt for the judge agent
  */
-export const buildJudgePrompt = ({ userPrompt, promptUnderTest, result, description }) => {
+export const buildJudgePrompt = ({ userPrompt, promptUnderTest, result, requirement }) => {
   return `You are an AI judge. Evaluate whether a given result satisfies a specific requirement.
 
 CONTEXT (Prompt Under Test):
@@ -156,7 +164,7 @@ ACTUAL RESULT TO EVALUATE:
 ${result}
 
 REQUIREMENT:
-${description}
+${requirement}
 
 INSTRUCTIONS:
 1. Read the actual result above
@@ -184,6 +192,8 @@ end with --- on its own line. No markdown fences, no explanation outside the blo
  * @throws {Error} If no valid TAP YAML block found
  */
 export const parseTAPYAML = (output) => {
+  // Strict regex: requires --- at line boundaries. LLMs sometimes add surrounding text,
+  // so strict matching ensures we only accept clean TAP YAML blocks.
   const match = output.match(/^---\s*\n([\s\S]*?)\n---\s*$/m);
   if (!match) {
     throw createError({
@@ -217,6 +227,60 @@ export const parseTAPYAML = (output) => {
 const assertionRequiredFields = ['id', 'description', 'requirement'];
 
 /**
+ * Resolve and read import files, concatenating their contents.
+ * @param {string[]} importPaths - Array of import file paths relative to project root
+ * @param {string} projectRoot - Project root directory for resolving relative paths
+ * @param {boolean} debug - Enable debug logging
+ * @returns {Promise<string>} Concatenated content from all import files
+ */
+const resolveImportPaths = async (importPaths, projectRoot, debug) => {
+  if (debug) {
+    console.error(`[DEBUG] Found ${importPaths.length} imports to resolve`);
+  }
+  const importedContents = await Promise.all(
+    importPaths.map(async importPath => {
+      // Resolve import paths relative to project root
+      const resolvedPath = resolve(projectRoot, importPath);
+      if (debug) {
+        console.error(`[DEBUG] Reading import: ${importPath} -> ${resolvedPath}`);
+      }
+      // Validate import path to prevent path traversal attacks
+      try {
+        validateFilePath(resolvedPath, projectRoot);
+      } catch (error) {
+        throw createError({
+          name: 'SecurityError',
+          message: `Import path traversal detected: ${importPath}`,
+          code: 'IMPORT_PATH_TRAVERSAL',
+          path: importPath,
+          resolvedPath,
+          cause: error
+        });
+      }
+      // Read file with error wrapping (preserves original error as cause)
+      try {
+        const content = await readFile(resolvedPath, 'utf-8');
+        return content;
+      } catch (originalError) {
+        throw createError({
+          name: 'ValidationError',
+          message: `Failed to read imported prompt file: ${importPath}`,
+          code: 'PROMPT_READ_FAILED',
+          path: importPath,
+          resolvedPath,
+          cause: originalError
+        });
+      }
+    })
+  );
+  const result = importedContents.join('\n\n');
+  if (debug) {
+    console.error(`[DEBUG] Imported content length: ${result.length} characters`);
+  }
+  return result;
+};
+
+/**
  * Extract JSON from markdown code fences if present.
  * @param {string} str - String that might contain markdown code fences
  * @returns {string} Extracted JSON string
@@ -237,8 +301,12 @@ const tryParseJSON = (str) => {
   try {
     const cleaned = extractJSONFromMarkdown(str);
     return JSON.parse(cleaned);
-  } catch {
-    throw new Error('Failed to parse extraction result as JSON');
+  } catch (originalError) {
+    throw createError({
+      ...ParseError,
+      rawInput: str,
+      cause: originalError
+    });
   }
 };
 
@@ -258,19 +326,35 @@ export const parseExtractionResult = (rawOutput) => {
     : rawOutput;
 
   if (typeof parsed !== 'object' || parsed === null) {
-    throw new Error('Extraction result must be a JSON object');
+    throw createError({
+      ...ValidationError,
+      message: 'Extraction result must be a JSON object',
+      rawOutput
+    });
   }
 
   if (parsed.userPrompt === undefined || parsed.userPrompt === null) {
-    throw new Error('Extraction result is missing required field: userPrompt');
+    throw createError({
+      ...ValidationError,
+      message: 'Extraction result is missing required field: userPrompt',
+      rawOutput
+    });
   }
 
   if (!Array.isArray(parsed.importPaths)) {
-    throw new Error('Extraction result is missing required field: importPaths (must be an array)');
+    throw createError({
+      ...ValidationError,
+      message: 'Extraction result is missing required field: importPaths (must be an array)',
+      rawOutput
+    });
   }
 
   if (!Array.isArray(parsed.assertions)) {
-    throw new Error('Extraction result is missing required field: assertions (must be an array)');
+    throw createError({
+      ...ValidationError,
+      message: 'Extraction result is missing required field: assertions (must be an array)',
+      rawOutput
+    });
   }
 
   // for loop preferred: early throw on first invalid item avoids
@@ -278,7 +362,13 @@ export const parseExtractionResult = (rawOutput) => {
   for (let i = 0; i < parsed.assertions.length; i++) {
     for (const field of assertionRequiredFields) {
       if (parsed.assertions[i][field] === undefined || parsed.assertions[i][field] === null) {
-        throw new Error(`Assertion at index ${i} is missing required field: ${field}`);
+        throw createError({
+          ...ValidationError,
+          message: `Assertion at index ${i} is missing required field: ${field}`,
+          assertionIndex: i,
+          missingField: field,
+          rawOutput
+        });
       }
     }
   }
@@ -347,53 +437,9 @@ export const extractTests = async ({ testContent, testFilePath, agentConfig, tim
 
   // PHASE 1.5: Resolve agent-identified imports
   // The agent declaratively identifies import paths; we read the files
-  let promptUnderTest = '';
-  if (testFilePath && extracted.importPaths.length > 0) {
-    if (debug) {
-      console.error(`[DEBUG] Found ${extracted.importPaths.length} imports to resolve`);
-    }
-    const projectRoot = process.cwd();
-    const importedContents = await Promise.all(
-      extracted.importPaths.map(async importPath => {
-        // Resolve import paths relative to project root
-        const resolvedPath = resolve(projectRoot, importPath);
-        if (debug) {
-          console.error(`[DEBUG] Reading import: ${importPath} -> ${resolvedPath}`);
-        }
-        // Validate import path to prevent path traversal attacks
-        try {
-          validateFilePath(resolvedPath, projectRoot);
-        } catch (error) {
-          throw createError({
-            name: 'SecurityError',
-            message: `Import path traversal detected: ${importPath}`,
-            code: 'IMPORT_PATH_TRAVERSAL',
-            path: importPath,
-            resolvedPath,
-            cause: error
-          });
-        }
-        // Read file with error wrapping (preserves original error as cause)
-        try {
-          const content = await readFile(resolvedPath, 'utf-8');
-          return content;
-        } catch (originalError) {
-          throw createError({
-            name: 'ValidationError',
-            message: `Failed to read imported prompt file: ${importPath}`,
-            code: 'PROMPT_READ_FAILED',
-            path: importPath,
-            resolvedPath,
-            cause: originalError
-          });
-        }
-      })
-    );
-    promptUnderTest = importedContents.join('\n\n');
-    if (debug) {
-      console.error(`[DEBUG] Imported content length: ${promptUnderTest.length} characters`);
-    }
-  }
+  const promptUnderTest = testFilePath && extracted.importPaths.length > 0
+    ? await resolveImportPaths(extracted.importPaths, process.cwd(), debug)
+    : '';
 
   // Validate required fields (fail fast on authoring errors)
   const { userPrompt, assertions } = extracted;
