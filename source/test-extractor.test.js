@@ -2,6 +2,9 @@ import { describe, test } from 'vitest';
 import { assert } from './vitest.js';
 import {
   buildExtractionPrompt,
+  buildResultPrompt,
+  buildJudgePrompt,
+  parseTAPYAML,
   parseExtractionResult,
   extractTests,
   parseImports
@@ -97,6 +100,374 @@ userPrompt = """
         should: 'place the content between the opening and closing tags',
         actual: openTag < contentPos && contentPos < closeTag,
         expected: true
+      });
+    });
+  });
+
+  describe('buildResultPrompt()', () => {
+    test('includes userPrompt in output', () => {
+      const userPrompt = 'What is 2 + 2?';
+      const promptUnderTest = 'You are a math helper.';
+
+      const result = buildResultPrompt({ userPrompt, promptUnderTest });
+
+      assert({
+        given: 'userPrompt and promptUnderTest',
+        should: 'include the userPrompt in the output',
+        actual: result.includes(userPrompt),
+        expected: true
+      });
+    });
+
+    test('includes promptUnderTest in context section', () => {
+      const userPrompt = 'What is 2 + 2?';
+      const promptUnderTest = 'You are a math helper.';
+
+      const result = buildResultPrompt({ userPrompt, promptUnderTest });
+
+      assert({
+        given: 'promptUnderTest',
+        should: 'include promptUnderTest in context section',
+        actual: result.includes(promptUnderTest),
+        expected: true
+      });
+
+      assert({
+        given: 'promptUnderTest',
+        should: 'label context section clearly',
+        actual: result.includes('CONTEXT (Prompt Under Test)'),
+        expected: true
+      });
+    });
+
+    test('instructs plain text response, NOT JSON', () => {
+      const userPrompt = 'What is 2 + 2?';
+      const promptUnderTest = 'You are a math helper.';
+
+      const result = buildResultPrompt({ userPrompt, promptUnderTest });
+
+      assert({
+        given: 'result prompt',
+        should: 'instruct plain text response',
+        actual: result.includes('plain text'),
+        expected: true
+      });
+
+      assert({
+        given: 'result prompt',
+        should: 'explicitly say NOT to wrap in JSON',
+        actual: result.toLowerCase().includes('not') && result.toLowerCase().includes('json'),
+        expected: true
+      });
+    });
+
+    test('does NOT include JSON formatting instructions', () => {
+      const userPrompt = 'What is 2 + 2?';
+      const promptUnderTest = 'You are a math helper.';
+
+      const result = buildResultPrompt({ userPrompt, promptUnderTest });
+
+      assert({
+        given: 'result prompt',
+        should: 'NOT include JSON object formatting instructions',
+        actual: result.includes('"passed"') || result.includes('{"'),
+        expected: false
+      });
+
+      assert({
+        given: 'result prompt',
+        should: 'NOT include markdown fence instructions',
+        actual: result.includes('```'),
+        expected: false
+      });
+    });
+  });
+
+  describe('buildJudgePrompt()', () => {
+    test('includes result in output', () => {
+      const userPrompt = 'What is 2 + 2?';
+      const promptUnderTest = 'You are a math helper.';
+      const result = '4';
+      const requirement = 'should return correct answer';
+      const description = 'Given simple addition, should return correct answer';
+
+      const output = buildJudgePrompt({ userPrompt, promptUnderTest, result, requirement, description });
+
+      assert({
+        given: 'result string',
+        should: 'include result in output',
+        actual: output.includes(result),
+        expected: true
+      });
+    });
+
+    test('includes ONE requirement/description', () => {
+      const userPrompt = 'What is 2 + 2?';
+      const promptUnderTest = 'You are a math helper.';
+      const result = '4';
+      const requirement = 'should return correct answer';
+      const description = 'Given simple addition, should return correct answer';
+
+      const output = buildJudgePrompt({ userPrompt, promptUnderTest, result, requirement, description });
+
+      assert({
+        given: 'requirement and description',
+        should: 'include description in output',
+        actual: output.includes(description),
+        expected: true
+      });
+
+      assert({
+        given: 'requirement field',
+        should: 'include REQUIREMENT section label',
+        actual: output.includes('REQUIREMENT'),
+        expected: true
+      });
+    });
+
+    test('includes full context (promptUnderTest, userPrompt)', () => {
+      const userPrompt = 'What is 2 + 2?';
+      const promptUnderTest = 'You are a math helper.';
+      const result = '4';
+      const requirement = 'should return correct answer';
+      const description = 'Given simple addition, should return correct answer';
+
+      const output = buildJudgePrompt({ userPrompt, promptUnderTest, result, requirement, description });
+
+      assert({
+        given: 'promptUnderTest',
+        should: 'include promptUnderTest in context section',
+        actual: output.includes(promptUnderTest),
+        expected: true
+      });
+
+      assert({
+        given: 'promptUnderTest',
+        should: 'label context section clearly',
+        actual: output.includes('CONTEXT (Prompt Under Test)'),
+        expected: true
+      });
+
+      assert({
+        given: 'userPrompt',
+        should: 'include userPrompt in output',
+        actual: output.includes(userPrompt),
+        expected: true
+      });
+
+      assert({
+        given: 'userPrompt',
+        should: 'label original user prompt section',
+        actual: output.includes('ORIGINAL USER PROMPT'),
+        expected: true
+      });
+    });
+
+    test('instructs TAP YAML response format', () => {
+      const userPrompt = 'What is 2 + 2?';
+      const promptUnderTest = 'You are a math helper.';
+      const result = '4';
+      const requirement = 'should return correct answer';
+      const description = 'Given simple addition, should return correct answer';
+
+      const output = buildJudgePrompt({ userPrompt, promptUnderTest, result, requirement, description });
+
+      assert({
+        given: 'judge prompt',
+        should: 'instruct TAP YAML output format',
+        actual: output.includes('TAP YAML'),
+        expected: true
+      });
+
+      assert({
+        given: 'judge prompt',
+        should: 'show example with --- delimiters',
+        actual: output.includes('---'),
+        expected: true
+      });
+
+      assert({
+        given: 'judge prompt',
+        should: 'instruct passed field',
+        actual: output.includes('passed:'),
+        expected: true
+      });
+
+      assert({
+        given: 'judge prompt',
+        should: 'instruct actual field',
+        actual: output.includes('actual:'),
+        expected: true
+      });
+
+      assert({
+        given: 'judge prompt',
+        should: 'instruct expected field',
+        actual: output.includes('expected:'),
+        expected: true
+      });
+
+      assert({
+        given: 'judge prompt',
+        should: 'instruct score field',
+        actual: output.includes('score:'),
+        expected: true
+      });
+    });
+  });
+
+  describe('parseTAPYAML()', () => {
+    test('parses valid TAP YAML block with passed: true', () => {
+      const input = `---
+passed: true
+actual: "the result was correct"
+expected: "a correct result"
+score: 100
+---`;
+
+      const result = parseTAPYAML(input);
+
+      assert({
+        given: 'TAP YAML with passed: true',
+        should: 'parse passed as boolean true',
+        actual: result.passed,
+        expected: true
+      });
+
+      assert({
+        given: 'TAP YAML with passed: true',
+        should: 'parse actual field',
+        actual: result.actual,
+        expected: 'the result was correct'
+      });
+
+      assert({
+        given: 'TAP YAML with passed: true',
+        should: 'parse expected field',
+        actual: result.expected,
+        expected: 'a correct result'
+      });
+
+      assert({
+        given: 'TAP YAML with passed: true',
+        should: 'parse score as number',
+        actual: result.score,
+        expected: 100
+      });
+    });
+
+    test('parses valid TAP YAML block with passed: false', () => {
+      const input = `---
+passed: false
+actual: "incorrect output"
+expected: "correct output"
+score: 20
+---`;
+
+      const result = parseTAPYAML(input);
+
+      assert({
+        given: 'TAP YAML with passed: false',
+        should: 'parse passed as boolean false',
+        actual: result.passed,
+        expected: false
+      });
+
+      assert({
+        given: 'TAP YAML with passed: false',
+        should: 'parse score as number',
+        actual: result.score,
+        expected: 20
+      });
+    });
+
+    test('handles quoted and unquoted string values', () => {
+      const inputQuoted = `---
+passed: true
+actual: "quoted value"
+expected: "another quoted"
+score: 90
+---`;
+
+      const inputUnquoted = `---
+passed: true
+actual: unquoted value
+expected: another unquoted
+score: 90
+---`;
+
+      const resultQuoted = parseTAPYAML(inputQuoted);
+      const resultUnquoted = parseTAPYAML(inputUnquoted);
+
+      assert({
+        given: 'quoted string values',
+        should: 'strip quotes from actual',
+        actual: resultQuoted.actual,
+        expected: 'quoted value'
+      });
+
+      assert({
+        given: 'unquoted string values',
+        should: 'parse unquoted actual',
+        actual: resultUnquoted.actual,
+        expected: 'unquoted value'
+      });
+    });
+
+    test('throws ParseError when no --- markers found', () => {
+      const invalidInput = 'passed: true\nactual: result\nexpected: something';
+
+      let error;
+      try {
+        parseTAPYAML(invalidInput);
+      } catch (err) {
+        error = err;
+      }
+
+      assert({
+        given: 'input without --- markers',
+        should: 'throw error',
+        actual: error !== undefined,
+        expected: true
+      });
+
+      assert({
+        given: 'input without --- markers',
+        should: 'have ParseError cause name',
+        actual: error?.cause?.name,
+        expected: 'ParseError'
+      });
+
+      assert({
+        given: 'input without --- markers',
+        should: 'have JUDGE_INVALID_TAP_YAML code',
+        actual: error?.cause?.code,
+        expected: 'JUDGE_INVALID_TAP_YAML'
+      });
+    });
+
+    test('parses score as number', () => {
+      const input = `---
+passed: true
+actual: result
+expected: something
+score: 85
+---`;
+
+      const result = parseTAPYAML(input);
+
+      assert({
+        given: 'score field with numeric value',
+        should: 'parse score as number type',
+        actual: typeof result.score === 'number',
+        expected: true
+      });
+
+      assert({
+        given: 'score field with numeric value',
+        should: 'parse correct score value',
+        actual: result.score,
+        expected: 85
       });
     });
   });

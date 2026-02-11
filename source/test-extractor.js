@@ -104,6 +104,123 @@ ${testContent}
 };
 
 /**
+ * Build a result prompt that instructs an LLM to execute a user prompt
+ * and return plain text output (no JSON, no evaluation).
+ *
+ * This is part of the two-agent refactor where:
+ * - Result agent (this prompt): Execute the user prompt, return plain text
+ * - Judge agent (separate prompt): Evaluate the result against requirements
+ *
+ * @param {Object} options
+ * @param {string} options.userPrompt - The test prompt to execute
+ * @param {string} [options.promptUnderTest] - Optional context/guide for execution
+ * @returns {string} A prompt for the result agent
+ */
+export const buildResultPrompt = ({ userPrompt, promptUnderTest }) => {
+  const contextSection = promptUnderTest
+    ? `CONTEXT (Prompt Under Test):\n${promptUnderTest}\n\n`
+    : '';
+
+  return `You are an AI assistant. Execute the following prompt and return your response.
+
+${contextSection}USER PROMPT:
+${userPrompt}
+
+INSTRUCTIONS:
+1. Execute the user prompt above${promptUnderTest ? ', following the guidance in the prompt under test' : ''}
+2. Return your complete response as plain text
+
+Respond naturally. Do NOT wrap your response in JSON, markdown fences, or any other structure.
+Your entire output IS the result.`;
+};
+
+/**
+ * Build a judge prompt that instructs an LLM to evaluate a specific result
+ * against a single requirement. Returns TAP YAML diagnostic format.
+ *
+ * This is part of the two-agent refactor where:
+ * - Result agent: Execute the user prompt, return plain text
+ * - Judge agent (this prompt): Evaluate the result against ONE requirement
+ *
+ * @param {Object} options
+ * @param {string} options.userPrompt - The original user prompt that produced the result
+ * @param {string} options.promptUnderTest - The imported prompt content (context/guide)
+ * @param {string} options.result - The raw output from the result agent (plain text)
+ * @param {string} options.requirement - The specific requirement to evaluate
+ * @param {string} options.description - Full assertion text
+ * @returns {string} A prompt for the judge agent
+ */
+export const buildJudgePrompt = ({ userPrompt, promptUnderTest, result, requirement, description }) => {
+  return `You are an AI judge. Evaluate whether a given result satisfies a specific requirement.
+
+CONTEXT (Prompt Under Test):
+${promptUnderTest}
+
+ORIGINAL USER PROMPT:
+${userPrompt}
+
+ACTUAL RESULT TO EVALUATE:
+${result}
+
+REQUIREMENT:
+${description}
+
+INSTRUCTIONS:
+1. Read the actual result above
+2. Determine whether it satisfies the requirement
+3. Summarize what was actually produced (actual) vs what was expected (expected)
+4. Assign a quality score from 0 (completely fails) to 100 (perfectly satisfies)
+
+Return your judgment as a TAP YAML diagnostic block:
+---
+passed: true
+actual: "summary of what was produced"
+expected: "what was expected"
+score: 85
+---
+
+CRITICAL: Return ONLY the TAP YAML block. Start with --- on its own line,
+end with --- on its own line. No markdown fences, no explanation outside the block.`;
+};
+
+/**
+ * Parse the judge agent's TAP YAML diagnostic output into a structured object.
+ *
+ * @param {string} output - Raw output from judge agent containing TAP YAML block
+ * @returns {{ passed: boolean, actual: string, expected: string, score: number }}
+ * @throws {Error} If no valid TAP YAML block found
+ */
+export const parseTAPYAML = (output) => {
+  const match = output.match(/^---\s*\n([\s\S]*?)\n---\s*$/m);
+  if (!match) {
+    throw createError({
+      name: 'ParseError',
+      message: 'Judge output does not contain a valid TAP YAML block (--- delimited)',
+      code: 'JUDGE_INVALID_TAP_YAML',
+      rawOutput: output
+    });
+  }
+
+  const yaml = match[1];
+  const lines = yaml.split('\n');
+  const result = {};
+
+  for (const line of lines) {
+    const kvMatch = line.match(/^(\w+):\s*(.+)$/);
+    if (kvMatch) {
+      const [, key, rawValue] = kvMatch;
+      // Strip surrounding quotes if present
+      const value = rawValue.replace(/^["']|["']$/g, '').trim();
+      if (key === 'passed') result.passed = value === 'true';
+      else if (key === 'score') result.score = Number(value);
+      else result[key] = value;
+    }
+  }
+
+  return result;
+};
+
+/**
  * Build an evaluation prompt that instructs an LLM to execute a test
  * and evaluate whether it meets a specific requirement.
  *
