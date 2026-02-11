@@ -1,7 +1,7 @@
 # Two-Agent Architecture: Result Agent + Judge Agent
 
 > **Date:** 2026-02-10
-> **Status:** DRAFT — requires team lead review
+> **Status:** APPROVED — updated post-remediation 2026-02-11
 > **Scope:** Minimal refactor of existing extraction pipeline
 > **Constraint:** NOT the heavy 3-actor orchestrator rewrite from remediation Task 1
 > **Decision:** User explicitly chose this two-agent approach over the 3-actor orchestrator (BLOCKER #1 from review — RESOLVED)
@@ -48,45 +48,57 @@ For each run:
 
 ### `source/test-extractor.js`
 
-| Function | Status | Change |
-|----------|--------|--------|
-| `parseImports()` | **REMOVED** | Agent-directed imports: extraction agent identifies import paths declaratively |
-| `buildExtractionPrompt()` | **MODIFIED** | Updated to instruct agent to also extract import file paths |
-| `buildEvaluationPrompt()` | **REMOVED** | Replaced by `buildResultPrompt` + `buildJudgePrompt` |
-| `parseExtractionResult()` | **MODIFIED** | Validates new shape (includes `importPaths`) |
-| `extractJSONFromMarkdown()` | **Survives unchanged** | Used by `parseExtractionResult` |
-| `tryParseJSON()` | **Survives unchanged** | Used by `parseExtractionResult` |
-| `extractTests()` | **MODIFIED** | Uses agent-returned import paths; returns new shape |
-| `buildResultPrompt()` | **NEW** | Prompt for the result agent (plain text response, NO JSON) |
-| `buildJudgePrompt()` | **NEW** | Prompt for the judge agent (TAP YAML response) |
-| `parseTAPYAML()` | **NEW** | Parses judge's TAP YAML output (--- delimited) |
+| Function | File | Status | Change |
+|----------|------|--------|--------|
+| `buildExtractionPrompt()` | source/test-extractor.js | **MODIFIED** | Updated to instruct agent to also extract import file paths |
+| `buildEvaluationPrompt()` | | **REMOVED** | Replaced by `buildResultPrompt` + `buildJudgePrompt` |
+| `extractTests()` | source/test-extractor.js | **MODIFIED** | Uses agent-returned import paths; returns new shape |
+| `buildResultPrompt()` | source/test-extractor.js | **NEW** | Prompt for the result agent (plain text response, NO JSON) |
+| `buildJudgePrompt()` | source/test-extractor.js | **NEW** | Prompt for the judge agent (TAP YAML response) |
+| `parseExtractionResult()` | source/extraction-parser.js | **MODIFIED** | Validates new shape (includes `importPaths`) |
+| `resolveImportPaths()` | source/extraction-parser.js | **MODIFIED** | Import path resolution relaxed (no `validateFilePath` on imports) |
+| `extractJSONFromMarkdown()` | source/extraction-parser.js | **Survives unchanged** | Used by `parseExtractionResult` |
+| `tryParseJSON()` | source/extraction-parser.js | **Survives unchanged** | Used by `parseExtractionResult` |
+| `parseTAPYAML()` | source/tap-yaml.js | **NEW** | Parses judge's TAP YAML output (--- delimited) |
+| `parseImports()` | | **REMOVED** | Agent-directed imports: extraction agent identifies import paths declaratively |
 
 ### `source/ai-runner.js`
 
-| Function | Status | Change |
-|----------|--------|--------|
-| `validateFilePath()` | **Survives unchanged** | Security validation |
-| `parseStringResult()` | **Survives (extraction agent only)** | Only used by extraction agent call (Phase 1); result and judge agents use `rawOutput: true` bypassing JSON parsing |
-| `parseOpenCodeNDJSON()` | **Survives unchanged** | OpenCode wire protocol |
-| `readTestFile()` | **Survives unchanged** | File reading |
-| `calculateRequiredPasses()` | **Survives unchanged** | Threshold math |
-| `executeAgent()` | **MODIFIED** | Must handle non-JSON output for result agent (returns raw string) |
-| `verifyAgentAuthentication()` | **Survives unchanged** | Auth smoke test |
-| `aggregatePerAssertionResults()` | **MODIFIED** | Keeps `r.passed` field, adds `averageScore` |
-| `runAITests()` | **MODIFIED** | New two-agent flow: result once per run, judge per assertion; `Promise.all` within runs, `limitConcurrency` across runs |
+| Function | File | Status | Change |
+|----------|------|--------|--------|
+| `executeAgent()` | source/ai-runner.js | **MODIFIED** | Must handle non-JSON output for result agent (returns raw string) |
+| `runAITests()` | source/ai-runner.js | **MODIFIED** | New two-agent flow: result once per run, judge per assertion; `Promise.all` within runs, `limitConcurrency` across runs |
+| `readTestFile()` | source/ai-runner.js | **Survives unchanged** | File reading |
+| `parseStringResult()` | source/agent-parser.js | **Survives (extraction agent only)** | Only used by extraction agent call (Phase 1); result and judge agents use `rawOutput: true` bypassing JSON parsing |
+| `parseOpenCodeNDJSON()` | source/agent-parser.js | **Survives unchanged** | OpenCode wire protocol |
+| `unwrapAgentResult()` | source/agent-parser.js | **Survives unchanged** | Unwraps agent response envelope |
+| `normalizeJudgment()` | source/aggregation.js | **NEW** | Normalize judge response; logs warnings, throws on non-object |
+| `aggregatePerAssertionResults()` | source/aggregation.js | **MODIFIED** | Keeps `r.passed` field, adds `averageScore` |
+| `calculateRequiredPasses()` | source/aggregation.js | **Survives unchanged** | Threshold math |
+| `limitConcurrency()` | source/limit-concurrency.js | **Survives unchanged** | Limits parallel execution across runs |
+| `validateFilePath()` | source/validation.js | **Survives unchanged** | Security validation for CLI paths |
+| `verifyAgentAuthentication()` | source/validation.js | **MODIFIED** | Always includes auth guidance on any failure (no more string matching) |
+| All error types | source/ai-errors.js | **Centralized** | Single source of truth for all error definitions (ParseError, ValidationError, SecurityError, etc.) |
 
 ### `bin/riteway.js`
 
-| Function | Status | Change |
-|----------|--------|--------|
-| All functions | **Survive unchanged** | CLI layer is unaffected |
+| Function | File | Status | Change |
+|----------|------|--------|--------|
+| CLI entry point | bin/riteway.js | **Survives unchanged** | CLI wiring layer |
+| `parseAIArgs()` | source/ai-command.js | **Survives unchanged** | CLI argument parsing |
+| `runAICommand()` | source/ai-command.js | **Survives unchanged** | CLI command handler |
+| `formatAssertionReport()` | source/ai-command.js | **Survives unchanged** | Assertion result formatting |
+| `getAgentConfig()` | source/agent-config.js | **Survives unchanged** | Agent config factory |
+| `loadAgentConfig()` | source/agent-config.js | **Survives unchanged** | Load and validate agent config files |
+| `formatZodError()` | source/agent-config.js | **Survives unchanged** | User-friendly Zod error formatting |
 
 ### `source/test-output.js`
 
-| Function | Status | Change |
-|----------|--------|--------|
-| `formatTAP()` | **MODIFIED (minor)** | Display `averageScore` and `actual`/`expected` in TAP diagnostics |
-| All other functions | **Survive unchanged** | |
+| Function | File | Status | Change |
+|----------|------|--------|--------|
+| `formatTAP()` | source/test-output.js | **MODIFIED** | Refactored from string concatenation to array-join pattern; displays `averageScore` and `actual`/`expected` in TAP diagnostics |
+| `recordTestOutput()` | source/test-output.js | **Survives unchanged** | File output |
+| `generateLogFilePath()` | source/test-output.js | **Survives unchanged** | Generate timestamped log file paths |
 
 ---
 
@@ -132,7 +144,7 @@ Your entire output IS the result.
 
 ---
 
-### `buildJudgePrompt({ userPrompt, promptUnderTest, result, requirement, description })`
+### `buildJudgePrompt({ userPrompt, promptUnderTest, result, requirement })`
 
 **Location:** `source/test-extractor.js`
 
@@ -140,15 +152,14 @@ Your entire output IS the result.
 
 **Signature:**
 ```js
-export const buildJudgePrompt = ({ userPrompt, promptUnderTest, result, requirement, description }) => string
+export const buildJudgePrompt = ({ userPrompt, promptUnderTest, result, requirement }) => string
 ```
 
 **Parameters:**
 - `userPrompt` — The original user prompt that produced the result
 - `promptUnderTest` — The imported prompt content (context/guide)
 - `result` — The raw output from the result agent (plain text)
-- `requirement` — The specific requirement to evaluate (the "should Y" part)
-- `description` — Full assertion text (e.g., "Given color scheme, should use semantic colors")
+- `requirement` — The "Given X, should Y" assertion text (merged description + requirement into single field post-remediation)
 
 **Behavior:**
 - Presents the result agent's output for evaluation
@@ -170,7 +181,7 @@ ACTUAL RESULT TO EVALUATE:
 {result}
 
 REQUIREMENT:
-{description}
+{requirement}
 
 INSTRUCTIONS:
 1. Read the actual result above
@@ -196,7 +207,7 @@ end with --- on its own line. No markdown fences, no explanation outside the blo
 
 ### `parseTAPYAML(output)`
 
-**Location:** `source/test-extractor.js`
+**Location:** `source/tap-yaml.js`
 
 **Purpose:** Parse the judge agent's TAP YAML diagnostic output into a structured object.
 
@@ -585,104 +596,43 @@ The `actual` and `expected` in TAP come from the **last run** (or could use the 
 
 ## 6. Flow Diagram
 
-### Current Flow (Single Agent)
+### Two-Agent Pipeline (Post-Remediation)
 
 ```
-CLI
+CLI (bin/riteway.js → ai-command.js)
  │
- ├─ readTestFile(path) ──────────────────────────── file content
+ ├─ validateFilePath (validation.js) ──────────── security check
+ ├─ verifyAgentAuthentication (validation.js) ─── agent smoke test
  │
- ├─ extractTests(content)
- │    ├─ Phase 1: buildExtractionPrompt ──agent──► [{ id, desc, userPrompt, requirement }]
- │    ├─ Phase 1.5: parseImports + readFile ─────► promptUnderTest
- │    └─ Phase 2: buildEvaluationPrompt ─────────► [{ prompt, description }]
+ ├─ readTestFile (ai-runner.js) ───────────────── file content
  │
- ├─ For each (assertion × run):                    4 assertions × 4 runs = 16 calls
- │    └─ executeAgent(evaluationPrompt) ──agent──► { passed, output }
+ ├─ extractTests (test-extractor.js)
+ │    ├─ buildExtractionPrompt ──────── agent ──► { userPrompt, importPaths, assertions }
+ │    ├─ parseExtractionResult (extraction-parser.js)
+ │    ├─ resolveImportPaths (extraction-parser.js) ► promptUnderTest
+ │    └─ validate required fields ─────────────── fail fast on authoring errors
  │
- ├─ aggregatePerAssertionResults ─────────────────► { passed, assertions }
+ ├─ buildResultPrompt (test-extractor.js)
  │
- └─ formatTAP + recordTestOutput ─────────────────► .tap.md file
-```
-
-### New Flow (Two Agents + Agent-Directed Imports + TAP YAML)
-
-```
-CLI
- │
- ├─ readTestFile(path) ──────────────────────────── file content
- │
- ├─ extractTests(content)                           PHASE 1: AGENT-DIRECTED IMPORTS
- │    ├─ Phase 1: buildExtractionPrompt ──agent──► { userPrompt, importPaths, assertions }
- │    │           (agent identifies imports        ← parseImports() REMOVED
- │    │            declaratively)
- │    ├─ Phase 1.5: readFile(importPaths) ─────── ► promptUnderTest
- │    │           (CLI reads agent-identified       (wrapped with createError({cause}))
- │    │            files)
- │    └─ Phase 2: Return structured data ────────► { userPrompt, promptUnderTest, assertions }
- │
- ├─ buildResultPrompt(userPrompt, promptUnderTest)
- │
- ├─ For each run (4 runs) — limitConcurrency ACROSS runs:
+ ├─ For each run — limitConcurrency (limit-concurrency.js):
  │    │
- │    ├─ STEP 1: executeAgent(resultPrompt) ─────► plain text (raw response) ← 1 call
- │    │           Result Agent: GENERATE ONLY       (no JSON, no parsing)
+ │    ├─ STEP 1: executeAgent(resultPrompt) ───► plain text result      (1 call)
+ │    │           (ai-runner.js)
  │    │
- │    └─ STEP 2: Promise.all — ALL judges PARALLEL within run:
- │         │
- │         └─ executeAgent(judgePrompt) ─────────► TAP YAML:                 ← 4 calls
- │              Judge Agent: EVALUATE ONLY           ---
- │              parseTAPYAML() → normalize           passed: true
- │                                                   actual: "..."
- │                                                   expected: "..."
- │                                                   score: 85
- │                                                   ---
+ │    └─ STEP 2: Promise.all per assertion:
+ │         ├─ buildJudgePrompt (test-extractor.js)
+ │         ├─ executeAgent(judgePrompt) ───────► TAP YAML               (N calls)
+ │         │   (ai-runner.js)
+ │         ├─ parseTAPYAML (tap-yaml.js)
+ │         └─ normalizeJudgment (aggregation.js)
  │
- │    Total per run: 1 + 4 = 5 calls
- │    Total: 4 runs × 5 = 20 calls
+ ├─ aggregatePerAssertionResults (aggregation.js) ► { passed, assertions, averageScore }
  │
- ├─ aggregatePerAssertionResults ─────────────────► { passed, assertions, averageScore }
- │
- └─ formatTAP + recordTestOutput ─────────────────► .tap.md file
+ └─ formatTAP + recordTestOutput (test-output.js) ► .tap.md file
 ```
 
-### Detailed Sequence (Single Run)
-
-```
-                  CLI           Extraction        Result          Judge
-                   │             Agent             Agent           Agent(s)
-                   │               │                 │               │
-  readTestFile ───►│               │                 │               │
-                   │               │                 │               │
-  extractTests ───►│──prompt──────►│                 │               │
-                   │◄─{ userPrompt,│                 │               │
-                   │  importPaths, │                 │               │
-                   │  assertions } │                 │               │
-                   │               │                 │               │
-  readFile(imports)│               │                 │               │
-                   │               │                 │               │
-  buildResultPrompt│               │                 │               │
-                   │──resultPrompt─────────────────►│               │
-                   │◄──plain text: "color scheme..."│               │
-                   │               (raw response)    │               │
-                   │                                 │               │
-  Promise.all ────►│  (all judges in parallel)       │               │
-                   │                                 │               │
-  assertion 1:     │──judgePrompt(+result)──────────────────────────►│
-  assertion 2:     │──judgePrompt(+same result)────────────────────►│
-  assertion 3:     │──judgePrompt(+same result)────────────────────►│
-  assertion 4:     │──judgePrompt(+same result)────────────────────►│
-                   │                                 │               │
-                   │◄──TAP YAML: ---                                │
-                   │   passed: true, actual, expected, score        │
-                   │   ---                                          │
-                   │◄──(all 4 judge responses arrive in parallel)   │
-                   │                                 │               │
-  parseTAPYAML ───►│                                 │               │
-  normalize ──────►│                                 │               │
-  aggregate ──────►│                                 │               │
-  formatTAP ──────►│                                 │               │
-```
+**Call count**: 1 extraction + runs × (1 result + N judge) = 1 + runs × (1 + N)
+**Default (4 assertions, 4 runs)**: 1 + 4 × 5 = 21 calls
 
 ---
 
@@ -878,38 +828,84 @@ Unchanged — `parseExtractionResult` validates the extraction output and throws
 
 | Component | File | Status | Notes |
 |-----------|------|--------|-------|
-| `validateFilePath` | ai-runner.js | **Survives** | Security validation for CLI paths |
-| `parseStringResult` | ai-runner.js | **Survives** | Only used by extraction agent call (Phase 1); result agent and judge agent both use `rawOutput: true`. May become dead code if extraction also moves away from JSON in a future iteration. |
-| `parseOpenCodeNDJSON` | ai-runner.js | **Survives** | OpenCode wire protocol (NOT AI content parsing) |
-| `readTestFile` | ai-runner.js | **Survives** | File reading utility |
-| `calculateRequiredPasses` | ai-runner.js | **Survives** | Threshold math |
-| `executeAgent` | ai-runner.js | **Modified** | Added `rawOutput` flag to return raw string (for result agent plain text + judge TAP YAML) |
-| `verifyAgentAuthentication` | ai-runner.js | **Survives** | Auth smoke test |
-| `createDebugLogger` | debug-logger.js | **Survives** | Debug infrastructure |
-| `parseImports` | test-extractor.js | **Removed** | Replaced by agent-directed imports (extraction agent identifies import paths declaratively) |
-| `buildExtractionPrompt` | test-extractor.js | **Modified** | Updated to instruct agent to also extract import file paths |
-| `parseExtractionResult` | test-extractor.js | **Modified** | Validates new shape (includes `importPaths`) |
-| `extractJSONFromMarkdown` | test-extractor.js | **Survives** | Used by `parseExtractionResult` |
-| `tryParseJSON` | test-extractor.js | **Survives** | Used by `parseExtractionResult` |
-| `formatTAP` | test-output.js | **Modified** | Add score/actual/expected diagnostics |
-| `recordTestOutput` | test-output.js | **Survives** | File output |
-| `getAgentConfig` | bin/riteway.js | **Survives** | Agent config factory |
-| `parseAIArgs` | bin/riteway.js | **Survives** | CLI argument parsing |
-| `runAICommand` | bin/riteway.js | **Survives** | CLI entry point |
-| `aggregatePerAssertionResults` | ai-runner.js | **Modified** | Keeps `r.passed` field + adds `averageScore` |
-| `runAITests` | ai-runner.js | **Modified** | Two-agent flow; `Promise.all` within runs, `limitConcurrency` across runs |
-| `extractTests` | test-extractor.js | **Modified** | Agent-directed imports + new return shape |
-| `buildEvaluationPrompt` | test-extractor.js | **Removed** | Replaced by `buildResultPrompt` + `buildJudgePrompt` |
-| `buildResultPrompt` | test-extractor.js | **New** | Result agent prompt (plain text response) |
-| `buildJudgePrompt` | test-extractor.js | **New** | Judge agent prompt (TAP YAML response) |
-| `parseTAPYAML` | test-extractor.js | **New** | Parses judge's TAP YAML output (--- delimited) |
-| `normalizeJudgment` | ai-runner.js | **New** | Normalize judge response; logs warnings, throws on non-object |
+| `validateFilePath` | source/validation.js | **Survives** | Security validation for CLI paths |
+| `parseStringResult` | source/agent-parser.js | **Survives** | Only used by extraction agent call (Phase 1); result agent and judge agent both use `rawOutput: true`. May become dead code if extraction also moves away from JSON in a future iteration. |
+| `parseOpenCodeNDJSON` | source/agent-parser.js | **Survives** | OpenCode wire protocol (NOT AI content parsing) |
+| `unwrapAgentResult` | source/agent-parser.js | **Survives** | Unwraps agent response envelope |
+| `readTestFile` | source/ai-runner.js | **Survives** | File reading utility |
+| `calculateRequiredPasses` | source/aggregation.js | **Survives** | Threshold math |
+| `executeAgent` | source/ai-runner.js | **Modified** | Added `rawOutput` flag to return raw string (for result agent plain text + judge TAP YAML) |
+| `verifyAgentAuthentication` | source/validation.js | **Modified** | Always includes auth guidance on any failure (no more string matching) |
+| `createDebugLogger` | source/debug-logger.js | **Survives** | Debug infrastructure |
+| `parseImports` | | **Removed** | Replaced by agent-directed imports (extraction agent identifies import paths declaratively) |
+| `buildExtractionPrompt` | source/test-extractor.js | **Modified** | Updated to instruct agent to also extract import file paths |
+| `parseExtractionResult` | source/extraction-parser.js | **Modified** | Validates new shape (includes `importPaths`) |
+| `resolveImportPaths` | source/extraction-parser.js | **Modified** | Import path resolution relaxed (no `validateFilePath` on imports) |
+| `extractJSONFromMarkdown` | source/extraction-parser.js | **Survives** | Used by `parseExtractionResult` |
+| `tryParseJSON` | source/extraction-parser.js | **Survives** | Used by `parseExtractionResult` |
+| `formatTAP` | source/test-output.js | **Modified** | Refactored from string concatenation to array-join pattern; displays score/actual/expected diagnostics |
+| `recordTestOutput` | source/test-output.js | **Survives** | File output |
+| `generateLogFilePath` | source/test-output.js | **Survives** | Generate timestamped log file paths |
+| `getAgentConfig` | source/agent-config.js | **Survives** | Agent config factory |
+| `loadAgentConfig` | source/agent-config.js | **Survives** | Load and validate agent config files |
+| `formatZodError` | source/agent-config.js | **Survives** | User-friendly Zod error formatting |
+| `parseAIArgs` | source/ai-command.js | **Survives** | CLI argument parsing |
+| `runAICommand` | source/ai-command.js | **Survives** | CLI entry point |
+| `formatAssertionReport` | source/ai-command.js | **Survives** | Assertion result formatting |
+| `aggregatePerAssertionResults` | source/aggregation.js | **Modified** | Keeps `r.passed` field + adds `averageScore` |
+| `normalizeJudgment` | source/aggregation.js | **New** | Normalize judge response; logs warnings, throws on non-object |
+| `runAITests` | source/ai-runner.js | **Modified** | Two-agent flow; `Promise.all` within runs, `limitConcurrency` across runs |
+| `extractTests` | source/test-extractor.js | **Modified** | Agent-directed imports + new return shape |
+| `limitConcurrency` | source/limit-concurrency.js | **Survives** | Limits parallel execution across runs |
+| `buildEvaluationPrompt` | | **Removed** | Replaced by `buildResultPrompt` + `buildJudgePrompt` |
+| `buildResultPrompt` | source/test-extractor.js | **New** | Result agent prompt (plain text response) |
+| `buildJudgePrompt` | source/test-extractor.js | **New** | Judge agent prompt (TAP YAML response) |
+| `parseTAPYAML` | source/tap-yaml.js | **New** | Parses judge's TAP YAML output (--- delimited) |
+| All error types | source/ai-errors.js | **Centralized** | Single source of truth for all error definitions (ParseError, ValidationError, SecurityError, etc.) |
 
 **Summary:** 11 functions survive unchanged, 7 modified, 2 removed, 4 added.
 
 ---
 
-## 10. Agent Call Count
+## 10. Post-Remediation Module Map
+
+After PR #394 remediation, the codebase is organized into focused modules:
+
+### Core Pipeline
+| Module | Lines | Responsibility |
+|--------|-------|---------------|
+| source/ai-runner.js | 292 | executeAgent, runAITests, readTestFile |
+| source/test-extractor.js | 286 | extractTests, build*Prompt, extraction pipeline |
+| source/test-output.js | 190 | formatTAP, recordTestOutput, generateLogFilePath |
+
+### Extracted Modules
+| Module | Lines | Responsibility |
+|--------|-------|---------------|
+| source/aggregation.js | 107 | normalizeJudgment, calculateRequiredPasses, aggregatePerAssertionResults |
+| source/agent-parser.js | 122 | parseStringResult, parseOpenCodeNDJSON, unwrapAgentResult |
+| source/extraction-parser.js | 149 | resolveImportPaths, extractJSONFromMarkdown, tryParseJSON, parseExtractionResult |
+| source/validation.js | 71 | validateFilePath, verifyAgentAuthentication |
+| source/tap-yaml.js | 40 | parseTAPYAML |
+| source/limit-concurrency.js | 27 | limitConcurrency |
+| source/ai-errors.js | 17 | All error type definitions (single source of truth) |
+
+### CLI Layer
+| Module | Lines | Responsibility |
+|--------|-------|---------------|
+| bin/riteway.js | 186 | CLI entry point wiring |
+| source/ai-command.js | 244 | parseAIArgs, runAICommand, formatAssertionReport |
+| source/agent-config.js | 105 | getAgentConfig, loadAgentConfig, formatZodError |
+
+**Key changes from remediation:**
+- Assertion model simplified: `description` field merged into `requirement` (single field instead of two)
+- Import path validation relaxed: `validateFilePath` no longer called on import paths
+- Error definitions centralized: All in `source/ai-errors.js` (single source of truth)
+- `verifyAgentAuthentication`: Always includes auth guidance on any failure
+- `formatTAP`: Refactored from string concatenation to array-join pattern
+
+---
+
+## 11. Agent Call Count
 
 ### Formula
 
@@ -979,7 +975,7 @@ For the default case (4 assertions, 4 runs): 17 → 21 calls (+24%).
 
 ---
 
-## 11. Test Impact
+## 12. Test Impact
 
 ### Tests That Break
 
@@ -1012,7 +1008,7 @@ For the default case (4 assertions, 4 runs): 17 → 21 calls (+24%).
 
 ---
 
-## 12. Flexible Assertion Format
+## 13. Flexible Assertion Format
 
 The extraction prompt (Phase 1, `buildExtractionPrompt`) currently assumes `"Given X, should Y"` format:
 
@@ -1032,7 +1028,7 @@ The extraction agent is an LLM — it can infer test structure from any format. 
 
 ---
 
-## 13. Implementation Order (TDD)
+## 14. Implementation Order (TDD)
 
 1. **Add `buildResultPrompt`** — write tests, implement (pure function, no deps; instructs plain text response)
 2. **Add `buildJudgePrompt`** — write tests, implement (pure function, no deps; instructs TAP YAML response)
