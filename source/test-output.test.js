@@ -423,6 +423,452 @@ describe('test-output', () => {
     });
   });
 
+  describe('formatTAP() end-to-end with realistic data', () => {
+    test('formats complete TAP output with all features: scores, actual/expected, and media', () => {
+      const results = {
+        passed: true,
+        assertions: [
+          {
+            description: 'Given UI implementation, should match design specifications',
+            passed: true,
+            passCount: 3,
+            totalRuns: 4,
+            averageScore: 88.75,
+            runResults: [
+              {
+                passed: true,
+                score: 95,
+                actual: 'UI matches design',
+                expected: 'Pixel-perfect implementation'
+              },
+              {
+                passed: true,
+                score: 90,
+                actual: 'Close match with minor spacing differences',
+                expected: 'Pixel-perfect implementation'
+              },
+              {
+                passed: false,
+                score: 75,
+                actual: 'Layout correct but colors off',
+                expected: 'Pixel-perfect implementation'
+              },
+              {
+                passed: true,
+                score: 95,
+                actual: 'Exact match with design mockup',
+                expected: 'Pixel-perfect implementation'
+              }
+            ],
+            media: [
+              { path: './screenshots/ui-final.png', caption: 'Final UI implementation' },
+              { path: './screenshots/design-mockup.png', caption: 'Original design mockup' }
+            ]
+          }
+        ]
+      };
+
+      const tap = formatTAP(results);
+
+      const expectedTAP = `TAP version 13
+ok 1 - Given UI implementation, should match design specifications
+  # pass rate: 3/4
+  # avg score: 88.75
+  # actual: Exact match with design mockup
+  # expected: Pixel-perfect implementation
+  # ![Final UI implementation](./screenshots/ui-final.png)
+  # ![Original design mockup](./screenshots/design-mockup.png)
+1..1
+# tests 1
+# pass  1
+`;
+
+      assert({
+        given: 'assertion with scores, actual/expected, and media',
+        should: 'produce complete TAP with all diagnostic features',
+        actual: tap,
+        expected: expectedTAP
+      });
+    });
+
+    test('formats complete TAP output with multiple assertions, scores, actual, and expected', () => {
+      const results = {
+        passed: false,
+        assertions: [
+          {
+            description: 'Given the color scheme, should use semantic colors',
+            passed: true,
+            passCount: 3,
+            totalRuns: 4,
+            averageScore: 82.5,
+            runResults: [
+              {
+                passed: true,
+                score: 90,
+                actual: 'Uses green for pass, red for fail',
+                expected: 'Semantic colors mapping status to intuitive colors'
+              },
+              {
+                passed: true,
+                score: 85,
+                actual: 'Uses semantic color names',
+                expected: 'Semantic colors mapping status to intuitive colors'
+              },
+              {
+                passed: true,
+                score: 75,
+                actual: 'Color-coded status indicators',
+                expected: 'Semantic colors mapping status to intuitive colors'
+              },
+              {
+                passed: false,
+                score: 80,
+                actual: 'Uses green for pass, red for fail, yellow for pending',
+                expected: 'Semantic colors mapping status to intuitive colors'
+              }
+            ]
+          },
+          {
+            description: 'Given the design, should be accessible to colorblind users',
+            passed: false,
+            passCount: 1,
+            totalRuns: 4,
+            averageScore: 35.0,
+            runResults: [
+              {
+                passed: false,
+                score: 20,
+                actual: 'Uses only red/green distinction',
+                expected: 'Colorblind-safe design with patterns, shapes, or high-contrast alternatives'
+              },
+              {
+                passed: false,
+                score: 30,
+                actual: 'No alternative indicators',
+                expected: 'Colorblind-safe design with patterns, shapes, or high-contrast alternatives'
+              },
+              {
+                passed: true,
+                score: 60,
+                actual: 'Includes pattern overlays for status',
+                expected: 'Colorblind-safe design with patterns, shapes, or high-contrast alternatives'
+              },
+              {
+                passed: false,
+                score: 30,
+                actual: 'Uses only red/green distinction without alternative indicators',
+                expected: 'Colorblind-safe design with patterns, shapes, or high-contrast alternatives'
+              }
+            ]
+          },
+          {
+            description: 'Given performance requirements, should load within 100ms',
+            passed: true,
+            passCount: 4,
+            totalRuns: 4,
+            averageScore: 95.0,
+            runResults: [
+              {
+                passed: true,
+                score: 100,
+                actual: 'Loads in 45ms',
+                expected: 'Loads within 100ms threshold'
+              },
+              {
+                passed: true,
+                score: 95,
+                actual: 'Loads in 60ms',
+                expected: 'Loads within 100ms threshold'
+              },
+              {
+                passed: true,
+                score: 90,
+                actual: 'Loads in 75ms',
+                expected: 'Loads within 100ms threshold'
+              },
+              {
+                passed: true,
+                score: 95,
+                actual: 'Loads in 55ms',
+                expected: 'Loads within 100ms threshold'
+              }
+            ]
+          }
+        ]
+      };
+
+      const tap = formatTAP(results);
+
+      const expectedTAP = `TAP version 13
+ok 1 - Given the color scheme, should use semantic colors
+  # pass rate: 3/4
+  # avg score: 82.50
+  # actual: Uses green for pass, red for fail, yellow for pending
+  # expected: Semantic colors mapping status to intuitive colors
+not ok 2 - Given the design, should be accessible to colorblind users
+  # pass rate: 1/4
+  # avg score: 35.00
+  # actual: Uses only red/green distinction without alternative indicators
+  # expected: Colorblind-safe design with patterns, shapes, or high-contrast alternatives
+ok 3 - Given performance requirements, should load within 100ms
+  # pass rate: 4/4
+  # avg score: 95.00
+  # actual: Loads in 55ms
+  # expected: Loads within 100ms threshold
+1..3
+# tests 3
+# pass  2
+# fail  1
+`;
+
+      assert({
+        given: 'realistic multi-assertion test data',
+        should: 'produce complete valid TAP output',
+        actual: tap,
+        expected: expectedTAP
+      });
+    });
+
+    test('formats TAP with mixed data availability across assertions', () => {
+      const results = {
+        passed: true,
+        assertions: [
+          {
+            description: 'Given complete data, should include all diagnostics',
+            passed: true,
+            passCount: 2,
+            totalRuns: 2,
+            averageScore: 87.5,
+            runResults: [
+              {
+                passed: true,
+                score: 85,
+                actual: 'First result',
+                expected: 'Expected result'
+              },
+              {
+                passed: true,
+                score: 90,
+                actual: 'Complete implementation with all features',
+                expected: 'Full feature set as specified'
+              }
+            ]
+          },
+          {
+            description: 'Given missing score, should skip avg score line',
+            passed: true,
+            passCount: 2,
+            totalRuns: 2,
+            runResults: [
+              { passed: true, actual: 'Has actual', expected: 'Has expected' },
+              { passed: true, actual: 'Result without score', expected: 'Expected without score' }
+            ]
+          },
+          {
+            description: 'Given missing actual/expected, should skip those lines',
+            passed: true,
+            passCount: 2,
+            totalRuns: 2,
+            averageScore: 75.0,
+            runResults: [
+              { passed: true, score: 80 },
+              { passed: true, score: 70 }
+            ]
+          }
+        ]
+      };
+
+      const tap = formatTAP(results);
+
+      const expectedTAP = `TAP version 13
+ok 1 - Given complete data, should include all diagnostics
+  # pass rate: 2/2
+  # avg score: 87.50
+  # actual: Complete implementation with all features
+  # expected: Full feature set as specified
+ok 2 - Given missing score, should skip avg score line
+  # pass rate: 2/2
+  # actual: Result without score
+  # expected: Expected without score
+ok 3 - Given missing actual/expected, should skip those lines
+  # pass rate: 2/2
+  # avg score: 75.00
+1..3
+# tests 3
+# pass  3
+`;
+
+      assert({
+        given: 'assertions with mixed data availability',
+        should: 'produce valid TAP with appropriate diagnostics',
+        actual: tap,
+        expected: expectedTAP
+      });
+    });
+  });
+
+  describe('formatTAP() with score diagnostics', () => {
+    test('includes average score diagnostic with 2 decimal places', () => {
+      const results = {
+        passed: true,
+        assertions: [
+          {
+            description: 'Given a test, should pass',
+            passed: true,
+            passCount: 3,
+            totalRuns: 4,
+            averageScore: 82.5,
+            runResults: [
+              { passed: true, score: 90 },
+              { passed: true, score: 85 },
+              { passed: true, score: 75 },
+              { passed: false, score: 80 }
+            ]
+          }
+        ]
+      };
+
+      const tap = formatTAP(results);
+
+      assert({
+        given: 'assertion with averageScore',
+        should: 'include avg score diagnostic with 2 decimals',
+        actual: tap.includes('# avg score: 82.50'),
+        expected: true
+      });
+    });
+
+    test('includes actual from last run', () => {
+      const results = {
+        passed: true,
+        assertions: [
+          {
+            description: 'Given color scheme, should use semantic colors',
+            passed: true,
+            passCount: 3,
+            totalRuns: 4,
+            averageScore: 82.5,
+            runResults: [
+              { passed: true, score: 90, actual: 'First run actual' },
+              { passed: true, score: 85, actual: 'Second run actual' },
+              { passed: true, score: 75, actual: 'Third run actual' },
+              { passed: false, score: 80, actual: 'Uses green for pass, red for fail, yellow for pending' }
+            ]
+          }
+        ]
+      };
+
+      const tap = formatTAP(results);
+
+      assert({
+        given: 'assertion with actual in runResults',
+        should: 'include actual from last run',
+        actual: tap.includes('# actual: Uses green for pass, red for fail, yellow for pending'),
+        expected: true
+      });
+    });
+
+    test('includes expected from last run', () => {
+      const results = {
+        passed: true,
+        assertions: [
+          {
+            description: 'Given color scheme, should use semantic colors',
+            passed: true,
+            passCount: 3,
+            totalRuns: 4,
+            averageScore: 82.5,
+            runResults: [
+              { passed: true, score: 90, expected: 'First run expected' },
+              { passed: true, score: 85, expected: 'Second run expected' },
+              { passed: true, score: 75, expected: 'Third run expected' },
+              { passed: false, score: 80, expected: 'Semantic colors mapping status to intuitive colors' }
+            ]
+          }
+        ]
+      };
+
+      const tap = formatTAP(results);
+
+      assert({
+        given: 'assertion with expected in runResults',
+        should: 'include expected from last run',
+        actual: tap.includes('# expected: Semantic colors mapping status to intuitive colors'),
+        expected: true
+      });
+    });
+
+    test('handles missing averageScore gracefully', () => {
+      const results = {
+        passed: true,
+        assertions: [
+          {
+            description: 'Given a test, should pass',
+            passed: true,
+            passCount: 2,
+            totalRuns: 2,
+            runResults: [{ passed: true }, { passed: true }]
+          }
+        ]
+      };
+
+      const tap = formatTAP(results);
+
+      assert({
+        given: 'assertion without averageScore',
+        should: 'not include avg score line',
+        actual: tap.includes('# avg score:'),
+        expected: false
+      });
+
+      assert({
+        given: 'assertion without averageScore',
+        should: 'still format normally',
+        actual: tap.includes('ok 1 - Given a test, should pass'),
+        expected: true
+      });
+    });
+
+    test('handles missing actual and expected in runResults gracefully', () => {
+      const results = {
+        passed: true,
+        assertions: [
+          {
+            description: 'Given a test, should pass',
+            passed: true,
+            passCount: 2,
+            totalRuns: 2,
+            averageScore: 85.0,
+            runResults: [{ passed: true, score: 90 }, { passed: true, score: 80 }]
+          }
+        ]
+      };
+
+      const tap = formatTAP(results);
+
+      assert({
+        given: 'runResults without actual/expected',
+        should: 'not include actual line',
+        actual: tap.includes('# actual:'),
+        expected: false
+      });
+
+      assert({
+        given: 'runResults without actual/expected',
+        should: 'not include expected line',
+        actual: tap.includes('# expected:'),
+        expected: false
+      });
+
+      assert({
+        given: 'runResults without actual/expected',
+        should: 'still include avg score',
+        actual: tap.includes('# avg score: 85.00'),
+        expected: true
+      });
+    });
+  });
+
   describe('formatTAP() with media embeds', () => {
     test('embeds media attachments using markdown image syntax', () => {
       const results = {

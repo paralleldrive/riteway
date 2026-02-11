@@ -86,7 +86,23 @@ export const formatTAP = (results, { color = false } = {}) => {
     const resetCode = color ? COLORS.reset : '';
     tap += `${colorCode}${prefix} ${testNumber}${resetCode} - ${assertion.description}\n`;
     tap += `  # pass rate: ${assertion.passCount}/${assertion.totalRuns}\n`;
-    
+
+    // Add average score if available
+    if (assertion.averageScore !== undefined) {
+      tap += `  # avg score: ${assertion.averageScore.toFixed(2)}\n`;
+    }
+
+    // Add actual and expected from last run if available
+    if (assertion.runResults && assertion.runResults.length > 0) {
+      const lastRun = assertion.runResults[assertion.runResults.length - 1];
+      if (lastRun.actual !== undefined) {
+        tap += `  # actual: ${lastRun.actual}\n`;
+      }
+      if (lastRun.expected !== undefined) {
+        tap += `  # expected: ${lastRun.expected}\n`;
+      }
+    }
+
     // Add media embeds if present
     if (assertion.media && assertion.media.length > 0) {
       assertion.media.forEach(({ path, caption }) => {
