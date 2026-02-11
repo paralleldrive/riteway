@@ -1,9 +1,24 @@
 import { readFile } from 'fs/promises';
 import { spawn } from 'child_process';
 import { resolve, relative } from 'path';
-import { createError } from 'error-causes';
+import { errorCauses, createError } from 'error-causes';
 import { extractTests, buildResultPrompt, buildJudgePrompt, parseTAPYAML } from './test-extractor.js';
 import { createDebugLogger } from './debug-logger.js';
+
+// Module-level error types for AI runner operations.
+// Generic codes here (e.g., SECURITY_VIOLATION) may be overridden
+// with specific codes (e.g., PATH_TRAVERSAL) at individual throw sites.
+const [aiErrors, handleAIErrors] = errorCauses({
+  SecurityError: { code: 'SECURITY_VIOLATION', message: 'Security violation detected' },
+  ParseError: { code: 'PARSE_FAILURE', message: 'Failed to parse AI response' },
+  ValidationError: { code: 'VALIDATION_FAILURE', message: 'Invalid input parameters' },
+  TimeoutError: { code: 'AGENT_TIMEOUT', message: 'AI agent timed out' },
+  AgentProcessError: { code: 'AGENT_PROCESS_FAILURE', message: 'AI agent process failed' },
+});
+
+const { SecurityError, ParseError, ValidationError, TimeoutError, AgentProcessError } = aiErrors;
+
+export { handleAIErrors };
 
 /**
  * Validate that a file path does not escape the base directory.
@@ -17,7 +32,7 @@ export const validateFilePath = (filePath, baseDir) => {
   const rel = relative(baseDir, resolved);
   if (rel.startsWith('..')) {
     throw createError({
-      name: 'SecurityError',
+      ...SecurityError,
       message: 'File path escapes base directory',
       code: 'PATH_TRAVERSAL',
       filePath,
@@ -98,7 +113,7 @@ export const parseOpenCodeNDJSON = (ndjson, logger) => {
   
   if (textEvents.length === 0) {
     throw createError({
-      name: 'ParseError',
+      ...ParseError,
       message: 'No text events found in OpenCode output',
       code: 'NO_TEXT_EVENTS',
       ndjsonLength: ndjson.length,
@@ -135,7 +150,7 @@ export const normalizeJudgment = (raw, { description, runIndex, logger }) => {
   // Fail loud on non-object input per error-causes.md
   if (typeof raw !== 'object' || raw === null) {
     throw createError({
-      name: 'ParseError',
+      ...ParseError,
       message: 'Judge returned non-object response',
       code: 'JUDGE_INVALID_RESPONSE',
       description,
@@ -169,7 +184,7 @@ export const normalizeJudgment = (raw, { description, runIndex, logger }) => {
 export const calculateRequiredPasses = ({ runs = 4, threshold = 75 } = {}) => {
   if (!Number.isInteger(runs) || runs <= 0) {
     throw createError({
-      name: 'ValidationError',
+      ...ValidationError,
       message: 'runs must be a positive integer',
       code: 'INVALID_RUNS',
       runs
@@ -177,7 +192,7 @@ export const calculateRequiredPasses = ({ runs = 4, threshold = 75 } = {}) => {
   }
   if (!Number.isFinite(threshold) || threshold < 0 || threshold > 100) {
     throw createError({
-      name: 'ValidationError',
+      ...ValidationError,
       message: 'threshold must be between 0 and 100',
       code: 'INVALID_THRESHOLD',
       threshold
@@ -271,7 +286,13 @@ export const executeAgent = ({ agentConfig, prompt, timeout = 300000, debug = fa
       proc.kill();
       logger.log('Process timed out');
       logger.flush();
-      reject(new Error(`Agent process timed out after ${timeout}ms. Command: ${command} ${args.join(' ')}`));
+      reject(createError({
+        ...TimeoutError,
+        message: `Agent process timed out after ${timeout}ms. Command: ${command} ${args.join(' ')}`,
+        command,
+        args: args.join(' '),
+        timeout
+      }));
     }, timeout);
 
     proc.stdout.on('data', (data) => {
@@ -294,16 +315,22 @@ export const executeAgent = ({ agentConfig, prompt, timeout = 300000, debug = fa
       if (code !== 0) {
         const truncatedStdout = stdout.length > 500 ? stdout.slice(0, 500) + '...' : stdout;
         const truncatedStderr = stderr.length > 500 ? stderr.slice(0, 500) + '...' : stderr;
-        
+
         logger.log('Process failed with non-zero exit code');
         logger.flush();
-        
-        return reject(new Error(
-          `Agent process exited with code ${code}\n` +
-          `Command: ${command} ${args.join(' ')}\n` +
-          `Stderr: ${truncatedStderr}\n` +
-          `Stdout preview: ${truncatedStdout}`
-        ));
+
+        return reject(createError({
+          ...AgentProcessError,
+          message: `Agent process exited with code ${code}\n` +
+                   `Command: ${command} ${args.join(' ')}\n` +
+                   `Stderr: ${truncatedStderr}\n` +
+                   `Stdout preview: ${truncatedStdout}`,
+          command,
+          args: args.join(' '),
+          exitCode: code,
+          stderr: truncatedStderr,
+          stdoutPreview: truncatedStdout
+        }));
       }
 
       try {
@@ -331,7 +358,11 @@ export const executeAgent = ({ agentConfig, prompt, timeout = 300000, debug = fa
           }
 
           if (typeof result !== 'string') {
-            throw new Error(`Raw output requested but result is not a string: ${typeof result}`);
+            throw createError({
+              ...ParseError,
+              message: `Raw output requested but result is not a string: ${typeof result}`,
+              resultType: typeof result
+            });
           }
 
           logger.log(`Returning raw output (${result.length} characters)`);
@@ -344,7 +375,11 @@ export const executeAgent = ({ agentConfig, prompt, timeout = 300000, debug = fa
 
         // If result is still a string (not parsed as JSON), that's an error
         if (typeof result === 'string') {
-          throw new Error(`Agent output is not valid JSON: ${result.slice(0, 100)}`);
+          throw createError({
+            ...ParseError,
+            message: `Agent output is not valid JSON: ${result.slice(0, 100)}`,
+            outputPreview: result.slice(0, 100)
+          });
         }
 
         // Claude CLI wraps response in envelope with "result" field
@@ -367,9 +402,9 @@ export const executeAgent = ({ agentConfig, prompt, timeout = 300000, debug = fa
         const truncatedStdout = stdout.length > 500 ? stdout.slice(0, 500) + '...' : stdout;
         logger.log('JSON parsing failed:', err.message);
         logger.flush();
-        
+
         reject(createError({
-          name: 'ParseError',
+          ...ParseError,
           message: `Failed to parse agent output as JSON: ${err.message}`,
           code: 'AGENT_OUTPUT_PARSE_ERROR',
           command,
@@ -384,11 +419,14 @@ export const executeAgent = ({ agentConfig, prompt, timeout = 300000, debug = fa
       clearTimeout(timeoutId);
       logger.log('Process spawn error:', err.message);
       logger.flush();
-      
-      reject(new Error(
-        `Failed to spawn agent process: ${err.message}\n` +
-        `Command: ${command} ${args.join(' ')}`
-      ));
+
+      reject(createError({
+        ...AgentProcessError,
+        message: `Failed to spawn agent process: ${err.message}`,
+        command,
+        args: args.join(' '),
+        cause: err
+      }));
     });
   });
 };

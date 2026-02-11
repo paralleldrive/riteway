@@ -639,7 +639,7 @@ describe('ai-runner', () => {
         command: 'node',
         args: ['-e', 'console.error("error message"); process.exit(1)']
       };
-      
+
       let error;
       try {
         await executeAgent({
@@ -670,6 +670,20 @@ describe('ai-runner', () => {
         actual: error?.message.includes('Command:'),
         expected: true
       });
+
+      assert({
+        given: 'non-zero exit code',
+        should: 'have AgentProcessError name in cause',
+        actual: error?.cause?.name,
+        expected: 'AgentProcessError'
+      });
+
+      assert({
+        given: 'non-zero exit code',
+        should: 'have AGENT_PROCESS_FAILURE code in cause',
+        actual: error?.cause?.code,
+        expected: 'AGENT_PROCESS_FAILURE'
+      });
     });
 
     test('times out long-running processes', async () => {
@@ -677,7 +691,7 @@ describe('ai-runner', () => {
         command: 'node',
         args: ['-e', 'setTimeout(() => console.log(JSON.stringify({ done: true })), 10000)']
       };
-      
+
       let error;
       try {
         await executeAgent({
@@ -701,6 +715,20 @@ describe('ai-runner', () => {
         should: 'include command in error message',
         actual: error?.message.includes('Command:'),
         expected: true
+      });
+
+      assert({
+        given: 'process that exceeds timeout',
+        should: 'have TimeoutError name in cause',
+        actual: error?.cause?.name,
+        expected: 'TimeoutError'
+      });
+
+      assert({
+        given: 'process that exceeds timeout',
+        should: 'have AGENT_TIMEOUT code in cause',
+        actual: error?.cause?.code,
+        expected: 'AGENT_TIMEOUT'
       });
     });
 
