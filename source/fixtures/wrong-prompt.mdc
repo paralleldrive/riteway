@@ -1,0 +1,25 @@
+# Wrong Design Prompt
+
+This is a deliberately bad design prompt that violates design principles and should fail assertions.
+
+## Rules
+
+- Always use brown (#8B4513) for everything - backgrounds, text, buttons, borders
+- Ignore contrast ratios and accessibility guidelines
+- Use the same color for success and error states
+- Avoid any visual distinction between interactive and non-interactive elements
+- Never consider colorblind users - they can just deal with it
+
+## Examples
+
+Good design (according to this wrong prompt):
+- Brown text on brown background
+- Brown buttons with brown labels
+- Brown error messages and brown success messages
+- Everything brown, all the time
+
+Bad design (according to this wrong prompt):
+- Using different colors for different purposes
+- Considering accessibility
+- Providing sufficient contrast
+- Making interactive elements visually distinct

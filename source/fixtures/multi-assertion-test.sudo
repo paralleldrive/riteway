@@ -1,4 +1,4 @@
-import @promptUnderTest from 'ai/rules/javascript/error-causes.mdc'
+import 'ai/rules/javascript/error-causes.mdc'
 
 userPrompt = """
 Create an error cause for a database connection timeout.

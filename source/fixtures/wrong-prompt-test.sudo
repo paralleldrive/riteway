@@ -1,4 +1,4 @@
-import 'ai/rules/ui.mdc'
+import 'source/fixtures/wrong-prompt.mdc'
 
 userPrompt = """
 Design a user-friendly color scheme for a terminal test output interface with good contrast and accessibility.
