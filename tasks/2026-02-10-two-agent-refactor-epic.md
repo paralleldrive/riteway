@@ -1,8 +1,8 @@
 # Epic: Two-Agent Refactor + PR #394 Remediation
 
 > **Date:** 2026-02-10
-> **Status:** DRAFT -- requires user review
-> **Branch:** `riteway-ai-testing-framework-implementation`
+> **Status:** IN PROGRESS -- T1-T7, T9 complete (7/13). T8 unblocked and next.
+> **Branch:** `two-agent-refactor`
 > **PR:** [#394](https://github.com/paralleldrive/riteway/pull/394)
 > **Vision:** "The standard testing framework for AI Driven Development and software agents"
 > **Architecture:** [two-agent-architecture.md](../plan/ai-testing-framework/two-agent-architecture.md)
@@ -34,36 +34,36 @@ Convert the AI testing framework from a **single-agent self-evaluating pattern**
 
 ### WAVE 1 -- Independent Tasks (start immediately, all parallel)
 
-| # | Task | Files Changed | Remediation | Blocks |
-|---|------|---------------|-------------|--------|
-| 1 | Test Pattern Fixes -- getAgentConfig IIFEs | `bin/riteway.js`, `bin/riteway.test.js` | Rem. Task 3 (#8, #9-#13) | -- |
-| 2 | Error Testing with Try | `bin/riteway.test.js` | Rem. Task 4 (#14, #15, #16) | -- |
-| 3 | Add `buildResultPrompt` (plain text response) | `source/test-extractor.js`, `source/test-extractor.test.js` | New | 7, 8 |
-| 4 | Add `buildJudgePrompt` + `parseTAPYAML` (TAP YAML response) | `source/test-extractor.js`, `source/test-extractor.test.js` | New | 7, 8 |
-| 5 | Add `normalizeJudgment` | `source/ai-runner.js`, `source/ai-runner.test.js` | New | 6, 8 |
+| # | Task | Files Changed | Remediation | Blocks | Status |
+|---|------|---------------|-------------|--------|--------|
+| 1 | Test Pattern Fixes -- getAgentConfig IIFEs | `bin/riteway.test.js` | Rem. Task 3 (#8, #9-#13) | -- | ✅ DONE |
+| 2 | Error Testing with Try | `bin/riteway.test.js` | Rem. Task 4 (#14, #15, #16) | -- | ✅ DONE |
+| 3 | Add `buildResultPrompt` (plain text response) | `source/test-extractor.js`, `source/test-extractor.test.js` | New | 7, 8 | ✅ DONE |
+| 4 | Add `buildJudgePrompt` + `parseTAPYAML` (TAP YAML response) | `source/test-extractor.js`, `source/test-extractor.test.js` | New | 7, 8 | ✅ DONE |
+| 5 | Add `normalizeJudgment` | `source/ai-runner.js`, `source/ai-runner.test.js` | New | 6, 8 | ✅ DONE |
 
 ### WAVE 2 -- Breaking Refactor (depends on Wave 1)
 
-| # | Task | Files Changed | Blocked By | Blocks |
-|---|------|---------------|------------|--------|
-| 6 | Modify `aggregatePerAssertionResults` (`r.passed` + `averageScore`) | `source/ai-runner.js`, `source/ai-runner.test.js` | 5 | 8, 9 |
-| 7 | Modify `extractTests` + agent-directed imports + remove `parseImports` + flexible assertions | `source/test-extractor.js`, `source/test-extractor.test.js` | 3, 4 | 8 |
-| 8 | Modify `runAITests` (plain text result + TAP YAML judge + `Promise.all` within runs) + remove `buildEvaluationPrompt` | `source/ai-runner.js`, `source/test-extractor.js`, tests | 3, 4, 5, 6, 7 | 10, 11, 12, 13 |
-| 9 | Modify `formatTAP` -- score/actual/expected diagnostics | `source/test-output.js`, `source/test-output.test.js` | 6 | 13 |
+| # | Task | Files Changed | Blocked By | Blocks | Status |
+|---|------|---------------|------------|--------|--------|
+| 6 | Modify `aggregatePerAssertionResults` (`r.passed` + `averageScore`) | `source/ai-runner.js`, `source/ai-runner.test.js` | 5 | 8, 9 | ✅ DONE |
+| 7 | Modify `extractTests` + agent-directed imports + remove `parseImports` + flexible assertions | `source/test-extractor.js`, `source/test-extractor.test.js` | 3, 4 | 8 | ✅ DONE |
+| 8 | Modify `runAITests` (plain text result + TAP YAML judge + `Promise.all` within runs) + remove `buildEvaluationPrompt` | `source/ai-runner.js`, `source/test-extractor.js`, tests | 3, 4, 5, 6, 7 | 10, 11, 12, 13 | **NEXT** |
+| 9 | Modify `formatTAP` -- score/actual/expected diagnostics | `source/test-output.js`, `source/test-output.test.js` | 6 | 13 | ✅ DONE |
 
 ### WAVE 3 -- Post-Refactor Polish (depends on Wave 2)
 
-| # | Task | Files Changed | Blocked By | Remediation |
-|---|------|---------------|------------|-------------|
-| 10 | Zod Schema Validation + Centralized Defaults | `bin/riteway.js`, `bin/riteway.test.js` | 8 | Rem. Task 2 (#1, #2, #3, #6, #7) |
-| 11 | Error-Causes Switch in ai-runner.js | `source/ai-runner.js`, `source/ai-runner.test.js` | 8 | Rem. Task 5 (#4) |
-| 12 | Code Style -- Eliminate Mutations | `bin/riteway.js` | 8, 10 | Rem. Task 6 (#5) |
+| # | Task | Files Changed | Blocked By | Remediation | Status |
+|---|------|---------------|------------|-------------|--------|
+| 10 | Zod Schema Validation + Centralized Defaults | `bin/riteway.js`, `bin/riteway.test.js` | 8 | Rem. Task 2 (#1, #2, #3, #6, #7) | PENDING |
+| 11 | Error-Causes Switch in ai-runner.js | `source/ai-runner.js`, `source/ai-runner.test.js` | 8 | Rem. Task 5 (#4) | PENDING |
+| 12 | Code Style -- Eliminate Mutations | `bin/riteway.js` | 8, 10 | Rem. Task 6 (#5) | PENDING |
 
 ### WAVE 4 -- Final (depends on Wave 3)
 
-| # | Task | Files Changed | Blocked By | Remediation |
-|---|------|---------------|------------|-------------|
-| 13 | Failure Fixture + Documentation + Architecture Diagram | `source/fixtures/`, docs, `bin/riteway.js` | 8, 9 | Rem. Task 7 (general) |
+| # | Task | Files Changed | Blocked By | Remediation | Status |
+|---|------|---------------|------------|-------------|--------|
+| 13 | Failure Fixture + Documentation + Architecture Diagram | `source/fixtures/`, docs, `bin/riteway.js` | 8, 9 | Rem. Task 7 (general) | PENDING |
 
 ---
 
@@ -190,10 +190,10 @@ T8 (runAITests two-agent flow) is the critical bottleneck -- it depends on 5 pri
 
 #### Acceptance Criteria
 
-- [ ] No IIFEs in getAgentConfig tests
-- [ ] Claude/cursor configs asserted via direct object comparison
-- [ ] OpenCode `parseOutput` tested as separate behavior assertions
-- [ ] All existing tests pass
+- [x] No IIFEs in getAgentConfig tests
+- [x] Claude/cursor configs asserted via direct object comparison
+- [x] OpenCode `parseOutput` tested as separate behavior assertions
+- [x] All existing tests pass
 
 ---
 
@@ -225,10 +225,10 @@ T8 (runAITests two-agent flow) is the critical bottleneck -- it depends on 5 pri
 
 #### Acceptance Criteria
 
-- [ ] All error tests use `Try` or `await Try`
-- [ ] No try/catch blocks in test file for error testing
-- [ ] Error assertions check `.cause.name` per error-causes.mdc
-- [ ] All tests pass
+- [x] All error tests use `Try` or `await Try`
+- [x] No try/catch blocks in test file for error testing
+- [x] Error assertions check `.cause.name` per error-causes.mdc
+- [x] All tests pass
 
 ---
 
@@ -271,11 +271,11 @@ export const buildResultPrompt = ({ userPrompt, promptUnderTest }) => string
 
 #### Acceptance Criteria
 
-- [ ] Pure function, no side effects
-- [ ] Includes userPrompt in output
-- [ ] Conditionally includes promptUnderTest context
-- [ ] Instructs plain text response (NOT JSON `{ "output": "..." }`)
-- [ ] All tests pass
+- [x] Pure function, no side effects
+- [x] Includes userPrompt in output
+- [x] Conditionally includes promptUnderTest context
+- [x] Instructs plain text response (NOT JSON `{ "output": "..." }`)
+- [x] All tests pass
 
 ---
 
@@ -346,14 +346,14 @@ export const parseTAPYAML = (output) => { passed, actual, expected, score }
 
 #### Acceptance Criteria
 
-- [ ] `buildJudgePrompt` is pure function, no side effects
-- [ ] Includes result, userPrompt, description, requirement in output
-- [ ] Conditionally includes promptUnderTest context
-- [ ] Instructs TAP YAML `{ passed, actual, expected, score }` response format (NOT JSON)
-- [ ] Each call sees exactly ONE requirement
-- [ ] `parseTAPYAML` correctly parses `---` delimited TAP YAML blocks
-- [ ] `parseTAPYAML` throws `ParseError` on invalid input
-- [ ] All tests pass
+- [x] `buildJudgePrompt` is pure function, no side effects
+- [x] Includes result, userPrompt, description, requirement in output
+- [x] Conditionally includes promptUnderTest context
+- [x] Instructs TAP YAML `{ passed, actual, expected, score }` response format (NOT JSON)
+- [x] Each call sees exactly ONE requirement
+- [x] `parseTAPYAML` correctly parses `---` delimited TAP YAML blocks
+- [x] `parseTAPYAML` throws `ParseError` on invalid input
+- [x] All tests pass
 
 ---
 
@@ -393,12 +393,12 @@ export const parseTAPYAML = (output) => { passed, actual, expected, score }
 
 #### Acceptance Criteria
 
-- [ ] `normalizeJudgment` throws on non-object input (fail loud)
-- [ ] `normalizeJudgment` logs warnings when applying defaults
-- [ ] `normalizeJudgment` defaults missing fields safely
-- [ ] `normalizeJudgment` clamps score to 0..100
-- [ ] Uses `passed` field (not `pass`)
-- [ ] All tests pass
+- [x] `normalizeJudgment` throws on non-object input (fail loud)
+- [x] `normalizeJudgment` logs warnings when applying defaults
+- [x] `normalizeJudgment` defaults missing fields safely
+- [x] `normalizeJudgment` clamps score to 0..100
+- [x] Uses `passed` field (not `pass`)
+- [x] All tests pass
 
 ---
 
@@ -442,11 +442,11 @@ export const parseTAPYAML = (output) => { passed, actual, expected, score }
 
 #### Acceptance Criteria
 
-- [ ] Keeps `r.passed` (not changed to `r.pass`) for counting
-- [ ] Returns `averageScore` per assertion
-- [ ] Score averaging handles missing/undefined scores
-- [ ] Existing threshold logic unchanged
-- [ ] All tests pass
+- [x] Keeps `r.passed` (not changed to `r.pass`) for counting
+- [x] Returns `averageScore` per assertion
+- [x] Score averaging handles missing/undefined scores
+- [x] Existing threshold logic unchanged
+- [x] All tests pass
 
 ---
 
@@ -536,16 +536,16 @@ This avoids the `access()` race condition, preserves the original error, and fol
 
 #### Acceptance Criteria
 
-- [ ] `extractTests` returns `{ userPrompt, promptUnderTest, assertions }` (not array)
-- [ ] `parseImports()` removed -- agent identifies imports declaratively
-- [ ] `buildExtractionPrompt` instructs agent to extract import file paths
-- [ ] `parseExtractionResult` validates new shape with `importPaths`
-- [ ] `buildExtractionPrompt` accepts any assertion format
-- [ ] Missing import file throws structured `ValidationError` with `cause` (not `access()` pre-check)
-- [ ] Missing promptUnderTest declaration throws `ValidationError` with code `MISSING_PROMPT_UNDER_TEST` (per reviewer: must error, not silently use prompt without context)
-- [ ] Missing userPrompt throws `ValidationError` with code `MISSING_USER_PROMPT` (per Eric's spec: userPrompt is always required, may be inline or imported)
-- [ ] No assertions found throws `ValidationError` with code `NO_ASSERTIONS_FOUND`
-- [ ] All tests pass
+- [x] `extractTests` returns `{ userPrompt, promptUnderTest, assertions }` (not array)
+- [x] `parseImports()` removed -- agent identifies imports declaratively
+- [x] `buildExtractionPrompt` instructs agent to extract import file paths
+- [x] `parseExtractionResult` validates new shape with `importPaths`
+- [x] `buildExtractionPrompt` accepts any assertion format
+- [x] Missing import file throws structured `ValidationError` with `cause` (not `access()` pre-check)
+- [x] Missing promptUnderTest declaration throws `ValidationError` with code `MISSING_PROMPT_UNDER_TEST`
+- [x] Missing userPrompt throws `ValidationError` with code `MISSING_USER_PROMPT`
+- [x] No assertions found throws `ValidationError` with code `NO_ASSERTIONS_FOUND`
+- [x] All tests pass
 
 ---
 
@@ -666,11 +666,11 @@ not ok 2 - Given the design, should be accessible to colorblind users
 
 #### Acceptance Criteria
 
-- [ ] TAP output includes `# avg score:` diagnostic
-- [ ] TAP output includes `# actual:` and `# expected:` from last run
-- [ ] Handles missing fields gracefully (no crash)
-- [ ] Existing TAP format preserved (media embeds, pass rate)
-- [ ] All tests pass
+- [x] TAP output includes `# avg score:` diagnostic
+- [x] TAP output includes `# actual:` and `# expected:` from last run
+- [x] Handles missing fields gracefully (no crash)
+- [x] Existing TAP format preserved (media embeds, pass rate)
+- [x] All tests pass
 
 ---
 
