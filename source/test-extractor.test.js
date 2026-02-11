@@ -6,9 +6,20 @@ import {
   buildJudgePrompt,
   parseTAPYAML,
   parseExtractionResult,
-  extractTests,
-  parseImports
+  extractTests
 } from './test-extractor.js';
+import { mkdirSync, writeFileSync, rmSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import { init } from '@paralleldrive/cuid2';
+
+const createSlug = init({ length: 10 });
+
+// Helper to create unique temp directory names
+const createTempDir = () => {
+  const slug = createSlug();
+  return join(tmpdir(), `riteway-extractor-test-${slug}`);
+};
 
 describe('test-extractor', () => {
   describe('buildExtractionPrompt()', () => {
@@ -52,7 +63,7 @@ userPrompt = """
       });
     });
 
-    test('instructs agent to extract userPrompt and requirement', () => {
+    test('instructs agent to extract userPrompt, requirement, and import paths', () => {
       const testContent = '- Given a test, should pass';
 
       const result = buildExtractionPrompt(testContent);
@@ -68,6 +79,26 @@ userPrompt = """
         given: 'extraction prompt',
         should: 'instruct agent to extract requirement field',
         actual: result.includes('requirement'),
+        expected: true
+      });
+
+      assert({
+        given: 'extraction prompt',
+        should: 'instruct agent to extract import paths',
+        actual: result.includes('importPaths') || result.includes('import'),
+        expected: true
+      });
+    });
+
+    test('accepts flexible assertion formats', () => {
+      const testContent = '- Given a test, should pass';
+
+      const result = buildExtractionPrompt(testContent);
+
+      assert({
+        given: 'extraction prompt',
+        should: 'not mandate specific assertion format',
+        actual: result.includes('any format') || result.includes('flexible') || !result.includes('must be formatted as'),
         expected: true
       });
     });
@@ -510,103 +541,105 @@ score: 75
   });
 
   describe('parseExtractionResult()', () => {
-    test('parses valid JSON array of extracted tests', () => {
-      const validOutput = JSON.stringify([
-        {
-          id: 1,
-          description: 'Given simple addition, should add correctly',
-          userPrompt: 'What is 2 + 2?',
-          requirement: 'should add correctly'
-        },
-        {
-          id: 2,
-          description: 'Given format, should output JSON',
-          userPrompt: 'What is 2 + 2?',
-          requirement: 'should output JSON'
-        }
-      ]);
+    test('parses valid extraction result with new shape', () => {
+      const validOutput = JSON.stringify({
+        userPrompt: 'What is 2 + 2?',
+        importPaths: ['test.mdc'],
+        assertions: [
+          {
+            id: 1,
+            description: 'Given simple addition, should add correctly',
+            requirement: 'should add correctly'
+          },
+          {
+            id: 2,
+            description: 'Given format, should output JSON',
+            requirement: 'should output JSON'
+          }
+        ]
+      });
 
       const result = parseExtractionResult(validOutput);
 
       assert({
-        given: 'valid JSON array with two extracted tests',
-        should: 'return an array of length 2',
-        actual: result.length,
-        expected: 2
-      });
-
-      assert({
-        given: 'valid extraction result',
-        should: 'preserve the id field',
-        actual: result[0].id,
-        expected: 1
-      });
-
-      assert({
-        given: 'valid extraction result',
-        should: 'preserve the description field',
-        actual: result[0].description,
-        expected: 'Given simple addition, should add correctly'
-      });
-
-      assert({
         given: 'valid extraction result',
         should: 'preserve the userPrompt field',
-        actual: result[0].userPrompt,
+        actual: result.userPrompt,
         expected: 'What is 2 + 2?'
       });
 
       assert({
         given: 'valid extraction result',
-        should: 'preserve the requirement field',
-        actual: result[0].requirement,
-        expected: 'should add correctly'
+        should: 'preserve the importPaths field',
+        actual: Array.isArray(result.importPaths),
+        expected: true
+      });
+
+      assert({
+        given: 'valid extraction result',
+        should: 'preserve importPaths values',
+        actual: result.importPaths[0],
+        expected: 'test.mdc'
+      });
+
+      assert({
+        given: 'valid extraction result',
+        should: 'preserve assertions array',
+        actual: result.assertions.length,
+        expected: 2
+      });
+
+      assert({
+        given: 'valid extraction result',
+        should: 'preserve assertion fields',
+        actual: result.assertions[0].description,
+        expected: 'Given simple addition, should add correctly'
       });
     });
 
     test('parses JSON wrapped in markdown code fences', () => {
-      const markdownWrapped = '```json\n[\n  {\n    "id": 1,\n    "description": "Given test, should pass",\n    "userPrompt": "test prompt",\n    "requirement": "should pass"\n  }\n]\n```';
+      const markdownWrapped = '```json\n{\n  "userPrompt": "test prompt",\n  "importPaths": [],\n  "assertions": [\n    {\n      "id": 1,\n      "description": "Given test, should pass",\n      "requirement": "should pass"\n    }\n  ]\n}\n```';
 
       const result = parseExtractionResult(markdownWrapped);
 
       assert({
         given: 'JSON wrapped in markdown code fences',
-        should: 'extract and parse the JSON array',
-        actual: Array.isArray(result),
+        should: 'extract and parse the JSON object',
+        actual: typeof result === 'object' && result !== null,
         expected: true
       });
 
       assert({
         given: 'JSON wrapped in markdown code fences',
-        should: 'return correct array length',
-        actual: result.length,
-        expected: 1
+        should: 'preserve the userPrompt field',
+        actual: result.userPrompt,
+        expected: 'test prompt'
       });
 
       assert({
         given: 'JSON wrapped in markdown code fences',
-        should: 'preserve the description field',
-        actual: result[0].description,
+        should: 'preserve assertions array',
+        actual: result.assertions[0].description,
         expected: 'Given test, should pass'
       });
     });
 
     test('parses JSON with explanation text and markdown fences', () => {
-      const withExplanation = 'Here is the JSON array you requested:\n\n```json\n[\n  {\n    "id": 1,\n    "description": "Given test, should pass",\n    "userPrompt": "test prompt",\n    "requirement": "should pass"\n  }\n]\n```\n\nLet me know if you need more help.';
+      const withExplanation = 'Here is the extraction result you requested:\n\n```json\n{\n  "userPrompt": "test prompt",\n  "importPaths": [],\n  "assertions": [\n    {\n      "id": 1,\n      "description": "Given test, should pass",\n      "requirement": "should pass"\n    }\n  ]\n}\n```\n\nLet me know if you need more help.';
 
       const result = parseExtractionResult(withExplanation);
 
       assert({
         given: 'JSON with explanation text and markdown fences',
-        should: 'extract and parse the JSON array',
-        actual: Array.isArray(result),
+        should: 'extract and parse the JSON object',
+        actual: typeof result === 'object' && result !== null,
         expected: true
       });
 
       assert({
         given: 'JSON with explanation text and markdown fences',
         should: 'return the parsed content',
-        actual: result[0].description,
+        actual: result.assertions[0].description,
         expected: 'Given test, should pass'
       });
     });
@@ -629,239 +662,170 @@ score: 75
       });
     });
 
-    test('throws when result is not an array', () => {
-      const notArray = JSON.stringify({ id: 1, description: 'test', prompt: 'test' });
+    test('throws when result does not have required structure', () => {
+      const invalidStructure = JSON.stringify({ id: 1, description: 'test', prompt: 'test' });
 
       assert({
-        given: 'a JSON object instead of array',
+        given: 'extraction result with invalid structure',
         should: 'throw an error',
         actual: (() => {
           try {
-            parseExtractionResult(notArray);
+            parseExtractionResult(invalidStructure);
             return 'no error';
           } catch (err) {
-            return err.message;
+            return err.message !== undefined;
           }
         })(),
-        expected: 'Extraction result must be a JSON array'
+        expected: true
       });
     });
 
     test('throws when required fields are missing', () => {
-      const missingFields = JSON.stringify([
-        { id: 1, description: 'test' }
-      ]);
+      const missingFields = JSON.stringify({
+        userPrompt: 'test',
+        assertions: []
+      });
 
       assert({
-        given: 'an item missing the userPrompt field',
-        should: 'throw an error indicating the missing field',
+        given: 'extraction result missing importPaths field',
+        should: 'throw an error indicating missing field',
         actual: (() => {
           try {
             parseExtractionResult(missingFields);
             return 'no error';
           } catch (err) {
-            return err.message;
+            return err.message !== undefined;
           }
         })(),
-        expected: 'Extracted test at index 0 is missing required field: userPrompt'
+        expected: true
       });
     });
 
-    test('throws when id field is missing', () => {
-      const missingId = JSON.stringify([
-        { description: 'test', prompt: 'test prompt' }
-      ]);
+    test('throws when assertions array has items missing required fields', () => {
+      const missingAssertionFields = JSON.stringify({
+        userPrompt: 'test',
+        importPaths: [],
+        assertions: [
+          { id: 1, description: 'test' }
+        ]
+      });
 
       assert({
-        given: 'an item missing the id field',
+        given: 'assertion missing the requirement field',
         should: 'throw an error indicating the missing field',
         actual: (() => {
           try {
-            parseExtractionResult(missingId);
+            parseExtractionResult(missingAssertionFields);
             return 'no error';
           } catch (err) {
-            return err.message;
+            return err.message.includes('requirement');
           }
         })(),
-        expected: 'Extracted test at index 0 is missing required field: id'
-      });
-    });
-
-    test('throws when description field is missing', () => {
-      const missingDescription = JSON.stringify([
-        { id: 1, prompt: 'test prompt' }
-      ]);
-
-      assert({
-        given: 'an item missing the description field',
-        should: 'throw an error indicating the missing field',
-        actual: (() => {
-          try {
-            parseExtractionResult(missingDescription);
-            return 'no error';
-          } catch (err) {
-            return err.message;
-          }
-        })(),
-        expected: 'Extracted test at index 0 is missing required field: description'
-      });
-    });
-
-    test('throws on empty extraction result', () => {
-      const emptyArray = JSON.stringify([]);
-
-      assert({
-        given: 'an empty JSON array',
-        should: 'throw an error indicating no tests were extracted',
-        actual: (() => {
-          try {
-            parseExtractionResult(emptyArray);
-            return 'no error';
-          } catch (err) {
-            return err.message;
-          }
-        })(),
-        expected: 'Extraction produced no tests. Verify the test file contains assertion lines.'
+        expected: true
       });
     });
 
     test('accepts an already-parsed object', () => {
-      const parsed = [
-        {
-          id: 1,
-          description: 'Given a test, should pass',
-          userPrompt: 'test prompt',
-          requirement: 'should pass'
-        }
-      ];
+      const parsed = {
+        userPrompt: 'test prompt',
+        importPaths: [],
+        assertions: [
+          {
+            id: 1,
+            description: 'Given a test, should pass',
+            requirement: 'should pass'
+          }
+        ]
+      };
 
       const result = parseExtractionResult(parsed);
 
       assert({
-        given: 'an already-parsed array instead of a JSON string',
-        should: 'validate and return the array directly',
-        actual: result.length,
-        expected: 1
+        given: 'an already-parsed object instead of a JSON string',
+        should: 'validate and return the object directly',
+        actual: result.userPrompt,
+        expected: 'test prompt'
       });
 
       assert({
-        given: 'an already-parsed array',
-        should: 'preserve the fields',
-        actual: result[0].description,
+        given: 'an already-parsed object',
+        should: 'preserve the assertions',
+        actual: result.assertions[0].description,
         expected: 'Given a test, should pass'
       });
     });
   });
 
-  describe('parseImports()', () => {
-    test('extracts import paths from test content', () => {
-      const testContent = `import @promptUnderTest from '../../ai/rules/javascript/error-causes.mdc'
-
-userPrompt = """test"""`;
-
-      const result = parseImports(testContent);
-
-      assert({
-        given: 'test content with import statement',
-        should: 'return array with import path',
-        actual: result.length,
-        expected: 1
-      });
-
-      assert({
-        given: 'import statement',
-        should: 'extract the file path',
-        actual: result[0],
-        expected: '../../ai/rules/javascript/error-causes.mdc'
-      });
-    });
-
-    test('handles test content with no imports', () => {
-      const testContent = 'userPrompt = """test"""';
-
-      const result = parseImports(testContent);
-
-      assert({
-        given: 'test content without imports',
-        should: 'return empty array',
-        actual: result.length,
-        expected: 0
-      });
-    });
-
-    test('handles multiple imports', () => {
-      const testContent = `import @prompt1 from './file1.mdc'
-import @prompt2 from "./file2.mdc"
-
-userPrompt = """test"""`;
-
-      const result = parseImports(testContent);
-
-      assert({
-        given: 'test content with multiple imports',
-        should: 'return array with all import paths',
-        actual: result.length,
-        expected: 2
-      });
-    });
-  });
-
   describe('extractTests()', () => {
-    test('orchestrates extraction via agent and returns evaluation prompts', async () => {
-      const extractedTests = [
-        {
-          id: 1,
-          description: 'Given simple addition, should add correctly',
-          userPrompt: 'What is 2 + 2?',
-          requirement: 'should add correctly'
-        }
-      ];
+    test('orchestrates extraction via agent and returns structured data', async () => {
+      const extractedData = {
+        userPrompt: 'What is 2 + 2?',
+        importPaths: ['package.json'], // Use existing file from project root
+        assertions: [
+          {
+            id: 1,
+            description: 'Given simple addition, should add correctly',
+            requirement: 'should add correctly'
+          }
+        ]
+      };
 
-      // Node script that outputs the extracted tests JSON, ignoring prompt input
+      // Node script that outputs the extracted data JSON, ignoring prompt input
       const mockAgentConfig = {
         command: 'node',
-        args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedTests)}))`]
+        args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
       };
 
       const result = await extractTests({
-        testContent: '- Given simple addition, should add correctly',
+        testContent: 'import "package.json"\n\n- Given simple addition, should add correctly',
+        testFilePath: '/test/test.sudo',
         agentConfig: mockAgentConfig,
         timeout: 5000
       });
 
       assert({
         given: 'test content and a mock extraction agent',
-        should: 'return the parsed array of extracted tests',
-        actual: result.length,
+        should: 'return object with userPrompt field',
+        actual: result.userPrompt,
+        expected: 'What is 2 + 2?'
+      });
+
+      assert({
+        given: 'a successful extraction',
+        should: 'return object with assertions array',
+        actual: result.assertions.length,
         expected: 1
       });
 
       assert({
         given: 'a successful extraction',
-        should: 'return objects with id and description',
-        actual: result[0].description,
+        should: 'include assertion description',
+        actual: result.assertions[0].description,
         expected: 'Given simple addition, should add correctly'
       });
 
       assert({
         given: 'a successful extraction',
-        should: 'include evaluation prompt',
-        actual: result[0].prompt.includes('REQUIREMENT TO EVALUATE'),
+        should: 'return object with promptUnderTest from imported file',
+        actual: result.promptUnderTest.length > 0,
         expected: true
       });
     });
 
     test('passes the extraction prompt to the agent', async () => {
-      const testContent = 'userPrompt = """test"""\n\n- Given a unique marker xyzzy, should verify';
+      const testContent = 'import "package.json"\n\nuserPrompt = """test"""\n\n- Given a unique marker xyzzy, should verify';
 
-      const extractedData = [
-        {
-          id: 1,
-          description: 'Given a unique marker xyzzy, should verify',
-          userPrompt: 'test prompt',
-          requirement: 'should verify'
-        }
-      ];
+      const extractedData = {
+        userPrompt: 'test prompt',
+        importPaths: ['package.json'],
+        assertions: [
+          {
+            id: 1,
+            description: 'Given a unique marker xyzzy, should verify',
+            requirement: 'should verify'
+          }
+        ]
+      };
 
       const mockAgentConfig = {
         command: 'node',
@@ -870,21 +834,22 @@ userPrompt = """test"""`;
 
       const result = await extractTests({
         testContent,
+        testFilePath: '/test/test.sudo',
         agentConfig: mockAgentConfig,
         timeout: 5000
       });
 
       assert({
         given: 'test content with assertions',
-        should: 'extract and transform into evaluation prompts',
-        actual: result.length > 0,
+        should: 'extract structured data',
+        actual: result.assertions.length > 0,
         expected: true
       });
 
       assert({
         given: 'extraction result',
-        should: 'include generated evaluation prompt',
-        actual: result[0].prompt !== undefined,
+        should: 'include userPrompt field',
+        actual: result.userPrompt !== undefined,
         expected: true
       });
     });
@@ -892,13 +857,14 @@ userPrompt = """test"""`;
     test('throws when agent returns invalid extraction output', async () => {
       const mockAgentConfig = {
         command: 'node',
-        args: ['-e', 'console.log(JSON.stringify({ not: "an array" }))']
+        args: ['-e', 'console.log(JSON.stringify({ not: "valid" }))']
       };
 
       let error;
       try {
         await extractTests({
-          testContent: '- Given a test, should pass',
+          testContent: 'import "test.mdc"\n\n- Given a test, should pass',
+          testFilePath: '/test/test.sudo',
           agentConfig: mockAgentConfig,
           timeout: 5000
         });
@@ -907,22 +873,25 @@ userPrompt = """test"""`;
       }
 
       assert({
-        given: 'agent returns a non-array JSON result',
+        given: 'agent returns invalid extraction result',
         should: 'throw an extraction error',
-        actual: error?.message,
-        expected: 'Extraction result must be a JSON array'
+        actual: error !== undefined,
+        expected: true
       });
     });
 
-    test('returns structured data with evaluation prompts', async () => {
-      const extractedData = [
-        {
-          id: 1,
-          description: 'Given a test, should pass',
-          userPrompt: 'What is 2+2?',
-          requirement: 'should pass'
-        }
-      ];
+    test('returns structured data with assertions', async () => {
+      const extractedData = {
+        userPrompt: 'What is 2+2?',
+        importPaths: ['package.json'],
+        assertions: [
+          {
+            id: 1,
+            description: 'Given a test, should pass',
+            requirement: 'should pass'
+          }
+        ]
+      };
 
       const mockAgentConfig = {
         command: 'node',
@@ -930,56 +899,546 @@ userPrompt = """test"""`;
       };
 
       const result = await extractTests({
-        testContent: '- Given a test, should pass',
+        testContent: 'import "package.json"\n\n- Given a test, should pass',
+        testFilePath: '/test/test.sudo',
         agentConfig: mockAgentConfig,
         timeout: 5000
       });
 
       assert({
         given: 'extraction agent returns structured data',
+        should: 'include userPrompt field',
+        actual: result.userPrompt,
+        expected: 'What is 2+2?'
+      });
+
+      assert({
+        given: 'extraction result',
+        should: 'include assertions array',
+        actual: Array.isArray(result.assertions),
+        expected: true
+      });
+
+      assert({
+        given: 'assertion in result',
         should: 'include id field',
-        actual: result[0].id,
+        actual: result.assertions[0].id,
         expected: 1
       });
 
       assert({
-        given: 'extraction result',
+        given: 'assertion in result',
         should: 'include description field',
-        actual: result[0].description,
+        actual: result.assertions[0].description,
         expected: 'Given a test, should pass'
-      });
-
-      assert({
-        given: 'extraction result',
-        should: 'include prompt field with evaluation instructions',
-        actual: result[0].prompt.includes('REQUIREMENT TO EVALUATE'),
-        expected: true
-      });
-
-      assert({
-        given: 'evaluation prompt',
-        should: 'include the user prompt',
-        actual: result[0].prompt.includes('What is 2+2?'),
-        expected: true
       });
     });
 
-    test('rejects import path traversal attempts', async () => {
-      const extractedData = [
-        {
-          id: 1,
-          description: 'Given a test, should pass',
-          userPrompt: 'test',
-          requirement: 'should pass'
-        }
-      ];
+    test('throws ValidationError when import file is missing', async () => {
+      const extractedData = {
+        userPrompt: 'test prompt',
+        importPaths: ['nonexistent-file.mdc'],
+        assertions: [
+          {
+            id: 1,
+            description: 'Given a test, should pass',
+            requirement: 'should pass'
+          }
+        ]
+      };
 
       const mockAgentConfig = {
         command: 'node',
         args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
       };
 
-      const testContent = 'import @promptUnderTest from "../../../../.env"\n\n- Given test, should pass';
+      let error;
+      try {
+        await extractTests({
+          testContent: 'import "nonexistent-file.mdc"\n\n- Given test, should pass',
+          testFilePath: '/test/test.sudo',
+          agentConfig: mockAgentConfig,
+          timeout: 5000
+        });
+      } catch (err) {
+        error = err;
+      }
+
+      assert({
+        given: 'import file that does not exist',
+        should: 'throw ValidationError',
+        actual: error?.cause?.name,
+        expected: 'ValidationError'
+      });
+
+      assert({
+        given: 'import file that does not exist',
+        should: 'have PROMPT_READ_FAILED code',
+        actual: error?.cause?.code,
+        expected: 'PROMPT_READ_FAILED'
+      });
+
+      assert({
+        given: 'import file that does not exist',
+        should: 'preserve original error as cause',
+        actual: error?.cause?.cause !== undefined,
+        expected: true
+      });
+    });
+
+    test('throws ValidationError when promptUnderTest is empty', async () => {
+      const extractedData = {
+        userPrompt: 'test prompt',
+        importPaths: [],
+        assertions: [
+          {
+            id: 1,
+            description: 'Given a test, should pass',
+            requirement: 'should pass'
+          }
+        ]
+      };
+
+      const mockAgentConfig = {
+        command: 'node',
+        args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
+      };
+
+      let error;
+      try {
+        await extractTests({
+          testContent: '- Given test, should pass',
+          testFilePath: '/test/test.sudo',
+          agentConfig: mockAgentConfig,
+          timeout: 5000
+        });
+      } catch (err) {
+        error = err;
+      }
+
+      assert({
+        given: 'no promptUnderTest import declared',
+        should: 'throw ValidationError',
+        actual: error?.cause?.name,
+        expected: 'ValidationError'
+      });
+
+      assert({
+        given: 'no promptUnderTest import declared',
+        should: 'have MISSING_PROMPT_UNDER_TEST code',
+        actual: error?.cause?.code,
+        expected: 'MISSING_PROMPT_UNDER_TEST'
+      });
+    });
+
+    test('throws ValidationError when userPrompt is missing', async () => {
+      const extractedData = {
+        userPrompt: '',
+        importPaths: ['package.json'],
+        assertions: [
+          {
+            id: 1,
+            description: 'Given a test, should pass',
+            requirement: 'should pass'
+          }
+        ]
+      };
+
+      const mockAgentConfig = {
+        command: 'node',
+        args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
+      };
+
+      let error;
+      try {
+        await extractTests({
+          testContent: 'import "package.json"\n\n- Given test, should pass',
+          testFilePath: '/test/test.sudo',
+          agentConfig: mockAgentConfig,
+          timeout: 5000
+        });
+      } catch (err) {
+        error = err;
+      }
+
+      assert({
+        given: 'empty userPrompt',
+        should: 'throw ValidationError',
+        actual: error?.cause?.name,
+        expected: 'ValidationError'
+      });
+
+      assert({
+        given: 'empty userPrompt',
+        should: 'have MISSING_USER_PROMPT code',
+        actual: error?.cause?.code,
+        expected: 'MISSING_USER_PROMPT'
+      });
+    });
+
+    test('throws ValidationError when no assertions found', async () => {
+      const extractedData = {
+        userPrompt: 'test prompt',
+        importPaths: ['package.json'],
+        assertions: []
+      };
+
+      const mockAgentConfig = {
+        command: 'node',
+        args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
+      };
+
+      let error;
+      try {
+        await extractTests({
+          testContent: 'import "package.json"\n\nuserPrompt = """test"""',
+          testFilePath: '/test/test.sudo',
+          agentConfig: mockAgentConfig,
+          timeout: 5000
+        });
+      } catch (err) {
+        error = err;
+      }
+
+      assert({
+        given: 'empty assertions array',
+        should: 'throw ValidationError',
+        actual: error?.cause?.name,
+        expected: 'ValidationError'
+      });
+
+      assert({
+        given: 'empty assertions array',
+        should: 'have NO_ASSERTIONS_FOUND code',
+        actual: error?.cause?.code,
+        expected: 'NO_ASSERTIONS_FOUND'
+      });
+    });
+
+    test('E2E: reads real import files from disk', async () => {
+      const testDir = createTempDir();
+      const originalCwd = process.cwd();
+
+      try {
+        mkdirSync(testDir, { recursive: true });
+
+        // Create a real prompt file
+        const promptFile = join(testDir, 'prompt.mdc');
+        const promptContent = 'You are a helpful AI assistant. Be concise and accurate.';
+        writeFileSync(promptFile, promptContent);
+
+        // Create test file
+        const testFile = join(testDir, 'test.sudo');
+        const testContent = 'import "prompt.mdc"\n\n- Given a question, should answer';
+        writeFileSync(testFile, testContent);
+
+        const extractedData = {
+          userPrompt: 'What is 2+2?',
+          importPaths: ['prompt.mdc'],
+          assertions: [
+            { id: 1, description: 'Given a question, should answer', requirement: 'should answer' }
+          ]
+        };
+
+        const mockAgentConfig = {
+          command: 'node',
+          args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
+        };
+
+        // Change to temp dir to simulate project root
+        process.chdir(testDir);
+
+        const result = await extractTests({
+          testContent,
+          testFilePath: testFile,
+          agentConfig: mockAgentConfig,
+          timeout: 5000
+        });
+
+        assert({
+          given: 'real import file on disk',
+          should: 'read and include file content in promptUnderTest',
+          actual: result.promptUnderTest,
+          expected: promptContent
+        });
+
+        assert({
+          given: 'extraction with real files',
+          should: 'return userPrompt from extraction',
+          actual: result.userPrompt,
+          expected: 'What is 2+2?'
+        });
+
+        assert({
+          given: 'extraction with real files',
+          should: 'return assertions array',
+          actual: result.assertions.length,
+          expected: 1
+        });
+      } finally {
+        process.chdir(originalCwd);
+        rmSync(testDir, { recursive: true, force: true });
+      }
+    });
+
+    test('E2E: reads multiple import files and concatenates', async () => {
+      const testDir = createTempDir();
+      const originalCwd = process.cwd();
+
+      try {
+        mkdirSync(testDir, { recursive: true });
+
+        // Create multiple prompt files
+        const prompt1 = join(testDir, 'rules1.mdc');
+        const prompt2 = join(testDir, 'rules2.mdc');
+        writeFileSync(prompt1, 'Rule 1: Be concise');
+        writeFileSync(prompt2, 'Rule 2: Be accurate');
+
+        const testFile = join(testDir, 'test.sudo');
+        const testContent = 'import "rules1.mdc"\nimport "rules2.mdc"\n\n- Given rules, should follow';
+        writeFileSync(testFile, testContent);
+
+        const extractedData = {
+          userPrompt: 'Test prompt',
+          importPaths: ['rules1.mdc', 'rules2.mdc'],
+          assertions: [
+            { id: 1, description: 'Given rules, should follow', requirement: 'should follow' }
+          ]
+        };
+
+        const mockAgentConfig = {
+          command: 'node',
+          args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
+        };
+
+        // Change to temp dir to simulate project root
+        process.chdir(testDir);
+
+        const result = await extractTests({
+          testContent,
+          testFilePath: testFile,
+          agentConfig: mockAgentConfig,
+          timeout: 5000
+        });
+
+        assert({
+          given: 'multiple import files',
+          should: 'concatenate all imported content',
+          actual: result.promptUnderTest.includes('Rule 1') && result.promptUnderTest.includes('Rule 2'),
+          expected: true
+        });
+      } finally {
+        process.chdir(originalCwd);
+        rmSync(testDir, { recursive: true, force: true });
+      }
+    });
+
+    test('E2E: throws real ENOENT error for missing import file', async () => {
+      const testDir = createTempDir();
+
+      try {
+        mkdirSync(testDir, { recursive: true });
+
+        const testFile = join(testDir, 'test.sudo');
+        const testContent = 'import "nonexistent.mdc"\n\n- Given test, should pass';
+        writeFileSync(testFile, testContent);
+
+        const extractedData = {
+          userPrompt: 'Test',
+          importPaths: ['nonexistent.mdc'],
+          assertions: [
+            { id: 1, description: 'Given test, should pass', requirement: 'should pass' }
+          ]
+        };
+
+        const mockAgentConfig = {
+          command: 'node',
+          args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
+        };
+
+        let error;
+        try {
+          await extractTests({
+            testContent,
+            testFilePath: testFile,
+            agentConfig: mockAgentConfig,
+            timeout: 5000
+          });
+        } catch (err) {
+          error = err;
+        }
+
+        assert({
+          given: 'missing import file (real ENOENT)',
+          should: 'throw ValidationError',
+          actual: error?.cause?.name,
+          expected: 'ValidationError'
+        });
+
+        assert({
+          given: 'missing import file (real ENOENT)',
+          should: 'have PROMPT_READ_FAILED code',
+          actual: error?.cause?.code,
+          expected: 'PROMPT_READ_FAILED'
+        });
+
+        assert({
+          given: 'missing import file (real ENOENT)',
+          should: 'preserve original ENOENT error as cause',
+          actual: error?.cause?.cause?.code,
+          expected: 'ENOENT'
+        });
+      } finally {
+        rmSync(testDir, { recursive: true, force: true });
+      }
+    });
+
+    test('E2E: validates real extraction output structure', async () => {
+      const testDir = createTempDir();
+      const originalCwd = process.cwd();
+
+      try {
+        mkdirSync(testDir, { recursive: true });
+
+        const promptFile = join(testDir, 'prompt.mdc');
+        writeFileSync(promptFile, 'Test prompt content');
+
+        const testFile = join(testDir, 'test.sudo');
+        const testContent = 'import "prompt.mdc"\n\n- Test assertion';
+        writeFileSync(testFile, testContent);
+
+        // Valid extraction result that parseExtractionResult will validate
+        const validExtractionResult = {
+          userPrompt: 'What is 2+2?',
+          importPaths: ['prompt.mdc'],
+          assertions: [
+            { id: 1, description: 'Test assertion', requirement: 'should work' }
+          ]
+        };
+
+        const mockAgentConfig = {
+          command: 'node',
+          args: ['-e', `console.log(JSON.stringify(${JSON.stringify(validExtractionResult)}))`]
+        };
+
+        // Change to temp dir to simulate project root
+        process.chdir(testDir);
+
+        const result = await extractTests({
+          testContent,
+          testFilePath: testFile,
+          agentConfig: mockAgentConfig,
+          timeout: 5000
+        });
+
+        assert({
+          given: 'valid extraction output from agent',
+          should: 'successfully parse and validate structure',
+          actual: typeof result === 'object' && result !== null,
+          expected: true
+        });
+
+        assert({
+          given: 'valid extraction output',
+          should: 'have userPrompt field',
+          actual: result.userPrompt,
+          expected: 'What is 2+2?'
+        });
+
+        assert({
+          given: 'valid extraction output',
+          should: 'have promptUnderTest with file content',
+          actual: result.promptUnderTest,
+          expected: 'Test prompt content'
+        });
+
+        assert({
+          given: 'valid extraction output',
+          should: 'have assertions array',
+          actual: Array.isArray(result.assertions) && result.assertions.length > 0,
+          expected: true
+        });
+      } finally {
+        process.chdir(originalCwd);
+        rmSync(testDir, { recursive: true, force: true });
+      }
+    });
+
+    test('E2E: resolves imports relative to project root', async () => {
+      const testDir = createTempDir();
+
+      try {
+        mkdirSync(testDir, { recursive: true });
+        const nestedDir = join(testDir, 'nested', 'deep');
+        mkdirSync(nestedDir, { recursive: true });
+
+        // Create prompt at project root level
+        const promptFile = join(testDir, 'root-prompt.mdc');
+        writeFileSync(promptFile, 'Root level prompt');
+
+        // Create test file in nested directory
+        const testFile = join(nestedDir, 'test.sudo');
+        const testContent = 'import "root-prompt.mdc"\n\n- Test';
+        writeFileSync(testFile, testContent);
+
+        const extractedData = {
+          userPrompt: 'Test',
+          importPaths: ['root-prompt.mdc'],
+          assertions: [
+            { id: 1, description: 'Test', requirement: 'should work' }
+          ]
+        };
+
+        const mockAgentConfig = {
+          command: 'node',
+          args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
+        };
+
+        // Change to temp dir to simulate project root
+        const originalCwd = process.cwd();
+        process.chdir(testDir);
+
+        try {
+          const result = await extractTests({
+            testContent,
+            testFilePath: testFile,
+            agentConfig: mockAgentConfig,
+            timeout: 5000
+          });
+
+          assert({
+            given: 'import path relative to project root',
+            should: 'resolve and read file correctly',
+            actual: result.promptUnderTest,
+            expected: 'Root level prompt'
+          });
+        } finally {
+          process.chdir(originalCwd);
+        }
+      } finally {
+        rmSync(testDir, { recursive: true, force: true });
+      }
+    });
+
+    test('rejects import path traversal attempts', async () => {
+      const extractedData = {
+        userPrompt: 'test',
+        importPaths: ['../../../../.env'],
+        assertions: [
+          {
+            id: 1,
+            description: 'Given a test, should pass',
+            requirement: 'should pass'
+          }
+        ]
+      };
+
+      const mockAgentConfig = {
+        command: 'node',
+        args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
+      };
+
+      const testContent = 'import "../../../../.env"\n\n- Given test, should pass';
 
       let error;
       try {

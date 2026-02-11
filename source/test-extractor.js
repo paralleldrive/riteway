@@ -48,18 +48,6 @@ import { resolve } from 'path';
  */
 
 /**
- * Parse import statements from SudoLang test content.
- * Extracts file paths from "import @variable from 'path'" statements.
- *
- * @param {string} testContent - Raw test file contents
- * @returns {Array<string>} Array of import file paths
- */
-export const parseImports = (testContent) => {
-  const importRegex = /import @\w+ from ['"](.+?)['"]/g;
-  return Array.from(testContent.matchAll(importRegex), m => m[1]);
-};
-
-/**
  * Build a prompt that instructs an LLM agent to extract individual
  * assertions from a multi-assertion test file.
  *
@@ -73,8 +61,8 @@ export const parseImports = (testContent) => {
  * 4. Debugging: Structured data allows us to inspect what was extracted
  *
  * Instead, we use a two-phase approach:
- * Phase 1 (this function): Extract structured metadata (userPrompt, requirement)
- * Phase 2 (buildEvaluationPrompt): Transform metadata into template-based evaluation prompts
+ * Phase 1 (this function): Extract structured metadata (userPrompt, requirement, importPaths)
+ * Phase 2: Transform metadata into executable prompts for result and judge agents
  *
  * This pattern solved the critical bug where extraction agents would create
  * prompts that returned markdown strings instead of {passed: boolean} objects.
@@ -83,18 +71,23 @@ export const parseImports = (testContent) => {
  * @returns {string} An extraction prompt for the agent
  */
 export const buildExtractionPrompt = (testContent) => {
-  return `You are a test extraction agent. Analyze the following test file and extract structured information for each assertion.
+  return `You are a test extraction agent. Analyze the following test file and extract structured information.
 
-For each "- Given X, should Y" assertion line in the test file:
+For each assertion or requirement in the test file (these may be formatted as
+"Given X, should Y", bullet points, YAML entries, natural language sentences,
+SudoLang expressions, or any other format):
 
-1. Identify the userPrompt
-2. Extract the specific requirement from the assertion line
+1. Identify the userPrompt (the prompt to be tested)
+2. Extract the specific requirement from the assertion
+3. Identify any import file paths (e.g., import 'path/to/file.mdc')
 
-Return a JSON array of objects with:
-- "id": sequential integer starting at 1
-- "description": the full assertion text (e.g. "Given simple addition, should add correctly")
-- "userPrompt": the test prompt to execute
-- "requirement": the specific requirement being tested (the "should Y" part)
+Return a JSON object with:
+- "userPrompt": the test prompt to execute (string)
+- "importPaths": array of import file paths found in the test file (e.g., ["ai/rules/ui.mdc"])
+- "assertions": array of assertion objects, each with:
+  - "id": sequential integer starting at 1
+  - "description": the full assertion text
+  - "requirement": the specific requirement being tested
 
 Return ONLY valid JSON. No markdown fences, no explanation.
 
@@ -150,7 +143,7 @@ Your entire output IS the result.`;
  * @param {string} options.description - Full assertion text
  * @returns {string} A prompt for the judge agent
  */
-export const buildJudgePrompt = ({ userPrompt, promptUnderTest, result, requirement, description }) => {
+export const buildJudgePrompt = ({ userPrompt, promptUnderTest, result, description }) => {
   return `You are an AI judge. Evaluate whether a given result satisfies a specific requirement.
 
 CONTEXT (Prompt Under Test):
@@ -220,69 +213,8 @@ export const parseTAPYAML = (output) => {
   return result;
 };
 
-/**
- * Build an evaluation prompt that instructs an LLM to execute a test
- * and evaluate whether it meets a specific requirement.
- *
- * ARCHITECTURE: Template-Based Evaluation Prompts
- *
- * This function implements Phase 2 of our two-phase extraction architecture.
- * Instead of asking an extraction agent to "create self-evaluating prompts",
- * we use a controlled template that guarantees:
- *
- * 1. Consistent structure: Every evaluation follows the same format
- * 2. Explicit instructions: Agent knows exactly what to do and how to respond
- * 3. Guaranteed response format: {passed: boolean, output: string, reasoning?: string}
- * 4. Context injection: promptUnderTest content is reliably inserted
- * 5. Testability: Template output is predictable and verifiable
- *
- * Why this approach?
- * - Early implementation asked extraction agents to create evaluation prompts
- * - Result: Agents created prompts that returned markdown instead of {passed: boolean}
- * - Root cause: No control over what instructions the extraction agent would include
- * - Solution: We control the template, guaranteeing the response format
- *
- * Trade-offs:
- * + Reliability: Evaluation prompts always have correct structure
- * + Debugging: Easy to inspect/modify evaluation prompt template
- * + Testing: Can verify template output without running real agents
- * - Flexibility: Changes to prompt structure require code changes (not LLM adaptation)
- *
- * This template-based approach is similar to patterns used in production LLM systems
- * where reliability and predictability are more important than flexibility.
- *
- * @param {Object} options
- * @param {string} options.userPrompt - The test prompt to execute
- * @param {string} options.description - Full assertion description
- * @param {string} [options.promptUnderTest] - Optional context/guide for the test
- * @returns {string} A self-evaluating test prompt
- */
-export const buildEvaluationPrompt = ({ userPrompt, description, promptUnderTest }) => {
-  const contextSection = promptUnderTest 
-    ? `CONTEXT (Prompt Under Test):\n${promptUnderTest}\n\n`
-    : '';
-    
-  return `You are an AI test evaluator. Execute the following test and evaluate whether it meets the requirement.
 
-${contextSection}USER PROMPT:
-${userPrompt}
-
-REQUIREMENT TO EVALUATE:
-${description}
-
-INSTRUCTIONS:
-1. Execute the user prompt above${promptUnderTest ? ' following the guidance in the prompt under test' : ''}
-2. Evaluate whether your response satisfies the requirement
-3. Respond with JSON: {"passed": true, "output": "<your response to the user prompt>"}
-
-OR if the requirement is not met:
-
-Respond with JSON: {"passed": false, "output": "<your response to the user prompt>", "reasoning": "<why it failed>"}
-
-CRITICAL: Return ONLY the JSON object with no markdown fences, no explanation, no additional text. The first character of your response must be '{' and the last must be '}'.`;
-};
-
-const requiredFields = ['id', 'description', 'userPrompt', 'requirement'];
+const assertionRequiredFields = ['id', 'description', 'requirement'];
 
 /**
  * Extract JSON from markdown code fences if present.
@@ -316,29 +248,37 @@ const tryParseJSON = (str) => {
  * (since executeAgent returns parsed JSON).
  * Handles markdown code fences if present.
  *
- * @param {string|Array} rawOutput - Raw string or parsed output from the agent
- * @returns {Array<{ id: number, description: string, userPrompt: string, requirement: string }>}
- * @throws {Error} If output is invalid, not an array, empty, or missing required fields
+ * @param {string|Object} rawOutput - Raw string or parsed output from the agent
+ * @returns {{ userPrompt: string, importPaths: string[], assertions: Array<{ id: number, description: string, requirement: string }> }}
+ * @throws {Error} If output is invalid or missing required fields
  */
 export const parseExtractionResult = (rawOutput) => {
   const parsed = typeof rawOutput === 'string'
     ? tryParseJSON(rawOutput)
     : rawOutput;
 
-  if (!Array.isArray(parsed)) {
-    throw new Error('Extraction result must be a JSON array');
+  if (typeof parsed !== 'object' || parsed === null) {
+    throw new Error('Extraction result must be a JSON object');
   }
 
-  if (parsed.length === 0) {
-    throw new Error('Extraction produced no tests. Verify the test file contains assertion lines.');
+  if (parsed.userPrompt === undefined || parsed.userPrompt === null) {
+    throw new Error('Extraction result is missing required field: userPrompt');
+  }
+
+  if (!Array.isArray(parsed.importPaths)) {
+    throw new Error('Extraction result is missing required field: importPaths (must be an array)');
+  }
+
+  if (!Array.isArray(parsed.assertions)) {
+    throw new Error('Extraction result is missing required field: assertions (must be an array)');
   }
 
   // for loop preferred: early throw on first invalid item avoids
   // processing the rest, and the index is needed for the error message.
-  for (let i = 0; i < parsed.length; i++) {
-    for (const field of requiredFields) {
-      if (parsed[i][field] === undefined || parsed[i][field] === null) {
-        throw new Error(`Extracted test at index ${i} is missing required field: ${field}`);
+  for (let i = 0; i < parsed.assertions.length; i++) {
+    for (const field of assertionRequiredFields) {
+      if (parsed.assertions[i][field] === undefined || parsed.assertions[i][field] === null) {
+        throw new Error(`Assertion at index ${i} is missing required field: ${field}`);
       }
     }
   }
@@ -348,46 +288,38 @@ export const parseExtractionResult = (rawOutput) => {
 
 /**
  * Extract individual test assertions from a multi-assertion test file
- * by calling an LLM agent with a specialized extraction prompt, then
- * transform into executable evaluation prompts.
+ * by calling an LLM agent with a specialized extraction prompt.
  *
- * ARCHITECTURE: Two-Phase Extraction with Template-Based Evaluation
+ * ARCHITECTURE: Agent-Directed Imports + Structured Data Return
  *
- * This function implements the complete extraction-to-evaluation pipeline:
+ * This function implements the complete extraction pipeline:
  *
  * Phase 1: Structured Extraction
  * - Call extraction agent to parse test file into structured data
- * - Get: {id, description, userPrompt, requirement} for each assertion
- * - Parse and resolve import statements (if any)
+ * - Agent DECLARATIVELY identifies import paths (replaces parseImports regex)
+ * - Get: {userPrompt, importPaths, assertions[{id, description, requirement}]}
  *
- * Phase 2: Template-Based Evaluation
- * - Transform structured data into executable evaluation prompts
- * - Use buildEvaluationPrompt() to create controlled, testable prompts
- * - Inject imported content (promptUnderTest) if present
+ * Phase 1.5: Import Resolution
+ * - Read agent-identified import files
+ * - Validate import paths against project root
+ * - Concatenate imported content into promptUnderTest
  *
- * Why two phases instead of one?
- * 1. RELIABILITY: Extraction agents can't reliably create proper evaluation prompts
- * 2. TESTABILITY: We can test extraction and prompt generation separately
- * 3. DEBUGGING: We can inspect extracted data before creating prompts
- * 4. FLEXIBILITY: We can modify prompt templates without re-extraction
- *
- * Historical context (from remediation plan):
- * - Original approach: Asked extraction agent to create "self-evaluating prompts"
- * - Problem: Agents created prompts that returned markdown instead of {passed: boolean}
- * - Root cause: No control over evaluation prompt format
- * - Solution: This two-phase architecture with template-based evaluation
+ * Phase 2: Return Structured Data
+ * - Return {userPrompt, promptUnderTest, assertions}
+ * - NO buildEvaluationPrompt mapping (two-agent refactor handles this separately)
  *
  * Import handling:
- * - Parses "import @variable from 'path'" statements
- * - Resolves paths relative to test file location
- * - Validates paths against test file directory to prevent path traversal
+ * - Agent identifies import file paths declaratively (no regex parsing)
+ * - Import syntax: `import 'path'` (not `import @var from 'path'`)
+ * - Resolves paths relative to project root (cwd)
+ * - Validates paths to prevent path traversal
  * - Reads and concatenates imported file contents
- * - Injects as promptUnderTest context in evaluation prompts
  *
- * Return schema (Option A from PR review):
- * - Includes both structured data (for debugging) and executable prompt
- * - ai-runner.js destructures {prompt, description} for execution
- * - Full structure available for TAP output formatting
+ * Validation:
+ * - Missing promptUnderTest → ValidationError MISSING_PROMPT_UNDER_TEST
+ * - Missing userPrompt → ValidationError MISSING_USER_PROMPT
+ * - No assertions → ValidationError NO_ASSERTIONS_FOUND
+ * - Missing import file → ValidationError PROMPT_READ_FAILED (with cause)
  *
  * @param {Object} options
  * @param {string} options.testContent - Raw contents of the test file
@@ -395,92 +327,112 @@ export const parseExtractionResult = (rawOutput) => {
  * @param {Object} options.agentConfig - Agent CLI configuration
  * @param {number} [options.timeout=300000] - Timeout in milliseconds
  * @param {boolean} [options.debug=false] - Enable debug logging
- * @returns {Promise<Array<{ id: number, description: string, userPrompt: string, requirement: string, prompt: string }>>}
+ * @returns {Promise<{ userPrompt: string, promptUnderTest: string, assertions: Array<{ id: number, description: string, requirement: string }> }>}
  */
 export const extractTests = async ({ testContent, testFilePath, agentConfig, timeout = 300000, debug = false }) => {
   // PHASE 1: Extract structured data from test content
-  // This phase calls an LLM to parse the test file and return structured metadata.
-  // The extraction agent returns {id, description, userPrompt, requirement} objects,
-  // NOT executable prompts. This separation ensures we have full control over the
-  // evaluation prompt format in Phase 2.
+  // The extraction agent returns {userPrompt, importPaths, assertions}
   const extractionPrompt = buildExtractionPrompt(testContent);
-  
+
   if (debug) {
     console.error('[DEBUG] Calling extraction agent...');
   }
-  
+
   const result = await executeAgent({ agentConfig, prompt: extractionPrompt, timeout, debug });
   const extracted = parseExtractionResult(result);
-  
+
   if (debug) {
-    console.error(`[DEBUG] Extraction complete. Found ${extracted.length} assertions`);
+    console.error(`[DEBUG] Extraction complete. Found ${extracted.assertions.length} assertions`);
   }
-  
-  // PHASE 1.5: Resolve imports (if any)
-  // Parse "import @variable from 'path'" statements and read the referenced files.
-  // These files contain context/guides (promptUnderTest) that will be injected
-  // into evaluation prompts. Import paths are resolved relative to the project root (cwd)
-  // instead of the test file location for better portability and clarity.
-  // Note: Import paths within test files are trusted because:
-  // 1. The test file itself was validated at CLI level (no path traversal)
-  // 2. Test files are under the user's control (not external/untrusted input)
-  // 3. Import resolution is project-root-relative, making traversal attempts explicit
+
+  // PHASE 1.5: Resolve agent-identified imports
+  // The agent declaratively identifies import paths; we read the files
   let promptUnderTest = '';
-  if (testFilePath) {
-    const importPaths = parseImports(testContent);
-    if (importPaths.length > 0) {
-      if (debug) {
-        console.error(`[DEBUG] Found ${importPaths.length} imports to resolve`);
-      }
-      const projectRoot = process.cwd();
-      const importedContents = await Promise.all(
-        importPaths.map(async path => {
-          // Resolve import paths relative to project root, not test file directory
-          const resolvedPath = resolve(projectRoot, path);
-          if (debug) {
-            console.error(`[DEBUG] Reading import: ${path} -> ${resolvedPath}`);
-          }
-          // Validate import path to prevent path traversal attacks
-          try {
-            validateFilePath(resolvedPath, projectRoot);
-          } catch (error) {
-            throw createError({
-              name: 'SecurityError',
-              message: `Import path traversal detected: ${path}`,
-              code: 'IMPORT_PATH_TRAVERSAL',
-              path,
-              resolvedPath,
-              cause: error
-            });
-          }
-          return readFile(resolvedPath, 'utf-8');
-        })
-      );
-      promptUnderTest = importedContents.join('\n\n');
-      if (debug) {
-        console.error(`[DEBUG] Imported content length: ${promptUnderTest.length} characters`);
-      }
+  if (testFilePath && extracted.importPaths.length > 0) {
+    if (debug) {
+      console.error(`[DEBUG] Found ${extracted.importPaths.length} imports to resolve`);
+    }
+    const projectRoot = process.cwd();
+    const importedContents = await Promise.all(
+      extracted.importPaths.map(async importPath => {
+        // Resolve import paths relative to project root
+        const resolvedPath = resolve(projectRoot, importPath);
+        if (debug) {
+          console.error(`[DEBUG] Reading import: ${importPath} -> ${resolvedPath}`);
+        }
+        // Validate import path to prevent path traversal attacks
+        try {
+          validateFilePath(resolvedPath, projectRoot);
+        } catch (error) {
+          throw createError({
+            name: 'SecurityError',
+            message: `Import path traversal detected: ${importPath}`,
+            code: 'IMPORT_PATH_TRAVERSAL',
+            path: importPath,
+            resolvedPath,
+            cause: error
+          });
+        }
+        // Read file with error wrapping (preserves original error as cause)
+        try {
+          const content = await readFile(resolvedPath, 'utf-8');
+          return content;
+        } catch (originalError) {
+          throw createError({
+            name: 'ValidationError',
+            message: `Failed to read imported prompt file: ${importPath}`,
+            code: 'PROMPT_READ_FAILED',
+            path: importPath,
+            resolvedPath,
+            cause: originalError
+          });
+        }
+      })
+    );
+    promptUnderTest = importedContents.join('\n\n');
+    if (debug) {
+      console.error(`[DEBUG] Imported content length: ${promptUnderTest.length} characters`);
     }
   }
-  
-  // PHASE 2: Transform extracted data into executable evaluation prompts
-  // For each extracted assertion, we use buildEvaluationPrompt() to create a
-  // template-based evaluation prompt. This template guarantees:
-  // 1. Consistent structure across all assertions
-  // 2. Explicit instructions for self-evaluation
-  // 3. Required JSON response format: {passed: boolean, output: string}
-  // 4. Proper injection of promptUnderTest context
-  //
-  // This phase is why we use two phases instead of one: by controlling the
-  // template, we ensure reliable {passed: boolean} responses that the test
-  // runner can aggregate properly.
-  return extracted.map(({ id, description, userPrompt, requirement }) => ({
-    id,
-    description,
+
+  // Validate required fields (fail fast on authoring errors)
+  const { userPrompt, assertions } = extracted;
+
+  if (!userPrompt || userPrompt.trim() === '') {
+    throw createError({
+      name: 'ValidationError',
+      message: 'Test file does not define a userPrompt. Every test file must include a user prompt (inline or imported).',
+      code: 'MISSING_USER_PROMPT',
+      testFile: testFilePath
+    });
+  }
+
+  if (!promptUnderTest || promptUnderTest.trim() === '') {
+    throw createError({
+      name: 'ValidationError',
+      message: 'Test file does not declare a promptUnderTest import. Every test file must import the prompt under test.',
+      code: 'MISSING_PROMPT_UNDER_TEST',
+      testFile: testFilePath
+    });
+  }
+
+  if (!assertions || assertions.length === 0) {
+    throw createError({
+      name: 'ValidationError',
+      message: 'Test file does not contain any assertions. Every test file must include at least one assertion (e.g., "Given X, should Y").',
+      code: 'NO_ASSERTIONS_FOUND',
+      testFile: testFilePath
+    });
+  }
+
+  // PHASE 2: Return validated structured data for two-agent execution
+  return {
     userPrompt,
-    requirement,
-    // buildEvaluationPrompt creates the actual prompt that will be executed
-    // by the test runner. It's a controlled template, not LLM-generated content.
-    prompt: buildEvaluationPrompt({ userPrompt, description, promptUnderTest })
-  }));
+    promptUnderTest,
+    assertions: assertions.map(({ id, description, requirement }) => ({
+      id,
+      description,
+      requirement
+    }))
+  };
 };
