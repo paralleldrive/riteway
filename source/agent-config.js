@@ -2,14 +2,14 @@ import { readFile } from 'fs/promises';
 import { z } from 'zod';
 import { createError } from 'error-causes';
 import { ValidationError } from './ai-errors.js';
-import { parseOpenCodeNDJSON } from './ai-runner.js';
+import { parseOpenCodeNDJSON } from './agent-parser.js';
 
 /**
  * Format Zod validation errors into a human-readable message.
  * @param {any} zodError - Zod validation error
  * @returns {string} Formatted error message
  */
-const formatZodError = (zodError) => {
+export const formatZodError = (zodError) => {
   const issues = zodError.issues || zodError.errors;
   return issues
     ? issues.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')

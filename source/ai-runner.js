@@ -10,10 +10,6 @@ import { unwrapAgentResult } from './agent-parser.js';
 import { ParseError, TimeoutError, AgentProcessError, handleAIErrors } from './ai-errors.js';
 
 export { handleAIErrors };
-export { limitConcurrency } from './limit-concurrency.js';
-export { normalizeJudgment, calculateRequiredPasses, aggregatePerAssertionResults } from './aggregation.js';
-export { validateFilePath } from './validation.js';
-export { parseStringResult, parseOpenCodeNDJSON } from './agent-parser.js';
 
 export const readTestFile = (filePath) => readFile(filePath, 'utf-8');
 export const verifyAgentAuthentication = (options) => verifyAuth({ ...options, executeAgent });

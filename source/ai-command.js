@@ -3,8 +3,9 @@ import minimist from 'minimist';
 import { z } from 'zod';
 import { createError } from 'error-causes';
 import { ValidationError, AITestError, OutputError } from './ai-errors.js';
-import { getAgentConfig, loadAgentConfig } from './agent-config.js';
-import { runAITests, verifyAgentAuthentication, validateFilePath } from './ai-runner.js';
+import { getAgentConfig, loadAgentConfig, formatZodError } from './agent-config.js';
+import { runAITests, verifyAgentAuthentication } from './ai-runner.js';
+import { validateFilePath } from './validation.js';
 import { recordTestOutput, generateLogFilePath } from './test-output.js';
 
 /**
@@ -18,18 +19,6 @@ export const defaults = {
   color: false,
   debug: false,
   debugLog: false
-};
-
-/**
- * Format Zod validation errors into a human-readable message.
- * @param {any} zodError - Zod validation error
- * @returns {string} Formatted error message
- */
-const formatZodError = (zodError) => {
-  const issues = zodError.issues || zodError.errors;
-  return issues
-    ? issues.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')
-    : zodError.message || 'Validation failed';
 };
 
 /**

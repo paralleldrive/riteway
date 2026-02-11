@@ -15,10 +15,6 @@ const createMatcher = dotignore.createMatcher;
 
 const asyncPipe = (...fns) => x => fns.reduce(async (y, f) => f(await y), x);
 
-// Re-export for backward compatibility
-export { getAgentConfig, loadAgentConfig } from '../source/agent-config.js';
-export { parseAIArgs, runAICommand, formatAssertionReport, defaults } from '../source/ai-command.js';
-
 // Error causes definition for AI test runner
 const [aiRunnerErrors, handleAIRunnerErrors] = errorCauses({
   ValidationError: {

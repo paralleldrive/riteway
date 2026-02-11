@@ -7,7 +7,7 @@ import { dirname } from 'path';
 import { spawnSync } from 'child_process';
 import { runAITests } from './ai-runner.js';
 import { recordTestOutput } from './test-output.js';
-import { loadAgentConfig } from '../bin/riteway.js';
+import { loadAgentConfig } from './agent-config.js';
 
 // @ts-ignore - import.meta.url is valid in ES modules
 const __filename = fileURLToPath(import.meta.url);
