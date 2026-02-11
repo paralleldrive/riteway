@@ -227,6 +227,12 @@ const assertionRequiredFields = ['id', 'requirement'];
 
 /**
  * Resolve and read import files, concatenating their contents.
+ *
+ * SECURITY NOTE: Import paths are NOT validated for path traversal.
+ * This allows legitimate cross-project imports (e.g., shared prompt libraries).
+ * Test authors are responsible for not importing sensitive files (.env, credentials).
+ * See PR #394 remediation epic (Wave 1, Task 2) for design rationale.
+ *
  * @param {string[]} importPaths - Array of import file paths relative to project root
  * @param {string} projectRoot - Project root directory for resolving relative paths
  * @param {boolean} debug - Enable debug logging

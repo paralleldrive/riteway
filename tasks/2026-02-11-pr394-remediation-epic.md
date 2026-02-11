@@ -1,6 +1,6 @@
 # PR #394 Remediation Epic
 
-**Status**: 📋 PLANNED
+**Status**: 🚧 IN PROGRESS (Wave 1 ✅ DONE, Wave 2 next)
 **Goal**: Address all outstanding PR review concerns, code quality issues, and file size violations before merge
 
 ## Overview
@@ -11,7 +11,7 @@ PR #394 implements the two-agent AI testing framework but accumulated technical 
 
 ## Wave 1 — Quick Wins (all parallel, no interdependencies)
 
-## Centralize CLI Defaults + Remove Dead `--validate-extraction` Flag
+## Centralize CLI Defaults + Remove Dead `--validate-extraction` Flag — ✅ DONE
 
 Remove the unused `--validate-extraction` CLI option and move all remaining inline defaults into the centralized `defaults` object in `bin/riteway.js`.
 
@@ -23,7 +23,7 @@ Remove the unused `--validate-extraction` CLI option and move all remaining inli
 
 ---
 
-## Allow Imports Outside Project Root + Configurable `projectRoot`
+## Allow Imports Outside Project Root + Configurable `projectRoot` — ✅ DONE
 
 Remove the `validateFilePath` path traversal restriction from `resolveImportPaths` and thread a configurable `projectRoot` parameter through the extraction pipeline.
 
@@ -35,7 +35,7 @@ Remove the `validateFilePath` path traversal restriction from `resolveImportPath
 
 ---
 
-## Merge Assertion description/requirement into Single `requirement` Field
+## Merge Assertion description/requirement into Single `requirement` Field — ✅ DONE
 
 Eliminate the redundant `description` field from extraction output. The "Given X, should Y" assertion text IS a requirement — name it accordingly.
 

@@ -135,7 +135,6 @@ Options:
   --runs <n>            Number of test runs (default: 4)
   --threshold <p>       Required pass percentage 0-100 (default: 75)
   --agent <name>        AI agent to use: claude|opencode|cursor (default: claude)
-  --validate-extraction Validate extraction with judge sub-agent
   --debug               Enable debug output to console
   --debug-log           Enable debug output and save to auto-generated log file
 ```
