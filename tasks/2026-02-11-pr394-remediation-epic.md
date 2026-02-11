@@ -1,6 +1,6 @@
 # PR #394 Remediation Epic
 
-**Status**: 🚧 IN PROGRESS (Wave 1 ✅, Wave 2 ✅, Wave 3 next)
+**Status**: 🚧 IN PROGRESS (Wave 1 ✅, Wave 2 ✅, Wave 3 ✅, Wave 4 next)
 **Goal**: Address all outstanding PR review concerns, code quality issues, and file size violations before merge
 
 ## Overview
@@ -108,7 +108,7 @@ Break `ai-runner.js` (626 lines) into focused modules under 160 lines each.
 
 ---
 
-## Extract Modules from `test-extractor.js`
+## Extract Modules from `test-extractor.js` — ✅ DONE
 
 Break `test-extractor.js` (484 lines) into focused modules targeting ~160 lines each.
 
@@ -118,9 +118,16 @@ Break `test-extractor.js` (484 lines) into focused modules targeting ~160 lines 
 - Given imports in `test-extractor.js`, `ai-runner.js`, and their test files, should be updated to reference new module paths
 - **Must follow Wave 3 Extraction Rules above** (single error source, colocated tests, re-exports)
 
+**Result**: test-extractor.js reduced from 477→286 lines. Extracted 2 modules: tap-yaml.js (40 lines), extraction-parser.js (149 lines). Colocated tests created: tap-yaml.test.js, extraction-parser.test.js. Error types (ExtractionParseError, ExtractionValidationError) added to ai-errors.js.
+
+**Review (96/100 APPROVED)**: No blockers. Minor deferred findings:
+- `let result` mutation in ai-runner.js:114 — low priority, defer
+- Missing `@throws` JSDoc tags — low priority, defer
+- `verifyAgentAuthentication` string matching — already tracked as Task #10 (Wave 4)
+
 ---
 
-## Extract Modules from `bin/riteway.js`
+## Extract Modules from `bin/riteway.js` — ✅ DONE
 
 Break `bin/riteway.js` (515 lines) into focused modules targeting ~160 lines each.
 
@@ -129,6 +136,8 @@ Break `bin/riteway.js` (515 lines) into focused modules targeting ~160 lines eac
 - Given `parseAIArgs`, `aiArgsSchema`, `formatAssertionReport`, and `runAICommand`, should be extracted to `source/ai-command.js`
 - Given `bin/riteway.js` after extraction, should primarily contain CLI entry point wiring
 - **Must follow Wave 3 Extraction Rules above** (single error source, colocated tests, re-exports)
+
+**Result**: bin/riteway.js reduced from 515→190 lines (63% reduction). Extracted 2 modules: agent-config.js (105 lines), ai-command.js (255 lines). Colocated Vitest tests created. Error types (AITestError, OutputError) added to ai-errors.js.
 
 ---
 
