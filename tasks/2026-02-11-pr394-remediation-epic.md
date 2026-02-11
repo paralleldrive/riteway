@@ -1,6 +1,6 @@
 # PR #394 Remediation Epic
 
-**Status**: 🚧 IN PROGRESS (Wave 1 ✅, Wave 2 ✅, Wave 3 ✅, Wave 4 next)
+**Status**: 🚧 IN PROGRESS (Wave 1 ✅, Wave 2 ✅, Wave 3 ✅, Wave 4 ✅, Wave 5 next)
 **Goal**: Address all outstanding PR review concerns, code quality issues, and file size violations before merge
 
 ## Overview
@@ -143,7 +143,7 @@ Break `bin/riteway.js` (515 lines) into focused modules targeting ~160 lines eac
 
 ## Wave 4 — PR Comment Resolutions (all parallel, after Wave 3)
 
-## Error-Causes Switch in `verifyAgentAuthentication`
+## Error-Causes Switch in `verifyAgentAuthentication` — ✅ DONE
 
 Replace fragile string matching in the `verifyAgentAuthentication` catch block with the error-causes pattern.
 
@@ -151,15 +151,21 @@ Replace fragile string matching in the `verifyAgentAuthentication` catch block w
 - Given `verifyAgentAuthentication` failure, should always include agent setup guidance (since the function's purpose IS auth checking)
 - Given the catch block, should not use `err.message.includes('authentication')` string matching
 
+**Result**: Removed fragile `err.message.includes()` conditional + `let` mutation. Since the function's purpose IS auth verification, any failure now always includes setup guidance via `const` assignment. Test updated to verify guidance with generic error message.
+
+**Review (95/100 APPROVED)**: No blockers.
+
 ---
 
-## Add Wrong Prompt E2E Test Fixture
+## Add Wrong Prompt E2E Test Fixture — ✅ DONE
 
 Add an E2E test that verifies the framework correctly reports failures for a deliberately bad prompt.
 
 **Requirements**:
 - Given a test file with a deliberately wrong prompt under test, should produce `results.passed === false`
 - Given existing wrong-prompt fixture files, should be reused if they exist or created if not
+
+**Result**: Added `testRunner('e2e: wrong-prompt test fixture')` block to `source/e2e.test.js` using existing `wrong-prompt-test.sudo` fixture. Asserts `results.passed === false` and `results.assertions.length === 4`. Skips when Claude CLI not authenticated.
 
 ---
 
