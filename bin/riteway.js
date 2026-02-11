@@ -6,32 +6,13 @@ import resolve from 'resolve';
 import minimist from 'minimist';
 import { globSync } from 'glob';
 import dotignore from 'dotignore';
-import { errorCauses } from 'error-causes';
-import { getAgentConfig, loadAgentConfig } from '../source/agent-config.js';
+import { handleAIErrors } from '../source/ai-errors.js';
 import { parseAIArgs, runAICommand, formatAssertionReport, defaults } from '../source/ai-command.js';
 
 const resolveModule = resolve.sync;
 const createMatcher = dotignore.createMatcher;
 
 const asyncPipe = (...fns) => x => fns.reduce(async (y, f) => f(await y), x);
-
-// Error causes definition for AI test runner
-const [aiRunnerErrors, handleAIRunnerErrors] = errorCauses({
-  ValidationError: {
-    code: 'VALIDATION_ERROR',
-    message: 'Input validation failed'
-  },
-  AITestError: {
-    code: 'AI_TEST_ERROR',
-    message: 'AI test execution failed'
-  },
-  OutputError: {
-    code: 'OUTPUT_ERROR',
-    message: 'Test output recording failed'
-  }
-});
-
-const { ValidationError, AITestError, OutputError } = aiRunnerErrors;
 
 export const parseArgs = (argv) => {
   const opts = minimist(argv, {
@@ -96,9 +77,9 @@ const mainAIRunner = asyncPipe(
   runAICommand
 );
 
-// Error handler for AI runner errors
-const handleAIError = handleAIRunnerErrors({
-  ValidationError: ({ message, code }) => {
+// Error handler using the shared ai-errors registry
+const handleAIError = handleAIErrors({
+  ValidationError: ({ message }) => {
     console.error(`❌ Validation failed: ${message}`);
     console.error('\nUsage: riteway ai <file> [--runs N] [--threshold P] [--agent NAME | --agent-config FILE] [--debug] [--debug-log] [--color]');
     console.error(`  --runs N               Number of test runs per assertion (default: ${defaults.runs})`);
@@ -114,7 +95,7 @@ const handleAIError = handleAIRunnerErrors({
     console.error('  OpenCode: See https://opencode.ai/docs/cli/');
     process.exit(1);
   },
-  AITestError: ({ message, code, cause, passRate, threshold }) => {
+  AITestError: ({ message, cause, passRate, threshold }) => {
     console.error(`❌ AI test failed: ${message}`);
     if (passRate !== undefined && threshold !== undefined) {
       console.error(`💡 Pass rate: ${passRate}% (threshold: ${threshold}%)`);
@@ -124,12 +105,48 @@ const handleAIError = handleAIRunnerErrors({
     }
     process.exit(1);
   },
-  OutputError: ({ message, code, cause }) => {
+  OutputError: ({ message, cause }) => {
     console.error(`❌ Output recording failed: ${message}`);
     console.error('💡 Check file system permissions and available disk space.');
     if (cause) {
       console.error(`🔍 Root cause: ${cause.message || cause}`);
     }
+    process.exit(1);
+  },
+  AgentProcessError: ({ message, cause }) => {
+    console.error(`❌ Agent process failed: ${message}`);
+    if (cause) {
+      console.error(`🔍 Root cause: ${cause.message || cause}`);
+    }
+    process.exit(1);
+  },
+  TimeoutError: ({ message, timeout }) => {
+    console.error(`❌ Agent timed out: ${message}`);
+    if (timeout) {
+      console.error(`💡 Timeout was set to ${timeout}ms.`);
+    }
+    process.exit(1);
+  },
+  ParseError: ({ message, cause }) => {
+    console.error(`❌ Failed to parse agent output: ${message}`);
+    if (cause) {
+      console.error(`🔍 Root cause: ${cause.message || cause}`);
+    }
+    process.exit(1);
+  },
+  SecurityError: ({ message }) => {
+    console.error(`❌ Security violation: ${message}`);
+    process.exit(1);
+  },
+  ExtractionParseError: ({ message, cause }) => {
+    console.error(`❌ Failed to parse test extraction: ${message}`);
+    if (cause) {
+      console.error(`🔍 Root cause: ${cause.message || cause}`);
+    }
+    process.exit(1);
+  },
+  ExtractionValidationError: ({ message }) => {
+    console.error(`❌ Invalid test extraction: ${message}`);
     process.exit(1);
   }
 });

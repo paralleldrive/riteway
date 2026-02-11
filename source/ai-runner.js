@@ -7,9 +7,7 @@ import { limitConcurrency } from './limit-concurrency.js';
 import { normalizeJudgment, aggregatePerAssertionResults } from './aggregation.js';
 import { verifyAgentAuthentication as verifyAuth } from './validation.js';
 import { unwrapAgentResult } from './agent-parser.js';
-import { ParseError, TimeoutError, AgentProcessError, handleAIErrors } from './ai-errors.js';
-
-export { handleAIErrors };
+import { ParseError, TimeoutError, AgentProcessError } from './ai-errors.js';
 
 export const readTestFile = (filePath) => readFile(filePath, 'utf-8');
 export const verifyAgentAuthentication = (options) => verifyAuth({ ...options, executeAgent });
