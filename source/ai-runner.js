@@ -380,9 +380,11 @@ export const aggregatePerAssertionResults = ({ perAssertionResults, threshold, r
   const assertions = perAssertionResults.map(({ description, runResults }) => {
     const passCount = runResults.filter(r => r.passed).length;
 
-    // Calculate average score across all runs, defaulting missing scores to 0
+    // Calculate average score across all runs, treating missing/invalid scores as 0
     const totalScore = runResults.reduce((sum, r) => sum + (r.score ?? 0), 0);
-    const averageScore = Math.round((totalScore / runResults.length) * 100) / 100;
+    const averageScore = runResults.length > 0
+      ? Math.round((totalScore / runResults.length) * 100) / 100
+      : 0;
 
     return {
       description,

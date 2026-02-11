@@ -1307,6 +1307,35 @@ describe('ai-runner', () => {
         expected: 0
       });
     });
+
+    test('handles empty runResults without division by zero', () => {
+      const perAssertionResults = [
+        {
+          description: 'test with no run results',
+          runResults: []
+        }
+      ];
+
+      const result = aggregatePerAssertionResults({
+        perAssertionResults,
+        threshold: 50,
+        runs: 1
+      });
+
+      assert({
+        given: 'empty runResults array',
+        should: 'return averageScore of 0 without error',
+        actual: result.assertions[0].averageScore,
+        expected: 0
+      });
+
+      assert({
+        given: 'empty runResults array',
+        should: 'not be NaN',
+        actual: Number.isNaN(result.assertions[0].averageScore),
+        expected: false
+      });
+    });
   });
 
   describe('normalizeJudgment()', () => {

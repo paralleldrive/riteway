@@ -470,6 +470,43 @@ score: 85
         expected: 85
       });
     });
+
+    test('handles YAML with missing optional fields', () => {
+      const input = `---
+passed: true
+score: 75
+---`;
+
+      const result = parseTAPYAML(input);
+
+      assert({
+        given: 'YAML block missing actual and expected fields',
+        should: 'parse passed field correctly',
+        actual: result.passed,
+        expected: true
+      });
+
+      assert({
+        given: 'YAML block missing actual and expected fields',
+        should: 'parse score field correctly',
+        actual: result.score,
+        expected: 75
+      });
+
+      assert({
+        given: 'YAML block missing actual field',
+        should: 'not include actual in result',
+        actual: result.actual,
+        expected: undefined
+      });
+
+      assert({
+        given: 'YAML block missing expected field',
+        should: 'not include expected in result',
+        actual: result.expected,
+        expected: undefined
+      });
+    });
   });
 
   describe('parseExtractionResult()', () => {
