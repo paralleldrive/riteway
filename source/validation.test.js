@@ -140,7 +140,7 @@ describe('validation', () => {
     test('provides helpful error message for authentication errors', async () => {
       const executeAgent = createMockExecuteAgent({
         shouldSucceed: false,
-        errorMessage: 'authentication failed: invalid token'
+        errorMessage: 'Process failed'
       });
       const agentConfig = {
         command: 'mock-agent',
@@ -150,9 +150,9 @@ describe('validation', () => {
       const result = await verifyAgentAuthentication({ agentConfig, executeAgent, timeout: 1000 });
 
       assert({
-        given: 'authentication error message',
+        given: 'any error during verification',
         should: 'include helpful guidance',
-        actual: result.error.includes('Agent authentication required') || result.error.includes('Make sure your agent CLI is authenticated'),
+        actual: result.error.includes('Agent authentication required'),
         expected: true
       });
     });
