@@ -1,5 +1,6 @@
 import { describe, test } from 'vitest';
 import { assert } from './vitest.js';
+import { Try } from './riteway.js';
 import {
   buildExtractionPrompt,
   buildResultPrompt,
@@ -444,12 +445,7 @@ score: 90
     test('throws ParseError when no --- markers found', () => {
       const invalidInput = 'passed: true\nactual: result\nexpected: something';
 
-      let error;
-      try {
-        parseTAPYAML(invalidInput);
-      } catch (err) {
-        error = err;
-      }
+      const error = Try(parseTAPYAML, invalidInput);
 
       assert({
         given: 'input without --- markers',
@@ -641,12 +637,7 @@ score: 75
     test('throws on malformed non-JSON input', () => {
       const malformed = 'This is not JSON at all';
 
-      let error;
-      try {
-        parseExtractionResult(malformed);
-      } catch (err) {
-        error = err;
-      }
+      const error = Try(parseExtractionResult, malformed);
 
       assert({
         given: 'non-JSON input',
@@ -673,12 +664,7 @@ score: 75
     test('throws when result does not have required structure', () => {
       const invalidStructure = JSON.stringify({ id: 1, description: 'test', prompt: 'test' });
 
-      let error;
-      try {
-        parseExtractionResult(invalidStructure);
-      } catch (err) {
-        error = err;
-      }
+      const error = Try(parseExtractionResult, invalidStructure);
 
       assert({
         given: 'extraction result with invalid structure',
@@ -701,12 +687,7 @@ score: 75
         assertions: []
       });
 
-      let error;
-      try {
-        parseExtractionResult(missingFields);
-      } catch (err) {
-        error = err;
-      }
+      const error = Try(parseExtractionResult, missingFields);
 
       assert({
         given: 'extraction result missing importPaths field',
@@ -739,12 +720,7 @@ score: 75
         ]
       });
 
-      let error;
-      try {
-        parseExtractionResult(missingAssertionFields);
-      } catch (err) {
-        error = err;
-      }
+      const error = Try(parseExtractionResult, missingAssertionFields);
 
       assert({
         given: 'assertion missing the requirement field',
@@ -900,17 +876,12 @@ score: 75
         args: ['-e', 'console.log(JSON.stringify({ not: "valid" }))']
       };
 
-      let error;
-      try {
-        await extractTests({
-          testContent: 'import "test.mdc"\n\n- Given a test, should pass',
-          testFilePath: '/test/test.sudo',
-          agentConfig: mockAgentConfig,
-          timeout: 5000
-        });
-      } catch (err) {
-        error = err;
-      }
+      const error = await Try(extractTests, {
+        testContent: 'import "test.mdc"\n\n- Given a test, should pass',
+        testFilePath: '/test/test.sudo',
+        agentConfig: mockAgentConfig,
+        timeout: 5000
+      });
 
       assert({
         given: 'agent returns invalid extraction result',
@@ -990,17 +961,12 @@ score: 75
         args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
       };
 
-      let error;
-      try {
-        await extractTests({
-          testContent: 'import "nonexistent-file.mdc"\n\n- Given test, should pass',
-          testFilePath: '/test/test.sudo',
-          agentConfig: mockAgentConfig,
-          timeout: 5000
-        });
-      } catch (err) {
-        error = err;
-      }
+      const error = await Try(extractTests, {
+        testContent: 'import "nonexistent-file.mdc"\n\n- Given test, should pass',
+        testFilePath: '/test/test.sudo',
+        agentConfig: mockAgentConfig,
+        timeout: 5000
+      });
 
       assert({
         given: 'import file that does not exist',
@@ -1041,17 +1007,12 @@ score: 75
         args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
       };
 
-      let error;
-      try {
-        await extractTests({
-          testContent: '- Given test, should pass',
-          testFilePath: '/test/test.sudo',
-          agentConfig: mockAgentConfig,
-          timeout: 5000
-        });
-      } catch (err) {
-        error = err;
-      }
+      const error = await Try(extractTests, {
+        testContent: '- Given test, should pass',
+        testFilePath: '/test/test.sudo',
+        agentConfig: mockAgentConfig,
+        timeout: 5000
+      });
 
       assert({
         given: 'no promptUnderTest import declared',
@@ -1085,17 +1046,12 @@ score: 75
         args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
       };
 
-      let error;
-      try {
-        await extractTests({
-          testContent: 'import "package.json"\n\n- Given test, should pass',
-          testFilePath: '/test/test.sudo',
-          agentConfig: mockAgentConfig,
-          timeout: 5000
-        });
-      } catch (err) {
-        error = err;
-      }
+      const error = await Try(extractTests, {
+        testContent: 'import "package.json"\n\n- Given test, should pass',
+        testFilePath: '/test/test.sudo',
+        agentConfig: mockAgentConfig,
+        timeout: 5000
+      });
 
       assert({
         given: 'empty userPrompt',
@@ -1124,17 +1080,12 @@ score: 75
         args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
       };
 
-      let error;
-      try {
-        await extractTests({
-          testContent: 'import "package.json"\n\nuserPrompt = """test"""',
-          testFilePath: '/test/test.sudo',
-          agentConfig: mockAgentConfig,
-          timeout: 5000
-        });
-      } catch (err) {
-        error = err;
-      }
+      const error = await Try(extractTests, {
+        testContent: 'import "package.json"\n\nuserPrompt = """test"""',
+        testFilePath: '/test/test.sudo',
+        agentConfig: mockAgentConfig,
+        timeout: 5000
+      });
 
       assert({
         given: 'empty assertions array',
@@ -1284,17 +1235,12 @@ score: 75
           args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
         };
 
-        let error;
-        try {
-          await extractTests({
-            testContent,
-            testFilePath: testFile,
-            agentConfig: mockAgentConfig,
-            timeout: 5000
-          });
-        } catch (err) {
-          error = err;
-        }
+        const error = await Try(extractTests, {
+          testContent,
+          testFilePath: testFile,
+          agentConfig: mockAgentConfig,
+          timeout: 5000
+        });
 
         assert({
           given: 'missing import file (real ENOENT)',

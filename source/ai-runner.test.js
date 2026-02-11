@@ -1,5 +1,6 @@
 import { describe, test, vi } from 'vitest';
 import { assert } from './vitest.js';
+import { Try } from './riteway.js';
 import {
   readTestFile,
   calculateRequiredPasses,
@@ -314,13 +315,8 @@ describe('ai-runner', () => {
       const logger = createMockLogger();
       const ndjson = '{"type":"step_start","data":"no text here"}\n' +
         '{"type":"step_finish","data":"still no text"}';
-      
-      let error;
-      try {
-        parseOpenCodeNDJSON(ndjson, logger);
-      } catch (e) {
-        error = e;
-      }
+
+      const error = Try(parseOpenCodeNDJSON, ndjson, logger);
       
       assert({
         given: 'NDJSON with no text events',
@@ -429,12 +425,7 @@ describe('ai-runner', () => {
       ];
 
       for (const { value, label } of invalidRunsValues) {
-        let error;
-        try {
-          calculateRequiredPasses({ runs: value, threshold: 75 });
-        } catch (err) {
-          error = err;
-        }
+        const error = Try(calculateRequiredPasses, { runs: value, threshold: 75 });
 
         assert({
           given: `runs value of ${label} (${value})`,
@@ -460,12 +451,7 @@ describe('ai-runner', () => {
     });
 
     test('validates threshold is between 0 and 100', () => {
-      let error1;
-      try {
-        calculateRequiredPasses({ runs: 4, threshold: 150 });
-      } catch (err) {
-        error1 = err;
-      }
+      const error1 = Try(calculateRequiredPasses, { runs: 4, threshold: 150 });
 
       assert({
         given: 'threshold > 100',
@@ -488,12 +474,7 @@ describe('ai-runner', () => {
         expected: 'INVALID_THRESHOLD'
       });
 
-      let error2;
-      try {
-        calculateRequiredPasses({ runs: 4, threshold: -10 });
-      } catch (err) {
-        error2 = err;
-      }
+      const error2 = Try(calculateRequiredPasses, { runs: 4, threshold: -10 });
 
       assert({
         given: 'negative threshold',
@@ -518,12 +499,7 @@ describe('ai-runner', () => {
     });
 
     test('validates threshold is a finite number', () => {
-      let error;
-      try {
-        calculateRequiredPasses({ runs: 4, threshold: NaN });
-      } catch (err) {
-        error = err;
-      }
+      const error = Try(calculateRequiredPasses, { runs: 4, threshold: NaN });
 
       assert({
         given: 'NaN threshold',
@@ -594,16 +570,11 @@ describe('ai-runner', () => {
         command: 'node',
         args: ['-e', 'console.log("not json")']
       };
-      
-      let error;
-      try {
-        await executeAgent({
-          agentConfig: mockAgentConfig,
-          prompt: 'test'
-        });
-      } catch (err) {
-        error = err;
-      }
+
+      const error = await Try(executeAgent, {
+        agentConfig: mockAgentConfig,
+        prompt: 'test'
+      });
 
       assert({
         given: 'agent returns invalid JSON',
@@ -640,15 +611,10 @@ describe('ai-runner', () => {
         args: ['-e', 'console.error("error message"); process.exit(1)']
       };
 
-      let error;
-      try {
-        await executeAgent({
-          agentConfig: mockAgentConfig,
-          prompt: 'test'
-        });
-      } catch (err) {
-        error = err;
-      }
+      const error = await Try(executeAgent, {
+        agentConfig: mockAgentConfig,
+        prompt: 'test'
+      });
 
       assert({
         given: 'agent exits with non-zero code',
@@ -692,16 +658,11 @@ describe('ai-runner', () => {
         args: ['-e', 'setTimeout(() => console.log(JSON.stringify({ done: true })), 10000)']
       };
 
-      let error;
-      try {
-        await executeAgent({
-          agentConfig: mockAgentConfig,
-          prompt: 'test',
-          timeout: 100 // 100ms timeout
-        });
-      } catch (err) {
-        error = err;
-      }
+      const error = await Try(executeAgent, {
+        agentConfig: mockAgentConfig,
+        prompt: 'test',
+        timeout: 100 // 100ms timeout
+      });
 
       assert({
         given: 'process that exceeds timeout',
@@ -811,16 +772,11 @@ describe('ai-runner', () => {
           throw new Error('Failed to parse NDJSON');
         }
       };
-      
-      let error;
-      try {
-        await executeAgent({
-          agentConfig: mockAgentConfig,
-          prompt: 'test'
-        });
-      } catch (err) {
-        error = err;
-      }
+
+      const error = await Try(executeAgent, {
+        agentConfig: mockAgentConfig,
+        prompt: 'test'
+      });
 
       assert({
         given: 'parseOutput throws error',
@@ -1086,13 +1042,8 @@ score: ${judgmentScore}
 
     test('rejects path traversal attempts', () => {
       const baseDir = '/home/user/project';
-      let error;
-      
-      try {
-        validateFilePath('../../etc/passwd', baseDir);
-      } catch (err) {
-        error = err;
-      }
+
+      const error = Try(validateFilePath, '../../etc/passwd', baseDir);
 
       assert({
         given: 'a path that escapes the base directory',
@@ -1118,13 +1069,8 @@ score: ${judgmentScore}
 
     test('rejects absolute path outside base directory', () => {
       const baseDir = '/home/user/project';
-      let error;
-      
-      try {
-        validateFilePath('/etc/passwd', baseDir);
-      } catch (err) {
-        error = err;
-      }
+
+      const error = Try(validateFilePath, '/etc/passwd', baseDir);
 
       assert({
         given: 'an absolute path outside the base directory',
@@ -1704,17 +1650,12 @@ score: ${judgmentScore}
 
     test('throws ParseError on null input', () => {
       const logger = createMockLogger();
-      let error;
 
-      try {
-        normalizeJudgment(null, {
-          requirement: 'test assertion',
-          runIndex: 1,
-          logger
-        });
-      } catch (e) {
-        error = e;
-      }
+      const error = Try(normalizeJudgment, null, {
+        requirement: 'test assertion',
+        runIndex: 1,
+        logger
+      });
 
       assert({
         given: 'null input',
@@ -1761,17 +1702,12 @@ score: ${judgmentScore}
 
     test('throws ParseError on string input', () => {
       const logger = createMockLogger();
-      let error;
 
-      try {
-        normalizeJudgment('not an object', {
-          requirement: 'test',
-          runIndex: 0,
-          logger
-        });
-      } catch (e) {
-        error = e;
-      }
+      const error = Try(normalizeJudgment, 'not an object', {
+        requirement: 'test',
+        runIndex: 0,
+        logger
+      });
 
       assert({
         given: 'string input',
@@ -1790,17 +1726,12 @@ score: ${judgmentScore}
 
     test('throws ParseError on undefined input', () => {
       const logger = createMockLogger();
-      let error;
 
-      try {
-        normalizeJudgment(undefined, {
-          requirement: 'test',
-          runIndex: 0,
-          logger
-        });
-      } catch (e) {
-        error = e;
-      }
+      const error = Try(normalizeJudgment, undefined, {
+        requirement: 'test',
+        runIndex: 0,
+        logger
+      });
 
       assert({
         given: 'undefined input',
