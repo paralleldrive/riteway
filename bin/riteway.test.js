@@ -221,7 +221,9 @@ describe('defaults', async assert => {
       threshold: 75,
       concurrency: 4,
       agent: 'claude',
-      color: false
+      color: false,
+      debug: false,
+      debugLog: false
     }
   });
 });
@@ -236,9 +238,8 @@ describe('parseAIArgs()', async assert => {
       runs: defaults.runs,
       threshold: defaults.threshold,
       agent: defaults.agent,
-      validateExtraction: false,
-      debug: false,
-      debugLog: false,
+      debug: defaults.debug,
+      debugLog: defaults.debugLog,
       color: defaults.color,
       concurrency: defaults.concurrency,
       cwd: process.cwd()
@@ -254,9 +255,8 @@ describe('parseAIArgs()', async assert => {
       runs: 10,
       threshold: defaults.threshold,
       agent: defaults.agent,
-      validateExtraction: false,
-      debug: false,
-      debugLog: false,
+      debug: defaults.debug,
+      debugLog: defaults.debugLog,
       color: defaults.color,
       concurrency: defaults.concurrency,
       cwd: process.cwd()
@@ -272,9 +272,8 @@ describe('parseAIArgs()', async assert => {
       runs: defaults.runs,
       threshold: 80,
       agent: defaults.agent,
-      validateExtraction: false,
-      debug: false,
-      debugLog: false,
+      debug: defaults.debug,
+      debugLog: defaults.debugLog,
       color: defaults.color,
       concurrency: defaults.concurrency,
       cwd: process.cwd()
@@ -290,9 +289,8 @@ describe('parseAIArgs()', async assert => {
       runs: defaults.runs,
       threshold: defaults.threshold,
       agent: 'opencode',
-      validateExtraction: false,
-      debug: false,
-      debugLog: false,
+      debug: defaults.debug,
+      debugLog: defaults.debugLog,
       color: defaults.color,
       concurrency: defaults.concurrency,
       cwd: process.cwd()
@@ -308,9 +306,8 @@ describe('parseAIArgs()', async assert => {
       runs: 5,
       threshold: 60,
       agent: 'cursor',
-      validateExtraction: false,
-      debug: false,
-      debugLog: false,
+      debug: defaults.debug,
+      debugLog: defaults.debugLog,
       color: defaults.color,
       concurrency: defaults.concurrency,
       cwd: process.cwd()
@@ -351,24 +348,6 @@ describe('parseAIArgs()', async assert => {
   }
 
   assert({
-    given: 'AI command with --validate-extraction flag',
-    should: 'parse validateExtraction as true',
-    actual: parseAIArgs(['--validate-extraction', 'test.sudo']),
-    expected: {
-      filePath: 'test.sudo',
-      runs: defaults.runs,
-      threshold: defaults.threshold,
-      agent: defaults.agent,
-      validateExtraction: true,
-      debug: false,
-      debugLog: false,
-      color: defaults.color,
-      concurrency: defaults.concurrency,
-      cwd: process.cwd()
-    }
-  });
-
-  assert({
     given: 'AI command with --debug flag',
     should: 'parse debug as true',
     actual: parseAIArgs(['--debug', 'test.sudo']),
@@ -377,9 +356,8 @@ describe('parseAIArgs()', async assert => {
       runs: defaults.runs,
       threshold: defaults.threshold,
       agent: defaults.agent,
-      validateExtraction: false,
       debug: true,
-      debugLog: false,
+      debugLog: defaults.debugLog,
       color: defaults.color,
       concurrency: defaults.concurrency,
       cwd: process.cwd()
@@ -395,7 +373,6 @@ describe('parseAIArgs()', async assert => {
       runs: defaults.runs,
       threshold: defaults.threshold,
       agent: defaults.agent,
-      validateExtraction: false,
       debug: true,
       debugLog: true,
       color: defaults.color,
@@ -413,9 +390,8 @@ describe('parseAIArgs()', async assert => {
       runs: defaults.runs,
       threshold: defaults.threshold,
       agent: defaults.agent,
-      validateExtraction: false,
-      debug: false,
-      debugLog: false,
+      debug: defaults.debug,
+      debugLog: defaults.debugLog,
       color: true,
       concurrency: defaults.concurrency,
       cwd: process.cwd()
@@ -431,9 +407,8 @@ describe('parseAIArgs()', async assert => {
       runs: defaults.runs,
       threshold: defaults.threshold,
       agent: defaults.agent,
-      validateExtraction: false,
-      debug: false,
-      debugLog: false,
+      debug: defaults.debug,
+      debugLog: defaults.debugLog,
       color: defaults.color,
       concurrency: defaults.concurrency,
       cwd: process.cwd()

@@ -43,7 +43,9 @@ export const defaults = {
   threshold: 75,
   concurrency: 4,
   agent: 'claude',
-  color: false
+  color: false,
+  debug: false,
+  debugLog: false
 };
 
 /**
@@ -174,7 +176,6 @@ const aiArgsSchema = z.object({
   concurrency: z.number().int().positive({
     error: 'concurrency must be a positive integer'
   }),
-  validateExtraction: z.boolean(),
   debug: z.boolean(),
   debugLog: z.boolean(),
   color: z.boolean(),
@@ -196,14 +197,13 @@ export const parseAIArgs = (argv) => {
 
   const opts = minimist(argv, {
     string: ['runs', 'threshold', 'agent', 'concurrency', 'agent-config'],
-    boolean: ['validate-extraction', 'debug', 'debug-log', 'color'],
+    boolean: ['debug', 'debug-log', 'color'],
     default: {
       runs: defaults.runs,
       threshold: defaults.threshold,
       agent: defaults.agent,
-      'validate-extraction': false,
-      debug: false,
-      'debug-log': false,
+      debug: defaults.debug,
+      'debug-log': defaults.debugLog,
       color: defaults.color
     }
   });
@@ -218,7 +218,6 @@ export const parseAIArgs = (argv) => {
     threshold: Number(opts.threshold),
     agent: opts.agent,
     ...(agentConfigPath ? { agentConfigPath } : {}),
-    validateExtraction: opts['validate-extraction'],
     debug: opts.debug || opts['debug-log'], // --debug-log implies --debug
     debugLog: opts['debug-log'],
     color: opts.color,
@@ -426,12 +425,11 @@ const mainAIRunner = asyncPipe(
 const handleAIError = handleAIRunnerErrors({
   ValidationError: ({ message, code }) => {
     console.error(`❌ Validation failed: ${message}`);
-    console.error('\nUsage: riteway ai <file> [--runs N] [--threshold P] [--agent NAME | --agent-config FILE] [--validate-extraction] [--debug] [--debug-log] [--color]');
+    console.error('\nUsage: riteway ai <file> [--runs N] [--threshold P] [--agent NAME | --agent-config FILE] [--debug] [--debug-log] [--color]');
     console.error(`  --runs N               Number of test runs per assertion (default: ${defaults.runs})`);
     console.error(`  --threshold P          Required pass percentage 0-100 (default: ${defaults.threshold})`);
     console.error(`  --agent NAME           AI agent: claude, opencode, cursor (default: ${defaults.agent})`);
     console.error('  --agent-config FILE    Path to custom agent config JSON (mutually exclusive with --agent)');
-    console.error('  --validate-extraction  Validate extraction with judge sub-agent');
     console.error('  --debug                Enable debug output to console');
     console.error('  --debug-log            Enable debug output and save to auto-generated log file');
     console.error(`  --color                Enable ANSI color codes in terminal output (default: ${defaults.color ? 'enabled' : 'disabled'})`);
@@ -479,7 +477,6 @@ AI Test Options:
   --agent NAME              AI agent to use: claude, opencode, cursor (default: ${defaults.agent})
   --agent-config FILE       Path to custom agent config JSON {"command","args"} (mutually exclusive with --agent)
   --concurrency N           Max concurrent test executions (default: ${defaults.concurrency})
-  --validate-extraction     Validate extraction output with judge sub-agent
   --debug                   Enable debug output to console
   --debug-log               Enable debug output and save to auto-generated log file
   --color                   Enable ANSI color codes in terminal output (default: ${defaults.color ? 'enabled' : 'disabled'})
@@ -495,7 +492,6 @@ Examples:
   riteway ai prompts/test.sudo --runs 10 --threshold 80
   riteway ai prompts/test.sudo --agent cursor --runs 5
   riteway ai prompts/test.sudo --agent opencode --runs 5
-  riteway ai prompts/test.sudo --validate-extraction
   riteway ai prompts/test.sudo --debug
   riteway ai prompts/test.sudo --debug-log
   riteway ai prompts/test.sudo --color
