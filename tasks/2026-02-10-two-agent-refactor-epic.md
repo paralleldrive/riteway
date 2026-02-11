@@ -1,7 +1,7 @@
 # Epic: Two-Agent Refactor + PR #394 Remediation
 
 > **Date:** 2026-02-10
-> **Status:** IN PROGRESS -- T1-T9 complete (9/13). T10, T11 unblocked and next.
+> **Status:** IN PROGRESS -- T1-T11 complete (11/13). T12 unblocked, T13 blocked by T12.
 > **Branch:** `two-agent-refactor`
 > **PR:** [#394](https://github.com/paralleldrive/riteway/pull/394)
 > **Vision:** "The standard testing framework for AI Driven Development and software agents"
@@ -55,8 +55,8 @@ Convert the AI testing framework from a **single-agent self-evaluating pattern**
 
 | # | Task | Files Changed | Blocked By | Remediation | Status |
 |---|------|---------------|------------|-------------|--------|
-| 10 | Zod Schema Validation + Centralized Defaults | `bin/riteway.js`, `bin/riteway.test.js` | 8 | Rem. Task 2 (#1, #2, #3, #6, #7) | PENDING |
-| 11 | Error-Causes Switch in ai-runner.js | `source/ai-runner.js`, `source/ai-runner.test.js` | 8 | Rem. Task 5 (#4) | PENDING |
+| 10 | Zod Schema Validation + Centralized Defaults | `bin/riteway.js`, `bin/riteway.test.js` | 8 | Rem. Task 2 (#1, #2, #3, #6, #7) | ✅ DONE |
+| 11 | Error-Causes Switch in ai-runner.js | `source/ai-runner.js`, `source/ai-runner.test.js` | 8 | Rem. Task 5 (#4) | ✅ DONE |
 | 12 | Code Style -- Eliminate Mutations | `bin/riteway.js` | 8, 10 | Rem. Task 6 (#5) | PENDING |
 
 ### WAVE 4 -- Final (depends on Wave 3)
@@ -709,13 +709,13 @@ not ok 2 - Given the design, should be accessible to colorblind users
 
 #### Acceptance Criteria
 
-- [ ] Zod validates all parseAIArgs inputs
-- [ ] Missing filePath throws ValidationError
-- [ ] Invalid threshold/runs/concurrency throw ValidationError
-- [ ] All magic numbers replaced with `defaults.*`
-- [ ] `--no-color` flag removed; `--color` enables color, absence means no color
-- [ ] Zod errors connected to error-causes pattern
-- [ ] All tests pass
+- [x] Zod validates all parseAIArgs inputs
+- [x] Missing filePath throws ValidationError
+- [x] Invalid threshold/runs/concurrency throw ValidationError
+- [x] All magic numbers replaced with `defaults.*` (source + tests)
+- [x] `--no-color` flag removed; `--color` enables color, absence means no color
+- [x] Zod errors connected to error-causes pattern
+- [x] All tests pass (155 Vitest, 90 TAP, lint clean)
 
 ---
 
@@ -757,11 +757,11 @@ Replace all ad-hoc `createError` and `new Error()` calls with defined error caus
 
 #### Acceptance Criteria
 
-- [ ] Module-level `errorCauses` definition with all error types
-- [ ] All `new Error()` calls replaced with `createError({ ...errorType })`
-- [ ] `handleAIErrors` exported for use in bin/riteway.js
-- [ ] Error tests verify `.cause.name` and `.cause.code`
-- [ ] All tests pass
+- [x] Module-level `errorCauses` definition with all error types
+- [x] All `new Error()` calls replaced with `createError({ ...errorType })`
+- [x] `handleAIErrors` exported for use in bin/riteway.js
+- [x] Error tests verify `.cause.name` and `.cause.code` (including TimeoutError + AgentProcessError)
+- [x] All tests pass (155 Vitest, 90 TAP, lint clean)
 
 ---
 
