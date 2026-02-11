@@ -83,7 +83,7 @@ Eliminate mutations and extract duplicated Zod error formatting.
 
 ## Wave 3 — File Decomposition (sequential, affects cross-file imports)
 
-## Extract Modules from `ai-runner.js`
+## Extract Modules from `ai-runner.js` — ✅ DONE
 
 Break `ai-runner.js` (626 lines) into focused modules under 160 lines each.
 
@@ -92,6 +92,19 @@ Break `ai-runner.js` (626 lines) into focused modules under 160 lines each.
 - Given `normalizeJudgment`, `calculateRequiredPasses`, and `aggregatePerAssertionResults`, should be extracted to `source/aggregation.js`
 - Given `ai-runner.js` after extraction, should be under 300 lines
 - Given existing test imports, should be updated to reference new module paths
+
+**Result**: ai-runner.js reduced from 626→296 lines. Extracted 5 modules: limit-concurrency.js, aggregation.js, agent-parser.js, validation.js, ai-errors.js.
+
+**Review finding — DRY violation (FIXED)**: ParseError was duplicated across ai-errors.js, agent-parser.js, and aggregation.js. Fixed by importing from ai-errors.js as the single source of truth.
+
+---
+
+### Wave 3 Extraction Rules (apply to ALL remaining extraction tasks)
+
+> **Learned from Task #7 review**: When extracting modules, follow these rules to avoid issues:
+> 1. **Single source of truth for error definitions** — all error types must be defined in ONE module (e.g., `ai-errors.js`) and imported elsewhere. Never duplicate `errorCauses` or `createError` definitions.
+> 2. **Colocated tests** — when extracting functions to a new module, move their corresponding tests to a colocated test file (e.g., `aggregation.js` → `aggregation.test.js`).
+> 3. **Re-export for backward compatibility** — the original module must re-export all moved functions so downstream imports don't break.
 
 ---
 
@@ -103,6 +116,7 @@ Break `test-extractor.js` (484 lines) into focused modules targeting ~160 lines 
 - Given `parseTAPYAML`, should be extracted to `source/tap-yaml.js`
 - Given `resolveImportPaths`, `extractJSONFromMarkdown`, `tryParseJSON`, and `parseExtractionResult`, should be extracted to `source/extraction-parser.js`
 - Given imports in `test-extractor.js`, `ai-runner.js`, and their test files, should be updated to reference new module paths
+- **Must follow Wave 3 Extraction Rules above** (single error source, colocated tests, re-exports)
 
 ---
 
@@ -114,6 +128,7 @@ Break `bin/riteway.js` (515 lines) into focused modules targeting ~160 lines eac
 - Given `getAgentConfig`, `loadAgentConfig`, and `agentConfigFileSchema`, should be extracted to `source/agent-config.js`
 - Given `parseAIArgs`, `aiArgsSchema`, `formatAssertionReport`, and `runAICommand`, should be extracted to `source/ai-command.js`
 - Given `bin/riteway.js` after extraction, should primarily contain CLI entry point wiring
+- **Must follow Wave 3 Extraction Rules above** (single error source, colocated tests, re-exports)
 
 ---
 

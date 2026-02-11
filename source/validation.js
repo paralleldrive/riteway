@@ -1,13 +1,7 @@
 import { resolve, relative } from 'path';
-import { errorCauses, createError } from 'error-causes';
+import { createError } from 'error-causes';
 import { createDebugLogger } from './debug-logger.js';
-
-// Module-level error types for validation operations
-const [validationErrors] = errorCauses({
-  SecurityError: { code: 'SECURITY_VIOLATION', message: 'Security violation detected' }
-});
-
-const { SecurityError } = validationErrors;
+import { SecurityError } from './ai-errors.js';
 
 /**
  * Validate that a file path does not escape the base directory.

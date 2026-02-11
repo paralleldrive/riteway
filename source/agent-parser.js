@@ -1,11 +1,5 @@
-import { errorCauses, createError } from 'error-causes';
-
-// Module-level error types for parsing operations
-const [parserErrors] = errorCauses({
-  ParseError: { code: 'PARSE_FAILURE', message: 'Failed to parse AI response' }
-});
-
-const { ParseError } = parserErrors;
+import { createError } from 'error-causes';
+import { ParseError } from './ai-errors.js';
 
 /**
  * Parse a string result from an agent, attempting multiple strategies.

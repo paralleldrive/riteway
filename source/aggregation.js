@@ -1,12 +1,5 @@
-import { errorCauses, createError } from 'error-causes';
-
-// Module-level error types for aggregation operations
-const [aggregationErrors] = errorCauses({
-  ValidationError: { code: 'VALIDATION_FAILURE', message: 'Invalid input parameters' },
-  ParseError: { code: 'PARSE_FAILURE', message: 'Failed to parse AI response' }
-});
-
-const { ValidationError, ParseError } = aggregationErrors;
+import { createError } from 'error-causes';
+import { ValidationError, ParseError } from './ai-errors.js';
 
 /**
  * Normalize a judge response with safe defaults, logging, and error handling.
