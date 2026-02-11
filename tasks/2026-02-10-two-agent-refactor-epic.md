@@ -1,7 +1,7 @@
 # Epic: Two-Agent Refactor + PR #394 Remediation
 
 > **Date:** 2026-02-10
-> **Status:** IN PROGRESS -- T1-T7, T9 complete (7/13). T8 unblocked and next.
+> **Status:** IN PROGRESS -- T1-T9 complete (9/13). T10, T11 unblocked and next.
 > **Branch:** `two-agent-refactor`
 > **PR:** [#394](https://github.com/paralleldrive/riteway/pull/394)
 > **Vision:** "The standard testing framework for AI Driven Development and software agents"
@@ -48,7 +48,7 @@ Convert the AI testing framework from a **single-agent self-evaluating pattern**
 |---|------|---------------|------------|--------|--------|
 | 6 | Modify `aggregatePerAssertionResults` (`r.passed` + `averageScore`) | `source/ai-runner.js`, `source/ai-runner.test.js` | 5 | 8, 9 | ✅ DONE |
 | 7 | Modify `extractTests` + agent-directed imports + remove `parseImports` + flexible assertions | `source/test-extractor.js`, `source/test-extractor.test.js` | 3, 4 | 8 | ✅ DONE |
-| 8 | Modify `runAITests` (plain text result + TAP YAML judge + `Promise.all` within runs) + remove `buildEvaluationPrompt` | `source/ai-runner.js`, `source/test-extractor.js`, tests | 3, 4, 5, 6, 7 | 10, 11, 12, 13 | **NEXT** |
+| 8 | Modify `runAITests` (plain text result + TAP YAML judge + `Promise.all` within runs) + remove `buildEvaluationPrompt` | `source/ai-runner.js`, `source/test-extractor.js`, tests | 3, 4, 5, 6, 7 | 10, 11, 12, 13 | ✅ DONE |
 | 9 | Modify `formatTAP` -- score/actual/expected diagnostics | `source/test-output.js`, `source/test-output.test.js` | 6 | 13 | ✅ DONE |
 
 ### WAVE 3 -- Post-Refactor Polish (depends on Wave 2)
@@ -611,14 +611,14 @@ readFile -> extractTests -> { userPrompt, promptUnderTest, assertions }
 
 #### Acceptance Criteria
 
-- [ ] Result agent called 1x per run, returns plain text (not JSON)
-- [ ] Judge agent called 1x per assertion per run, returns TAP YAML
-- [ ] Same plain text result passed to all judges in a run
-- [ ] Judge calls within a run use `Promise.all` (parallel, not serialized)
-- [ ] Runs use `limitConcurrency` (across-run concurrency control)
-- [ ] `buildEvaluationPrompt` deleted from source and tests
-- [ ] `limitConcurrency` extracted to module scope
-- [ ] All tests pass
+- [x] Result agent called 1x per run, returns plain text (not JSON)
+- [x] Judge agent called 1x per assertion per run, returns TAP YAML
+- [x] Same plain text result passed to all judges in a run
+- [x] Judge calls within a run use `Promise.all` (parallel, not serialized)
+- [x] Runs use `limitConcurrency` (across-run concurrency control)
+- [x] `buildEvaluationPrompt` deleted from source and tests
+- [x] `limitConcurrency` extracted to module scope
+- [x] All tests pass (155 Vitest, 82 TAP, lint clean)
 
 ---
 
