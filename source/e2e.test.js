@@ -282,3 +282,52 @@ testRunner('e2e: --agent-config JSON file flow', async (assert) => {
     expected: 3
   });
 });
+
+testRunner('e2e: wrong-prompt test fixture', async (assert) => {
+  if (!isClaudeAuthenticated) {
+    console.log('⚠️  Skipping E2E tests: Claude CLI not authenticated. Run: claude setup-token');
+    return;
+  }
+
+  const testFilePath = join(__dirname, 'fixtures', 'wrong-prompt-test.sudo');
+  const agentConfig = {
+    command: 'claude',
+    args: ['-p', '--output-format', 'json', '--no-session-persistence']
+  };
+
+  const results = await runAITests({
+    filePath: testFilePath,
+    runs: 2,
+    threshold: 75,
+    timeout: 180000,
+    agentConfig
+  });
+
+  assert({
+    given: 'a deliberately bad prompt that fails assertions',
+    should: 'return passed false',
+    actual: results.passed,
+    expected: false
+  });
+
+  assert({
+    given: 'wrong-prompt fixture with 4 assertions',
+    should: 'return assertions array with 4 items',
+    actual: results.assertions.length,
+    expected: 4
+  });
+
+  assert({
+    given: 'wrong-prompt test results',
+    should: 'return assertions array',
+    actual: Array.isArray(results.assertions),
+    expected: true
+  });
+
+  assert({
+    given: 'each assertion in wrong-prompt test',
+    should: 'have requirement property',
+    actual: typeof results.assertions[0].requirement,
+    expected: 'string'
+  });
+});
