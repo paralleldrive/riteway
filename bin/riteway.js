@@ -6,6 +6,7 @@ import resolve from 'resolve';
 import minimist from 'minimist';
 import { globSync } from 'glob';
 import dotignore from 'dotignore';
+import { z } from 'zod';
 import { errorCauses, createError } from 'error-causes';
 import { runAITests, verifyAgentAuthentication, validateFilePath, parseOpenCodeNDJSON } from '../source/ai-runner.js';
 import { recordTestOutput, generateLogFilePath } from '../source/test-output.js';
@@ -32,6 +33,17 @@ const [aiRunnerErrors, handleAIRunnerErrors] = errorCauses({
 });
 
 const { ValidationError, AITestError, OutputError } = aiRunnerErrors;
+
+/**
+ * Centralized default values for AI test runner
+ */
+export const defaults = {
+  runs: 4,
+  threshold: 75,
+  concurrency: 4,
+  agent: 'claude',
+  color: false
+};
 
 /**
  * Get agent configuration based on agent name.
@@ -83,20 +95,52 @@ export const parseArgs = (argv) => {
   };
 };
 
+/**
+ * Zod schema for AI test arguments validation
+ */
+const aiArgsSchema = z.object({
+  filePath: z.string({
+    required_error: 'Test file path is required',
+    invalid_type_error: 'Test file path must be a string'
+  }),
+  runs: z.number().int().positive({
+    message: 'runs must be a positive integer'
+  }),
+  threshold: z.number().min(0).max(100, {
+    message: 'threshold must be between 0 and 100'
+  }),
+  agent: z.enum(['claude', 'opencode', 'cursor'], {
+    errorMap: () => ({ message: 'agent must be one of: claude, opencode, cursor' })
+  }),
+  concurrency: z.number().int().positive({
+    message: 'concurrency must be a positive integer'
+  }),
+  validateExtraction: z.boolean(),
+  debug: z.boolean(),
+  debugLog: z.boolean(),
+  color: z.boolean(),
+  cwd: z.string()
+});
+
 export const parseAIArgs = (argv) => {
   const opts = minimist(argv, {
     string: ['runs', 'threshold', 'agent', 'concurrency'],
-    boolean: ['validate-extraction', 'debug', 'debug-log', 'color', 'no-color'],
-    default: { runs: 4, threshold: 75, agent: 'claude', 'validate-extraction': false, debug: false, 'debug-log': false }
+    boolean: ['validate-extraction', 'debug', 'debug-log', 'color'],
+    default: {
+      runs: defaults.runs,
+      threshold: defaults.threshold,
+      agent: defaults.agent,
+      'validate-extraction': false,
+      debug: false,
+      'debug-log': false,
+      color: defaults.color
+    }
   });
 
-  // Color defaults to false, users can explicitly enable with --color
-  const color = opts['no-color'] ? false : (opts.color || false);
+  // Concurrency defaults if not specified
+  const concurrency = opts.concurrency ? Number(opts.concurrency) : defaults.concurrency;
 
-  // Concurrency defaults to 4 if not specified
-  const concurrency = opts.concurrency ? Number(opts.concurrency) : 4;
-
-  return {
+  const parsed = {
     filePath: opts._[0],
     runs: Number(opts.runs),
     threshold: Number(opts.threshold),
@@ -104,10 +148,26 @@ export const parseAIArgs = (argv) => {
     validateExtraction: opts['validate-extraction'],
     debug: opts.debug || opts['debug-log'], // --debug-log implies --debug
     debugLog: opts['debug-log'],
-    color,
+    color: opts.color,
     concurrency,
     cwd: process.cwd()
   };
+
+  // Validate with Zod schema
+  try {
+    return aiArgsSchema.parse(parsed);
+  } catch (zodError) {
+    const errorMessage = zodError.errors
+      ? zodError.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')
+      : zodError.message || 'Validation failed';
+
+    throw createError({
+      name: 'ValidationError',
+      code: 'INVALID_AI_ARGS',
+      message: errorMessage,
+      cause: zodError
+    });
+  }
 };
 
 export const runAICommand = async ({ filePath, runs, threshold, agent, debug, debugLog, color, concurrency, cwd }) => {
@@ -268,15 +328,14 @@ const mainAIRunner = asyncPipe(
 const handleAIError = handleAIRunnerErrors({
   ValidationError: ({ message, code }) => {
     console.error(`❌ Validation failed: ${message}`);
-    console.error('\nUsage: riteway ai <file> [--runs N] [--threshold P] [--agent NAME] [--validate-extraction] [--debug] [--debug-log] [--color] [--no-color]');
-    console.error('  --runs N               Number of test runs per assertion (default: 4)');
-    console.error('  --threshold P          Required pass percentage 0-100 (default: 75)');
-    console.error('  --agent NAME           AI agent: claude, opencode, cursor (default: claude)');
+    console.error('\nUsage: riteway ai <file> [--runs N] [--threshold P] [--agent NAME] [--validate-extraction] [--debug] [--debug-log] [--color]');
+    console.error(`  --runs N               Number of test runs per assertion (default: ${defaults.runs})`);
+    console.error(`  --threshold P          Required pass percentage 0-100 (default: ${defaults.threshold})`);
+    console.error(`  --agent NAME           AI agent: claude, opencode, cursor (default: ${defaults.agent})`);
     console.error('  --validate-extraction  Validate extraction with judge sub-agent');
     console.error('  --debug                Enable debug output to console');
     console.error('  --debug-log            Enable debug output and save to auto-generated log file');
-    console.error('  --color                Enable ANSI color codes in TAP output (default: disabled)');
-    console.error('  --no-color             Explicitly disable ANSI color codes in TAP output');
+    console.error(`  --color                Enable ANSI color codes in TAP output (default: ${defaults.color ? 'enabled' : 'disabled'})`);
     console.error('\nAuthentication: Run agent-specific OAuth setup:');
     console.error("  Claude:  'claude setup-token'");
     console.error("  Cursor:  'agent login'");
@@ -316,15 +375,14 @@ Test Runner Options:
   -i, --ignore <file>       Ignore patterns from file
 
 AI Test Options:
-  --runs N                  Number of test runs per assertion (default: 4)
-  --threshold P             Required pass percentage 0-100 (default: 75)
-  --agent NAME              AI agent to use: claude, opencode, cursor (default: claude)
-  --concurrency N           Max concurrent test executions (default: 4)
+  --runs N                  Number of test runs per assertion (default: ${defaults.runs})
+  --threshold P             Required pass percentage 0-100 (default: ${defaults.threshold})
+  --agent NAME              AI agent to use: claude, opencode, cursor (default: ${defaults.agent})
+  --concurrency N           Max concurrent test executions (default: ${defaults.concurrency})
   --validate-extraction     Validate extraction output with judge sub-agent
   --debug                   Enable debug output to console
   --debug-log               Enable debug output and save to auto-generated log file
-  --color                   Enable ANSI color codes in TAP output (default: disabled)
-  --no-color                Explicitly disable ANSI color codes in TAP output
+  --color                   Enable ANSI color codes in TAP output (default: ${defaults.color ? 'enabled' : 'disabled'})
 
 Authentication:
   All agents use OAuth authentication (no API keys required):
@@ -340,7 +398,7 @@ Examples:
   riteway ai prompts/test.sudo --validate-extraction
   riteway ai prompts/test.sudo --debug
   riteway ai prompts/test.sudo --debug-log
-  riteway ai prompts/test.sudo --no-color
+  riteway ai prompts/test.sudo --color
     `);
     process.exit(0);
   }

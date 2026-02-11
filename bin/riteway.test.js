@@ -3,15 +3,16 @@ import { describe, Try } from '../source/riteway.js';
 import { execSync } from 'child_process';
 
 // Import the functions we need to test
-import { 
-  parseArgs, 
-  loadModules, 
-  createIgnoreMatcher, 
+import {
+  parseArgs,
+  loadModules,
+  createIgnoreMatcher,
   resolveTestFiles,
   runTests,
   parseAIArgs,
   runAICommand,
-  getAgentConfig
+  getAgentConfig,
+  defaults
 } from './riteway.js';
 
 // Test utilities
@@ -208,6 +209,21 @@ describe('runTests()', async assert => {
   });
 });
 
+describe('defaults', async assert => {
+  assert({
+    given: 'defaults constant',
+    should: 'export centralized default values',
+    actual: defaults,
+    expected: {
+      runs: 4,
+      threshold: 75,
+      concurrency: 4,
+      agent: 'claude',
+      color: false
+    }
+  });
+});
+
 describe('parseAIArgs()', async assert => {
   assert({
     given: 'AI command with test file path',
@@ -215,14 +231,14 @@ describe('parseAIArgs()', async assert => {
     actual: parseAIArgs(['test.sudo']),
     expected: {
       filePath: 'test.sudo',
-      runs: 4,
-      threshold: 75,
-      agent: 'claude',
+      runs: defaults.runs,
+      threshold: defaults.threshold,
+      agent: defaults.agent,
       validateExtraction: false,
       debug: false,
       debugLog: false,
-      color: false,
-      concurrency: 4,
+      color: defaults.color,
+      concurrency: defaults.concurrency,
       cwd: process.cwd()
     }
   });
@@ -234,13 +250,13 @@ describe('parseAIArgs()', async assert => {
     expected: {
       filePath: 'test.sudo',
       runs: 10,
-      threshold: 75,
-      agent: 'claude',
+      threshold: defaults.threshold,
+      agent: defaults.agent,
       validateExtraction: false,
       debug: false,
       debugLog: false,
-      color: false,
-      concurrency: 4,
+      color: defaults.color,
+      concurrency: defaults.concurrency,
       cwd: process.cwd()
     }
   });
@@ -251,14 +267,14 @@ describe('parseAIArgs()', async assert => {
     actual: parseAIArgs(['--threshold', '80', 'test.sudo']),
     expected: {
       filePath: 'test.sudo',
-      runs: 4,
+      runs: defaults.runs,
       threshold: 80,
-      agent: 'claude',
+      agent: defaults.agent,
       validateExtraction: false,
       debug: false,
       debugLog: false,
-      color: false,
-      concurrency: 4,
+      color: defaults.color,
+      concurrency: defaults.concurrency,
       cwd: process.cwd()
     }
   });
@@ -269,14 +285,14 @@ describe('parseAIArgs()', async assert => {
     actual: parseAIArgs(['--agent', 'opencode', 'test.sudo']),
     expected: {
       filePath: 'test.sudo',
-      runs: 4,
-      threshold: 75,
+      runs: defaults.runs,
+      threshold: defaults.threshold,
       agent: 'opencode',
       validateExtraction: false,
       debug: false,
       debugLog: false,
-      color: false,
-      concurrency: 4,
+      color: defaults.color,
+      concurrency: defaults.concurrency,
       cwd: process.cwd()
     }
   });
@@ -293,29 +309,44 @@ describe('parseAIArgs()', async assert => {
       validateExtraction: false,
       debug: false,
       debugLog: false,
-      color: false,
-      concurrency: 4,
+      color: defaults.color,
+      concurrency: defaults.concurrency,
       cwd: process.cwd()
     }
   });
 
-  assert({
-    given: 'AI command with no file path',
-    should: 'return undefined filePath',
-    actual: parseAIArgs([]),
-    expected: {
-      filePath: undefined,
-      runs: 4,
-      threshold: 75,
-      agent: 'claude',
-      validateExtraction: false,
-      debug: false,
-      debugLog: false,
-      color: false,
-      concurrency: 4,
-      cwd: process.cwd()
-    }
-  });
+  {
+    // Test missing filePath throws ValidationError
+    const error = Try(parseAIArgs, []);
+
+    assert({
+      given: 'AI command with no file path',
+      should: 'throw Error with cause',
+      actual: error instanceof Error && error.cause !== undefined,
+      expected: true
+    });
+
+    assert({
+      given: 'AI command with no file path',
+      should: 'have ValidationError name',
+      actual: error?.cause?.name,
+      expected: 'ValidationError'
+    });
+
+    assert({
+      given: 'AI command with no file path',
+      should: 'have INVALID_AI_ARGS code',
+      actual: error?.cause?.code,
+      expected: 'INVALID_AI_ARGS'
+    });
+
+    assert({
+      given: 'AI command with no file path',
+      should: 'include descriptive message about filePath',
+      actual: error?.cause?.message.toLowerCase().includes('filepath') || error?.cause?.message.toLowerCase().includes('file path'),
+      expected: true
+    });
+  }
 
   assert({
     given: 'AI command with --validate-extraction flag',
@@ -323,14 +354,14 @@ describe('parseAIArgs()', async assert => {
     actual: parseAIArgs(['--validate-extraction', 'test.sudo']),
     expected: {
       filePath: 'test.sudo',
-      runs: 4,
-      threshold: 75,
-      agent: 'claude',
+      runs: defaults.runs,
+      threshold: defaults.threshold,
+      agent: defaults.agent,
       validateExtraction: true,
       debug: false,
       debugLog: false,
-      color: false,
-      concurrency: 4,
+      color: defaults.color,
+      concurrency: defaults.concurrency,
       cwd: process.cwd()
     }
   });
@@ -341,14 +372,14 @@ describe('parseAIArgs()', async assert => {
     actual: parseAIArgs(['--debug', 'test.sudo']),
     expected: {
       filePath: 'test.sudo',
-      runs: 4,
-      threshold: 75,
-      agent: 'claude',
+      runs: defaults.runs,
+      threshold: defaults.threshold,
+      agent: defaults.agent,
       validateExtraction: false,
       debug: true,
       debugLog: false,
-      color: false,
-      concurrency: 4,
+      color: defaults.color,
+      concurrency: defaults.concurrency,
       cwd: process.cwd()
     }
   });
@@ -359,14 +390,14 @@ describe('parseAIArgs()', async assert => {
     actual: parseAIArgs(['--debug-log', 'test.sudo']),
     expected: {
       filePath: 'test.sudo',
-      runs: 4,
-      threshold: 75,
-      agent: 'claude',
+      runs: defaults.runs,
+      threshold: defaults.threshold,
+      agent: defaults.agent,
       validateExtraction: false,
       debug: true,
       debugLog: true,
-      color: false,
-      concurrency: 4,
+      color: defaults.color,
+      concurrency: defaults.concurrency,
       cwd: process.cwd()
     }
   });
@@ -377,32 +408,14 @@ describe('parseAIArgs()', async assert => {
     actual: parseAIArgs(['--color', 'test.sudo']),
     expected: {
       filePath: 'test.sudo',
-      runs: 4,
-      threshold: 75,
-      agent: 'claude',
+      runs: defaults.runs,
+      threshold: defaults.threshold,
+      agent: defaults.agent,
       validateExtraction: false,
       debug: false,
       debugLog: false,
       color: true,
-      concurrency: 4,
-      cwd: process.cwd()
-    }
-  });
-
-  assert({
-    given: 'AI command with --no-color flag',
-    should: 'parse color as false',
-    actual: parseAIArgs(['--no-color', 'test.sudo']),
-    expected: {
-      filePath: 'test.sudo',
-      runs: 4,
-      threshold: 75,
-      agent: 'claude',
-      validateExtraction: false,
-      debug: false,
-      debugLog: false,
-      color: false,
-      concurrency: 4,
+      concurrency: defaults.concurrency,
       cwd: process.cwd()
     }
   });
@@ -413,17 +426,77 @@ describe('parseAIArgs()', async assert => {
     actual: parseAIArgs(['test.sudo']),
     expected: {
       filePath: 'test.sudo',
-      runs: 4,
-      threshold: 75,
-      agent: 'claude',
+      runs: defaults.runs,
+      threshold: defaults.threshold,
+      agent: defaults.agent,
       validateExtraction: false,
       debug: false,
       debugLog: false,
-      color: false,
-      concurrency: 4,
+      color: defaults.color,
+      concurrency: defaults.concurrency,
       cwd: process.cwd()
     }
   });
+
+  {
+    // Test invalid threshold throws ValidationError
+    const error = Try(parseAIArgs, ['--threshold', '150', 'test.sudo']);
+
+    assert({
+      given: 'AI command with threshold > 100',
+      should: 'throw ValidationError',
+      actual: error?.cause?.name,
+      expected: 'ValidationError'
+    });
+  }
+
+  {
+    // Test invalid threshold throws ValidationError
+    const error = Try(parseAIArgs, ['--threshold', '-10', 'test.sudo']);
+
+    assert({
+      given: 'AI command with negative threshold',
+      should: 'throw ValidationError',
+      actual: error?.cause?.name,
+      expected: 'ValidationError'
+    });
+  }
+
+  {
+    // Test invalid runs throws ValidationError
+    const error = Try(parseAIArgs, ['--runs', '0', 'test.sudo']);
+
+    assert({
+      given: 'AI command with runs = 0',
+      should: 'throw ValidationError',
+      actual: error?.cause?.name,
+      expected: 'ValidationError'
+    });
+  }
+
+  {
+    // Test invalid concurrency throws ValidationError
+    const error = Try(parseAIArgs, ['--concurrency', '-5', 'test.sudo']);
+
+    assert({
+      given: 'AI command with negative concurrency',
+      should: 'throw ValidationError',
+      actual: error?.cause?.name,
+      expected: 'ValidationError'
+    });
+  }
+
+  {
+    // Test invalid agent throws ValidationError
+    const error = Try(parseAIArgs, ['--agent', 'invalid-agent', 'test.sudo']);
+
+    assert({
+      given: 'AI command with unsupported agent',
+      should: 'throw ValidationError',
+      actual: error?.cause?.name,
+      expected: 'ValidationError'
+    });
+  }
 });
 
 describe('getAgentConfig()', async assert => {
