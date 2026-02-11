@@ -27,6 +27,178 @@ Riteway's structured approach makes it ideal for AIDD:
 - **Simple API**: Minimal surface area reduces AI confusion and hallucinations
 - **Token efficient**: Concise syntax saves valuable context window space
 
+## Testing AI Prompts with `riteway ai`
+
+Riteway includes a powerful CLI for testing AI agent prompts and evaluating their outputs. Test your prompts as rigorously as you test your code.
+
+### Prerequisites
+
+Riteway AI tests use CLI tools with OAuth authentication (not API keys). This ensures tests run against your subscription rather than usage-based billing.
+
+**Claude CLI** (default):
+```bash
+# Set up OAuth token (one-time)
+claude setup-token
+```
+Docs: https://docs.claude.ai/docs/cli-authentication
+
+**OpenCode CLI**:
+Follow provider setup instructions at https://opencode.ai/docs/cli/
+
+**Cursor CLI**:
+```bash
+# Set up OAuth authentication (one-time)
+agent login
+
+# Verify authentication
+agent status
+```
+Docs: https://docs.cursor.com/context/rules-for-ai
+
+### Quick Start
+
+```bash
+# Run AI prompt tests with default settings (4 runs, 75% pass threshold)
+riteway ai test/my-prompt.sudo
+
+# Customize test runs and pass threshold
+riteway ai test/my-prompt.sudo --runs 10 --threshold 80
+
+# Use different AI agents
+riteway ai test/my-prompt.sudo --agent opencode
+riteway ai test/my-prompt.sudo --agent cursor
+```
+
+### How It Works
+
+AI prompt testing handles non-deterministic AI responses by:
+
+1. **Multiple runs**: Executes each test multiple times (default: 4)
+2. **Pass threshold**: Requires a percentage of runs to pass (default: 75%)
+3. **Parallel execution**: Runs tests in parallel for speed
+4. **Isolated contexts**: Each run gets a fresh subprocess for clean state
+
+### Test File Format
+
+AI test files are written in SudoLang/Markdown and passed directly to AI agents:
+
+```markdown
+# Sample AI Test
+
+Test the basic math capability of the AI.
+
+## Requirements
+
+- Given a simple addition prompt, should correctly add 2 + 2
+- Given the result, should output the number 4
+- Given the response format, should provide a JSON response with "passed" and "output" fields
+
+## Test Prompt
+
+What is 2 + 2? Please respond with JSON in this format:
+{
+  "passed": true,
+  "output": "2 + 2 = 4"
+}
+```
+
+### Test Output
+
+Results are saved to `ai-evals/` with:
+
+- **TAP format**: Standard Test Anything Protocol output
+- **Rich formatting**: Colorized, markdown-compatible
+- **Unique identifiers**: Date-stamped with unique slugs
+- **Browser preview**: Automatically opens results in your browser
+
+Example output path:
+```
+ai-evals/2026-01-23-my-prompt-abc123.tap.md
+```
+
+### Supported Agents
+
+Riteway supports multiple AI agents:
+
+- **Claude Code** (default): `--agent claude`
+- **OpenCode**: `--agent opencode`
+- **Cursor Agent**: `--agent cursor`
+
+Each agent runs in a subprocess with proper JSON output configuration.
+
+### CLI Options
+
+```bash
+riteway ai <test-file> [options]
+
+Options:
+  --runs <n>            Number of test runs (default: 4)
+  --threshold <p>       Required pass percentage 0-100 (default: 75)
+  --agent <name>        AI agent to use: claude|opencode|cursor (default: claude)
+  --debug               Enable debug output to console
+  --debug-log           Enable debug output and save to auto-generated log file
+```
+
+#### Debug Mode and Logging
+
+Use `--debug` to see detailed information about test execution in the console:
+
+```bash
+# Debug output to console only
+riteway ai test/my-prompt.sudo --debug
+
+# Debug output to console AND save to auto-generated log file
+riteway ai test/my-prompt.sudo --debug-log
+```
+
+When using `--debug-log`, the log file is automatically created in the `ai-evals/` directory with a timestamped filename matching the pattern: `YYYY-MM-DD-testname-xxxxx.debug.log`.
+
+Debug mode shows:
+- Agent command execution details
+- Prompt lengths and content previews
+- JSON parsing steps
+- Test extraction and evaluation results
+- Process exit codes and timing
+
+### Example: Testing a Prompt
+
+Create a test file `tests/math-test.sudo`:
+
+```markdown
+# Math Test
+
+## Test Prompt
+Solve: What is 15 + 27?
+
+Respond in JSON:
+{
+  "passed": true,
+  "output": "42"
+}
+```
+
+Run the test:
+
+```bash
+riteway ai tests/math-test.sudo --runs 5 --threshold 80
+```
+
+Output:
+
+```
+TAP version 13
+ok 1
+ok 2
+ok 3
+ok 4
+ok 5
+1..5
+# tests 5
+# pass  5
+
+Test results saved to: ai-evals/2026-01-23-math-test-xyz789.tap.md
+```
+
 ## The 5 Questions Every Test Must Answer
 
 There are [5 questions every unit test must answer](https://medium.com/javascript-scene/what-every-unit-test-needs-f6cd34d9836d). Riteway forces you to answer them.

@@ -1,0 +1,10 @@
+import 'source/fixtures/wrong-prompt.mdc'
+
+userPrompt = """
+Design a user-friendly color scheme for a terminal test output interface with good contrast and accessibility.
+"""
+
+- Given the color scheme, should include high contrast colors for readability
+- Given the color scheme, should use semantic colors (green for pass, red for fail)
+- Given the color scheme, should be accessible to colorblind users
+- Given the design rationale, should explain the accessibility considerations

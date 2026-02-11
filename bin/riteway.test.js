@@ -1,12 +1,12 @@
 // @ts-nocheck
-import { describe } from '../source/riteway.js';
+import { describe, Try } from '../source/riteway.js';
 import { execSync } from 'child_process';
 
 // Import the functions we need to test
-import { 
-  parseArgs, 
-  loadModules, 
-  createIgnoreMatcher, 
+import {
+  parseArgs,
+  loadModules,
+  createIgnoreMatcher,
   resolveTestFiles,
   runTests
 } from './riteway.js';

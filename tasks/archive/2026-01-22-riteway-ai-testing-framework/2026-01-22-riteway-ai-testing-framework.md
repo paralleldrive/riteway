@@ -67,7 +67,13 @@ describe(moduleName, {
 - Given YYYY-MM-DD date format requirement, should generate ISO date stamps
 - Given test file format, should support extension-agnostic file reading
 - Given SudoLang/markdown test files, should treat as prompts and pass complete contents to agent
-- Given agent orchestration needs, should call subagents (not LLM APIs directly)
+- Given agent orchestration needs, should spawn subagent CLI subprocesses (not LLM APIs directly)
+- Given parallel execution, should spawn separate subprocesses per run (automatic context isolation)
+- Given agent-agnostic design, should support configurable agent CLI via agentConfig option
+- Given Claude Code CLI, should use: `claude -p --output-format json --no-session-persistence "prompt"`
+- Given OpenCode CLI, should use: `opencode run --format json "prompt"`
+- Given Cursor CLI, should use: `agent chat "prompt"` with `--api-key` for automation
+- Given default agent, should use Claude Code CLI (best JSON output support)
 - Given test output, should open in browser for markdown rendering
 - Given non-deterministic AI inference, should support configurable test runs and pass thresholds
 - Given threshold calculation, should use ceiling for required passes (e.g., 75% of 4 = 3 required)
@@ -171,6 +177,13 @@ describe(moduleName, {
 - Given package.json, should verify all scripts and files properly configured
 - Given all implementation complete, should have all tests passing
 
+**Code Quality Improvements** (Nice-to-Have):
+- Extract usage message to constant (DRY principle - currently duplicated in help and error)
+- Extract percentage calculation helper function (single responsibility, readability)
+- Add integration tests for main() routing logic (help flag, AI command, test runner routing)
+- Add path traversal validation for user-supplied file paths (security enhancement)
+- Add inline JSDoc for remaining public API functions
+
 **Dependencies**: Task 5
 
 ---
@@ -178,12 +191,21 @@ describe(moduleName, {
 ## Implementation Notes
 
 **Key Technical Considerations**:
-- Agent delegation pattern: Use Claude Code CLI or similar agent orchestrators, NOT direct LLM API calls
+- Agent delegation pattern: Spawn subagent CLI subprocesses, NOT direct LLM API calls
 - SudoLang test files are prompts - don't parse them, pass complete contents to agent (supports frontmatter, markdown, etc.)
 - TAP output format must remain standard-compliant while supporting markdown extensions
 - Slug generation must use shell execution: `npx cuid2 --slug`
 - Prompt compilation should be idempotent and cacheable
 - Browser rendering for test results provides better UX for rich media embeds
+
+**Agent-Agnostic Architecture** (decided 2026-01-22):
+- Each test run spawns a fresh subprocess - automatic context isolation, no IDs needed
+- Default to Claude Code: `claude -p --output-format json --no-session-persistence`
+- Configurable via `agentConfig` option for OpenCode/Cursor support
+- CLI options researched:
+  - Claude Code: https://code.claude.com/docs/en/cli-reference
+  - OpenCode: https://opencode.ai/docs/cli/
+  - Cursor: https://cursor.com/docs/cli/using
 
 **Potential Challenges**:
 - Ensuring TAP compliance while adding media embed features
@@ -195,7 +217,7 @@ describe(moduleName, {
 - Use TDD throughout implementation
 - Separate concerns: file reading, agent execution, formatting, output, browser rendering
 - Delegate to specialized modules for each concern
-- Use dependency injection for testability
+- Use dependency injection for testability (agentConfig for mocking)
 - Treat test files as opaque prompts for maximum flexibility
 
 **Reference Materials**:
@@ -206,15 +228,111 @@ describe(moduleName, {
 
 ## Epic Status
 
-**Status**: 🔵 PENDING
+**Status**: ✅ COMPLETED (2026-01-23)
 **Created**: 2026-01-22
 **Total Tasks**: 6
-**Estimated Total Effort**: Medium (focused on CLI implementation)
+**Completed**: All tasks (1-6)
 
 ---
 
-## Next Steps
+## Progress Log
 
-1. Get user approval for this epic plan
-2. Begin with Task 1: Analyze Existing CLI Structure
-3. Execute tasks sequentially with user approval between each task
+### 2026-01-22: Session 1
+
+**Completed:**
+- ✅ Task 1: Analyzed CLI structure (`bin/riteway` uses asyncPipe pattern with minimist)
+- ✅ Task 2 partial: Created `source/ai-runner.js` with TDD
+  - `readTestFile()` - reads any file extension ✅
+  - `calculateRequiredPasses()` - ceiling math for threshold ✅
+- ✅ Architecture decision: Agent-agnostic subprocess spawning
+
+**Files Created:**
+- `source/ai-runner.js` - Core module (2 functions implemented)
+- `source/ai-runner.test.js` - Tests passing (4 tests)
+
+### 2026-01-23: Session 2
+
+**Completed:**
+- ✅ Task 2: Completed AI Runner Module implementation
+  - `executeAgent({ agentConfig, prompt })` - Spawns CLI subprocess, returns parsed JSON ✅
+  - `aggregateResults({ runResults, threshold })` - Aggregates pass/fail from runs ✅
+  - `runAITests({ filePath, runs, threshold, agentConfig })` - Orchestrates parallel runs ✅
+  - All functions have comprehensive unit tests (16 tests passing) ✅
+
+**Files Updated:**
+- `source/ai-runner.js` - Complete with 5 functions
+- `source/ai-runner.test.js` - Complete with 16 passing tests
+
+- ✅ Task 3: Completed Test Output Recording
+  - `formatDate()` - Formats date as YYYY-MM-DD using UTC ✅
+  - `generateSlug()` - Generates unique slug using `npx @paralleldrive/cuid2 --slug` ✅
+  - `generateOutputPath()` - Constructs output path with all components ✅
+  - `formatTAP()` - Formats test results as TAP v13 output ✅
+  - `openInBrowser()` - Opens file in default browser ✅
+  - `recordTestOutput()` - Orchestrates full output workflow ✅
+  - All functions have comprehensive unit tests (13 tests passing) ✅
+
+**Files Created:**
+- `source/test-output.js` - Complete output recording module
+- `source/test-output.test.js` - Complete with 13 passing tests
+
+**Packages Added:**
+- `@paralleldrive/cuid2` - For unique slug generation
+- `open` - For browser launching
+
+- ✅ Task 4: Completed CLI Integration
+  - `parseAIArgs()` - Parses AI command arguments with --runs, --threshold, and --agent flags ✅
+  - `getAgentConfig()` - Maps agent names (claude/opencode/cursor) to configurations ✅
+  - `runAICommand()` - Orchestrates AI test workflow with structured error handling ✅
+  - `main()` - Routes 'ai' subcommand to AI runner pipeline ✅
+  - Help command displays AI test options including agent selection ✅
+  - Structured error handling using error-causes library pattern ✅
+  - Agent-agnostic design with configurable agent support ✅
+  - All functions have comprehensive unit tests (17 tests passing) ✅
+
+**Files Updated:**
+- `bin/riteway` - Added AI command integration with error-causes pattern
+- `bin/riteway.test.js` - Added 17 tests for AI command (9 for getAgentConfig, 8 for other functions)
+
+**Code Quality Improvements:**
+- Consolidated path imports into single statement
+- Implemented error-causes library pattern for structured error handling
+- Added agentConfig support with --agent CLI flag
+- Added JSDoc documentation for getAgentConfig()
+- Expanded test coverage from 40 to 49 TAP tests
+
+### 2026-01-23: Session 3 (Final)
+
+**Completed:**
+- ✅ Task 5: Created E2E Test
+  - Created sample .sudo test file in `source/fixtures/sample-test.sudo` ✅
+  - Created comprehensive E2E test in `source/e2e.test.js` ✅
+  - Test verifies full workflow: AI tests → output recording → TAP format → file creation ✅
+  - 13 E2E assertions all passing ✅
+  - Added E2E test to Vitest exclude list (uses Riteway/TAP, not Vitest) ✅
+  - All 62 tests passing (49 TAP tests + 13 Vitest unit tests) ✅
+
+**Files Created:**
+- `source/fixtures/sample-test.sudo` - Sample AI test file
+- `source/e2e.test.js` - Comprehensive E2E test (13 assertions)
+
+**Files Updated:**
+- `source/test.js` - Added e2e.test.js import
+- `vitest.config.js` - Excluded e2e.test.js from Vitest (uses Riteway/TAP)
+
+- ✅ Task 6: Documentation and Final Integration
+  - Added comprehensive "Testing AI Prompts with `riteway ai`" section to README ✅
+  - Documented CLI usage, test file format, output format, and examples ✅
+  - Verified package.json configuration (bin, dependencies, scripts) ✅
+  - All tests passing (62 total) ✅
+  - No linter errors ✅
+
+**Files Updated:**
+- `README.md` - Added comprehensive AI testing documentation section
+
+**Epic Complete:**
+- All 6 tasks completed successfully
+- Full test coverage with 62 passing tests
+- Comprehensive documentation
+- No linter errors
+- Ready for release

@@ -6,6 +6,8 @@ import resolve from 'resolve';
 import minimist from 'minimist';
 import { globSync } from 'glob';
 import dotignore from 'dotignore';
+import { handleAIErrors } from '../source/ai-errors.js';
+import { parseAIArgs, runAICommand, formatAssertionReport, defaults } from '../source/ai-command.js';
 
 const resolveModule = resolve.sync;
 const createMatcher = dotignore.createMatcher;
@@ -18,7 +20,7 @@ export const parseArgs = (argv) => {
     string: ['require', 'ignore'],
     default: { r: [], i: null }
   });
-  
+
   return {
     require: Array.isArray(opts.require) ? opts.require : [opts.require].filter(Boolean),
     ignore: opts.ignore,
@@ -62,12 +64,140 @@ export const runTests = async ({ files }) => {
   await Promise.all(files.map(file => import(file)));
 };
 
-const main = asyncPipe(
+const mainTestRunner = asyncPipe(
   parseArgs,
   loadModules,
   createIgnoreMatcher,
   resolveTestFiles,
   runTests
 );
+
+const mainAIRunner = asyncPipe(
+  parseAIArgs,
+  runAICommand
+);
+
+// Error handler using the shared ai-errors registry
+const handleAIError = handleAIErrors({
+  ValidationError: ({ message }) => {
+    console.error(`❌ Validation failed: ${message}`);
+    console.error('\nUsage: riteway ai <file> [--runs N] [--threshold P] [--agent NAME | --agent-config FILE] [--debug] [--debug-log] [--color]');
+    console.error(`  --runs N               Number of test runs per assertion (default: ${defaults.runs})`);
+    console.error(`  --threshold P          Required pass percentage 0-100 (default: ${defaults.threshold})`);
+    console.error(`  --agent NAME           AI agent: claude, opencode, cursor (default: ${defaults.agent})`);
+    console.error('  --agent-config FILE    Path to custom agent config JSON (mutually exclusive with --agent)');
+    console.error('  --debug                Enable debug output to console');
+    console.error('  --debug-log            Enable debug output and save to auto-generated log file');
+    console.error(`  --color                Enable ANSI color codes in terminal output (default: ${defaults.color ? 'enabled' : 'disabled'})`);
+    console.error('\nAuthentication: Run agent-specific OAuth setup:');
+    console.error("  Claude:  'claude setup-token'");
+    console.error("  Cursor:  'agent login'");
+    console.error('  OpenCode: See https://opencode.ai/docs/cli/');
+    process.exit(1);
+  },
+  AITestError: ({ message, cause, passRate, threshold }) => {
+    console.error(`❌ AI test failed: ${message}`);
+    if (passRate !== undefined && threshold !== undefined) {
+      console.error(`💡 Pass rate: ${passRate}% (threshold: ${threshold}%)`);
+    }
+    if (cause) {
+      console.error(`🔍 Root cause: ${cause.message || cause}`);
+    }
+    process.exit(1);
+  },
+  OutputError: ({ message, cause }) => {
+    console.error(`❌ Output recording failed: ${message}`);
+    console.error('💡 Check file system permissions and available disk space.');
+    if (cause) {
+      console.error(`🔍 Root cause: ${cause.message || cause}`);
+    }
+    process.exit(1);
+  },
+  AgentProcessError: ({ message, cause }) => {
+    console.error(`❌ Agent process failed: ${message}`);
+    if (cause) {
+      console.error(`🔍 Root cause: ${cause.message || cause}`);
+    }
+    process.exit(1);
+  },
+  TimeoutError: ({ message, timeout }) => {
+    console.error(`❌ Agent timed out: ${message}`);
+    if (timeout) {
+      console.error(`💡 Timeout was set to ${timeout}ms.`);
+    }
+    process.exit(1);
+  },
+  ParseError: ({ message, cause }) => {
+    console.error(`❌ Failed to parse agent output: ${message}`);
+    if (cause) {
+      console.error(`🔍 Root cause: ${cause.message || cause}`);
+    }
+    process.exit(1);
+  },
+  SecurityError: ({ message }) => {
+    console.error(`❌ Security violation: ${message}`);
+    process.exit(1);
+  },
+  ExtractionParseError: ({ message, cause }) => {
+    console.error(`❌ Failed to parse test extraction: ${message}`);
+    if (cause) {
+      console.error(`🔍 Root cause: ${cause.message || cause}`);
+    }
+    process.exit(1);
+  },
+  ExtractionValidationError: ({ message }) => {
+    console.error(`❌ Invalid test extraction: ${message}`);
+    process.exit(1);
+  }
+});
+
+const main = (argv) => {
+  // Check for help flag
+  if (argv.includes('--help') || argv.includes('-h')) {
+    console.log(`
+Usage:
+  riteway <patterns...> [options]       Run test files
+  riteway ai <file> [options]           Run AI prompt tests
+
+Test Runner Options:
+  -r, --require <module>    Require module before running tests
+  -i, --ignore <file>       Ignore patterns from file
+
+AI Test Options:
+  --runs N                  Number of test runs per assertion (default: ${defaults.runs})
+  --threshold P             Required pass percentage 0-100 (default: ${defaults.threshold})
+  --agent NAME              AI agent to use: claude, opencode, cursor (default: ${defaults.agent})
+  --agent-config FILE       Path to custom agent config JSON {"command","args"} (mutually exclusive with --agent)
+  --concurrency N           Max concurrent test executions (default: ${defaults.concurrency})
+  --debug                   Enable debug output to console
+  --debug-log               Enable debug output and save to auto-generated log file
+  --color                   Enable ANSI color codes in terminal output (default: ${defaults.color ? 'enabled' : 'disabled'})
+
+Authentication:
+  All agents use OAuth authentication (no API keys required):
+    Claude:  Run 'claude setup-token' - https://docs.anthropic.com/en/docs/claude-code
+    Cursor:  Run 'agent login' - https://docs.cursor.com/context/rules-for-ai
+    OpenCode: See https://opencode.ai/docs/cli/ for authentication setup
+
+Examples:
+  riteway 'test/**/*.js'
+  riteway ai prompts/test.sudo --runs 10 --threshold 80
+  riteway ai prompts/test.sudo --agent cursor --runs 5
+  riteway ai prompts/test.sudo --agent opencode --runs 5
+  riteway ai prompts/test.sudo --debug
+  riteway ai prompts/test.sudo --debug-log
+  riteway ai prompts/test.sudo --color
+  riteway ai prompts/test.sudo --agent-config ./my-agent.json
+    `);
+    process.exit(0);
+  }
+
+  // Route to appropriate handler
+  if (argv[0] === 'ai') {
+    return mainAIRunner(argv.slice(1)).catch(handleAIError);
+  }
+  
+  return mainTestRunner(argv);
+};
 
 main(process.argv.slice(2)).catch(console.error);
