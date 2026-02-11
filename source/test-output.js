@@ -66,27 +66,27 @@ const escapeMarkdown = (text) => {
 export const formatTAP = (results) => {
   const { assertions } = results;
 
-  let tap = 'TAP version 13\n';
+  const lines = ['TAP version 13\n'];
 
   assertions.forEach((assertion, index) => {
     const testNumber = index + 1;
     const prefix = assertion.passed ? 'ok' : 'not ok';
-    tap += `${prefix} ${testNumber} - ${assertion.requirement}\n`;
-    tap += `  # pass rate: ${assertion.passCount}/${assertion.totalRuns}\n`;
+    lines.push(`${prefix} ${testNumber} - ${assertion.requirement}\n`);
+    lines.push(`  # pass rate: ${assertion.passCount}/${assertion.totalRuns}\n`);
 
     // Add average score if available
     if (assertion.averageScore !== undefined) {
-      tap += `  # avg score: ${assertion.averageScore.toFixed(2)}\n`;
+      lines.push(`  # avg score: ${assertion.averageScore.toFixed(2)}\n`);
     }
 
     // Add actual and expected from last run if available
     if (assertion.runResults && assertion.runResults.length > 0) {
       const lastRun = assertion.runResults[assertion.runResults.length - 1];
       if (lastRun.actual !== undefined) {
-        tap += `  # actual: ${lastRun.actual}\n`;
+        lines.push(`  # actual: ${lastRun.actual}\n`);
       }
       if (lastRun.expected !== undefined) {
-        tap += `  # expected: ${lastRun.expected}\n`;
+        lines.push(`  # expected: ${lastRun.expected}\n`);
       }
     }
 
@@ -95,7 +95,7 @@ export const formatTAP = (results) => {
       assertion.media.forEach(({ path, caption }) => {
         const escapedCaption = escapeMarkdown(caption);
         const escapedPath = escapeMarkdown(path);
-        tap += `  # ![${escapedCaption}](${escapedPath})\n`;
+        lines.push(`  # ![${escapedCaption}](${escapedPath})\n`);
       });
     }
   });
@@ -103,16 +103,16 @@ export const formatTAP = (results) => {
   const totalAssertions = assertions.length;
   const passedAssertions = assertions.filter(a => a.passed).length;
 
-  tap += `1..${totalAssertions}\n`;
-  tap += `# tests ${totalAssertions}\n`;
-  tap += `# pass  ${passedAssertions}\n`;
+  lines.push(`1..${totalAssertions}\n`);
+  lines.push(`# tests ${totalAssertions}\n`);
+  lines.push(`# pass  ${passedAssertions}\n`);
 
   const failCount = totalAssertions - passedAssertions;
   if (failCount > 0) {
-    tap += `# fail  ${failCount}\n`;
+    lines.push(`# fail  ${failCount}\n`);
   }
 
-  return tap;
+  return lines.join('');
 };
 
 /**
