@@ -84,6 +84,18 @@ export const getAgentConfig = (agentName = 'claude') => {
 };
 
 /**
+ * Format Zod validation errors into a human-readable message.
+ * @param {any} zodError - Zod validation error
+ * @returns {string} Formatted error message
+ */
+const formatZodError = (zodError) => {
+  const issues = zodError.issues || zodError.errors;
+  return issues
+    ? issues.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')
+    : zodError.message || 'Validation failed';
+};
+
+/**
  * Zod schema for agent config file validation.
  * Only command and args are supported — Zod strips unknown keys by default,
  * so properties like parseOutput (which is a function, not serializable to JSON)
@@ -127,14 +139,9 @@ export const loadAgentConfig = async (configPath) => {
   try {
     return agentConfigFileSchema.parse(parsed);
   } catch (zodError) {
-    const issues = zodError.issues || zodError.errors;
-    const errorMessage = issues
-      ? issues.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')
-      : zodError.message || 'Validation failed';
-
     throw createError({
       ...ValidationError,
-      message: `Invalid agent config: ${errorMessage}`,
+      message: `Invalid agent config: ${formatZodError(zodError)}`,
       code: 'AGENT_CONFIG_VALIDATION_ERROR',
       cause: zodError
     });
@@ -229,15 +236,10 @@ export const parseAIArgs = (argv) => {
   try {
     return aiArgsSchema.parse(parsed);
   } catch (zodError) {
-    const issues = zodError.issues || zodError.errors;
-    const errorMessage = issues
-      ? issues.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')
-      : zodError.message || 'Validation failed';
-
     throw createError({
       ...ValidationError,
       code: 'INVALID_AI_ARGS',
-      message: errorMessage,
+      message: formatZodError(zodError),
       cause: zodError
     });
   }
