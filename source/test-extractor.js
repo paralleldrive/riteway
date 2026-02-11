@@ -206,7 +206,7 @@ export const parseTAPYAML = (output) => {
 
   const yaml = match[1];
   const lines = yaml.split('\n');
-  const result = {};
+  const result = /** @type {{ passed: boolean, actual: string, expected: string, score: number }} */ ({});
 
   for (const line of lines) {
     const kvMatch = line.match(/^(\w+):\s*(.+)$/);

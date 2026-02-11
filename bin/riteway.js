@@ -100,20 +100,19 @@ export const parseArgs = (argv) => {
  */
 const aiArgsSchema = z.object({
   filePath: z.string({
-    required_error: 'Test file path is required',
-    invalid_type_error: 'Test file path must be a string'
+    error: 'Test file path is required'
   }),
   runs: z.number().int().positive({
-    message: 'runs must be a positive integer'
+    error: 'runs must be a positive integer'
   }),
   threshold: z.number().min(0).max(100, {
-    message: 'threshold must be between 0 and 100'
+    error: 'threshold must be between 0 and 100'
   }),
   agent: z.enum(['claude', 'opencode', 'cursor'], {
-    errorMap: () => ({ message: 'agent must be one of: claude, opencode, cursor' })
+    error: 'agent must be one of: claude, opencode, cursor'
   }),
   concurrency: z.number().int().positive({
-    message: 'concurrency must be a positive integer'
+    error: 'concurrency must be a positive integer'
   }),
   validateExtraction: z.boolean(),
   debug: z.boolean(),
@@ -157,8 +156,9 @@ export const parseAIArgs = (argv) => {
   try {
     return aiArgsSchema.parse(parsed);
   } catch (zodError) {
-    const errorMessage = zodError.errors
-      ? zodError.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')
+    const issues = zodError.issues || zodError.errors;
+    const errorMessage = issues
+      ? issues.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')
       : zodError.message || 'Validation failed';
 
     throw createError({
