@@ -1,6 +1,6 @@
 # PR #394 Remediation Epic
 
-**Status**: 🚧 IN PROGRESS (Wave 1 ✅, Wave 2 ✅, Wave 3 ✅, Wave 4 ✅, Wave 5 next)
+**Status**: ✅ COMPLETE (Wave 1 ✅, Wave 2 ✅, Wave 3 ✅, Wave 4 ✅, Wave 5 ✅)
 **Goal**: Address all outstanding PR review concerns, code quality issues, and file size violations before merge
 
 ## Overview
@@ -171,13 +171,15 @@ Add an E2E test that verifies the framework correctly reports failures for a del
 
 ## Wave 5 — Final (after all above)
 
-## Documentation + Flow Diagram Updates
+## Documentation + Flow Diagram Updates — ✅ DONE
 
 Update all architecture documentation and flow diagrams to reflect the final module structure after remediation.
 
 **Requirements**:
 - Given completed file decomposition, should update `plan/ai-testing-framework/two-agent-architecture.md` with new module boundaries
 - Given the remediation changes, should update flowcharts to reflect the simplified assertion model and relaxed import paths
+
+**Result**: Updated `two-agent-architecture.md`: status changed from DRAFT to APPROVED, all file locations updated to new module paths, new Section 10 "Post-Remediation Module Map" added with 13-module inventory, buildJudgePrompt signature updated for description→requirement merge, line counts verified against actual files.
 
 ---
 
