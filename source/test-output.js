@@ -71,7 +71,7 @@ export const formatTAP = (results) => {
   assertions.forEach((assertion, index) => {
     const testNumber = index + 1;
     const prefix = assertion.passed ? 'ok' : 'not ok';
-    tap += `${prefix} ${testNumber} - ${assertion.description}\n`;
+    tap += `${prefix} ${testNumber} - ${assertion.requirement}\n`;
     tap += `  # pass rate: ${assertion.passCount}/${assertion.totalRuns}\n`;
 
     // Add average score if available

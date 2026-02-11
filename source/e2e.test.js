@@ -81,8 +81,8 @@ testRunner('e2e: full workflow with real agent', async (assert) => {
 
   assert({
     given: 'first assertion',
-    should: 'have description property',
-    actual: typeof results.assertions[0].description,
+    should: 'have requirement property',
+    actual: typeof results.assertions[0].requirement,
     expected: 'string'
   });
 
@@ -182,7 +182,7 @@ testRunner('e2e: full workflow with real agent', async (assert) => {
 
   assert({
     given: 'TAP output',
-    should: 'include assertion description',
+    should: 'include assertion requirement',
     actual: fileContent.includes('Given the error cause, should include a descriptive message'),
     expected: true
   });

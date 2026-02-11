@@ -183,7 +183,7 @@ describe('test-output', () => {
         passed: true,
         assertions: [
           {
-            description: 'Given addition, should add correctly',
+            requirement: 'Given addition, should add correctly',
             passed: true,
             passCount: 2,
             totalRuns: 2,
@@ -193,7 +193,7 @@ describe('test-output', () => {
             ]
           },
           {
-            description: 'Given format, should output JSON',
+            requirement: 'Given format, should output JSON',
             passed: true,
             passCount: 2,
             totalRuns: 2,
@@ -248,14 +248,14 @@ describe('test-output', () => {
         passed: false,
         assertions: [
           {
-            description: 'Given addition, should add correctly',
+            requirement: 'Given addition, should add correctly',
             passed: true,
             passCount: 2,
             totalRuns: 2,
             runResults: [{ passed: true }, { passed: true }]
           },
           {
-            description: 'Given format, should output JSON',
+            requirement: 'Given format, should output JSON',
             passed: false,
             passCount: 0,
             totalRuns: 2,
@@ -293,7 +293,7 @@ describe('test-output', () => {
         passed: true,
         assertions: [
           {
-            description: 'Given a test, should pass',
+            requirement: 'Given a test, should pass',
             passed: true,
             passCount: 3,
             totalRuns: 4,
@@ -324,7 +324,7 @@ describe('test-output', () => {
         passed: true,
         assertions: [
           {
-            description: 'Given UI implementation, should match design specifications',
+            requirement: 'Given UI implementation, should match design specifications',
             passed: true,
             passCount: 3,
             totalRuns: 4,
@@ -391,7 +391,7 @@ ok 1 - Given UI implementation, should match design specifications
         passed: false,
         assertions: [
           {
-            description: 'Given the color scheme, should use semantic colors',
+            requirement: 'Given the color scheme, should use semantic colors',
             passed: true,
             passCount: 3,
             totalRuns: 4,
@@ -424,7 +424,7 @@ ok 1 - Given UI implementation, should match design specifications
             ]
           },
           {
-            description: 'Given the design, should be accessible to colorblind users',
+            requirement: 'Given the design, should be accessible to colorblind users',
             passed: false,
             passCount: 1,
             totalRuns: 4,
@@ -457,7 +457,7 @@ ok 1 - Given UI implementation, should match design specifications
             ]
           },
           {
-            description: 'Given performance requirements, should load within 100ms',
+            requirement: 'Given performance requirements, should load within 100ms',
             passed: true,
             passCount: 4,
             totalRuns: 4,
@@ -529,7 +529,7 @@ ok 3 - Given performance requirements, should load within 100ms
         passed: true,
         assertions: [
           {
-            description: 'Given complete data, should include all diagnostics',
+            requirement: 'Given complete data, should include all diagnostics',
             passed: true,
             passCount: 2,
             totalRuns: 2,
@@ -550,7 +550,7 @@ ok 3 - Given performance requirements, should load within 100ms
             ]
           },
           {
-            description: 'Given missing score, should skip avg score line',
+            requirement: 'Given missing score, should skip avg score line',
             passed: true,
             passCount: 2,
             totalRuns: 2,
@@ -560,7 +560,7 @@ ok 3 - Given performance requirements, should load within 100ms
             ]
           },
           {
-            description: 'Given missing actual/expected, should skip those lines',
+            requirement: 'Given missing actual/expected, should skip those lines',
             passed: true,
             passCount: 2,
             totalRuns: 2,
@@ -608,7 +608,7 @@ ok 3 - Given missing actual/expected, should skip those lines
         passed: true,
         assertions: [
           {
-            description: 'Given a test, should pass',
+            requirement: 'Given a test, should pass',
             passed: true,
             passCount: 3,
             totalRuns: 4,
@@ -638,7 +638,7 @@ ok 3 - Given missing actual/expected, should skip those lines
         passed: true,
         assertions: [
           {
-            description: 'Given color scheme, should use semantic colors',
+            requirement: 'Given color scheme, should use semantic colors',
             passed: true,
             passCount: 3,
             totalRuns: 4,
@@ -668,7 +668,7 @@ ok 3 - Given missing actual/expected, should skip those lines
         passed: true,
         assertions: [
           {
-            description: 'Given color scheme, should use semantic colors',
+            requirement: 'Given color scheme, should use semantic colors',
             passed: true,
             passCount: 3,
             totalRuns: 4,
@@ -698,7 +698,7 @@ ok 3 - Given missing actual/expected, should skip those lines
         passed: true,
         assertions: [
           {
-            description: 'Given a test, should pass',
+            requirement: 'Given a test, should pass',
             passed: true,
             passCount: 2,
             totalRuns: 2,
@@ -729,7 +729,7 @@ ok 3 - Given missing actual/expected, should skip those lines
         passed: true,
         assertions: [
           {
-            description: 'Given a test, should pass',
+            requirement: 'Given a test, should pass',
             passed: true,
             passCount: 2,
             totalRuns: 2,
@@ -770,7 +770,7 @@ ok 3 - Given missing actual/expected, should skip those lines
         passed: true,
         assertions: [
           {
-            description: 'Given a test, should pass',
+            requirement: 'Given a test, should pass',
             passed: true,
             passCount: 2,
             totalRuns: 2,
@@ -797,7 +797,7 @@ ok 3 - Given missing actual/expected, should skip those lines
         passed: true,
         assertions: [
           {
-            description: 'Given a test, should pass',
+            requirement: 'Given a test, should pass',
             passed: true,
             passCount: 2,
             totalRuns: 2,
@@ -832,7 +832,7 @@ ok 3 - Given missing actual/expected, should skip those lines
         passed: true,
         assertions: [
           {
-            description: 'Given a test, should pass',
+            requirement: 'Given a test, should pass',
             passed: true,
             passCount: 2,
             totalRuns: 2,
@@ -856,7 +856,7 @@ ok 3 - Given missing actual/expected, should skip those lines
         passed: true,
         assertions: [
           {
-            description: 'Given a test, should pass',
+            requirement: 'Given a test, should pass',
             passed: true,
             passCount: 2,
             totalRuns: 2,
@@ -885,7 +885,7 @@ ok 3 - Given missing actual/expected, should skip those lines
         passed: true,
         assertions: [
           {
-            description: 'Given a test, should pass',
+            requirement: 'Given a test, should pass',
             passed: true,
             passCount: 2,
             totalRuns: 2,
@@ -912,7 +912,7 @@ ok 3 - Given missing actual/expected, should skip those lines
         passed: true,
         assertions: [
           {
-            description: 'Given a test, should pass',
+            requirement: 'Given a test, should pass',
             passed: true,
             passCount: 2,
             totalRuns: 2,
@@ -940,7 +940,7 @@ ok 3 - Given missing actual/expected, should skip those lines
       passed: true,
       assertions: [
         {
-          description: 'Given a test, should pass',
+          requirement: 'Given a test, should pass',
           passed: true,
           passCount: 2,
           totalRuns: 2,

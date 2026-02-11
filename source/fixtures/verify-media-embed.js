@@ -19,7 +19,7 @@ const mockResults = {
   assertions: [
     {
       passed: true,
-      description: 'Given the color scheme, should include high contrast colors for readability',
+      requirement: 'Given the color scheme, should include high contrast colors for readability',
       passCount: 4,
       totalRuns: 4,
       media: [
@@ -31,7 +31,7 @@ const mockResults = {
     },
     {
       passed: true,
-      description: 'Given the color scheme, should use semantic colors (green for pass, red for fail)',
+      requirement: 'Given the color scheme, should use semantic colors (green for pass, red for fail)',
       passCount: 4,
       totalRuns: 4,
       media: [
@@ -43,7 +43,7 @@ const mockResults = {
     },
     {
       passed: true,
-      description: 'Given the color scheme, should be accessible to colorblind users',
+      requirement: 'Given the color scheme, should be accessible to colorblind users',
       passCount: 3,
       totalRuns: 4,
       media: [
@@ -55,7 +55,7 @@ const mockResults = {
     },
     {
       passed: true,
-      description: 'Given the design rationale, should explain the accessibility considerations',
+      requirement: 'Given the design rationale, should explain the accessibility considerations',
       passCount: 4,
       totalRuns: 4
       // No media for this assertion

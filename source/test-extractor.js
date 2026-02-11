@@ -1,4 +1,4 @@
-import { executeAgent, validateFilePath } from './ai-runner.js';
+import { executeAgent } from './ai-runner.js';
 import { errorCauses, createError } from 'error-causes';
 import { readFile } from 'fs/promises';
 import { resolve } from 'path';
@@ -16,21 +16,21 @@ const { ParseError, ValidationError } = extractorErrors;
  * Test Extractor Module
  * 
  * ARCHITECTURE OVERVIEW: Two-Phase Extraction with Template-Based Evaluation
- * 
+ *
  * This module solves a critical problem in AI prompt testing: how to reliably
  * extract individual assertions from multi-assertion test files and execute
  * them in isolated contexts while guaranteeing consistent response formats.
- * 
+ *
  * The Problem:
  * - Multi-assertion test files share LLM attention context
  * - Earlier assertions influence later ones (test isolation violation)
  * - Asking LLMs to create "self-evaluating prompts" produces inconsistent formats
  * - Inconsistent formats break test aggregation ({passed: boolean} required)
- * 
+ *
  * The Solution - Two-Phase Architecture:
- * 
+ *
  * Phase 1: Structured Extraction (buildExtractionPrompt)
- * - LLM parses test file into structured data: {id, description, userPrompt, requirement}
+ * - LLM parses test file into structured data: {id, userPrompt, requirement}
  * - Returns metadata only, NOT executable prompts
  * - Allows inspection and validation of extracted data
  * 
@@ -70,7 +70,7 @@ const { ParseError, ValidationError } = extractorErrors;
  * 4. Debugging: Structured data allows us to inspect what was extracted
  *
  * Instead, we use a two-phase approach:
- * Phase 1 (this function): Extract structured metadata (userPrompt, requirement, importPaths)
+ * Phase 1 (this function): Extract structured metadata (userPrompt, importPaths, requirement)
  * Phase 2: Transform metadata into executable prompts for result and judge agents
  *
  * This pattern solved the critical bug where extraction agents would create
@@ -95,8 +95,7 @@ Return a JSON object with:
 - "importPaths": array of import file paths found in the test file (e.g., ["ai/rules/ui.mdc"])
 - "assertions": array of assertion objects, each with:
   - "id": sequential integer starting at 1
-  - "description": the full assertion text
-  - "requirement": the specific requirement being tested
+  - "requirement": the assertion text (e.g., "Given X, should Y")
 
 Return ONLY valid JSON. No markdown fences, no explanation.
 
@@ -224,7 +223,7 @@ export const parseTAPYAML = (output) => {
 };
 
 
-const assertionRequiredFields = ['id', 'description', 'requirement'];
+const assertionRequiredFields = ['id', 'requirement'];
 
 /**
  * Resolve and read import files, concatenating their contents.
@@ -243,19 +242,6 @@ const resolveImportPaths = async (importPaths, projectRoot, debug) => {
       const resolvedPath = resolve(projectRoot, importPath);
       if (debug) {
         console.error(`[DEBUG] Reading import: ${importPath} -> ${resolvedPath}`);
-      }
-      // Validate import path to prevent path traversal attacks
-      try {
-        validateFilePath(resolvedPath, projectRoot);
-      } catch (error) {
-        throw createError({
-          name: 'SecurityError',
-          message: `Import path traversal detected: ${importPath}`,
-          code: 'IMPORT_PATH_TRAVERSAL',
-          path: importPath,
-          resolvedPath,
-          cause: error
-        });
       }
       // Read file with error wrapping (preserves original error as cause)
       try {
@@ -317,7 +303,7 @@ const tryParseJSON = (str) => {
  * Handles markdown code fences if present.
  *
  * @param {string|Object} rawOutput - Raw string or parsed output from the agent
- * @returns {{ userPrompt: string, importPaths: string[], assertions: Array<{ id: number, description: string, requirement: string }> }}
+ * @returns {{ userPrompt: string, importPaths: string[], assertions: Array<{ id: number, requirement: string }> }}
  * @throws {Error} If output is invalid or missing required fields
  */
 export const parseExtractionResult = (rawOutput) => {
@@ -401,9 +387,9 @@ export const parseExtractionResult = (rawOutput) => {
  * Import handling:
  * - Agent identifies import file paths declaratively (no regex parsing)
  * - Import syntax: `import 'path'` (not `import @var from 'path'`)
- * - Resolves paths relative to project root (cwd)
- * - Validates paths to prevent path traversal
+ * - Resolves paths relative to project root
  * - Reads and concatenates imported file contents
+ * - Import paths can reference files outside the project root
  *
  * Validation:
  * - Missing promptUnderTest → ValidationError MISSING_PROMPT_UNDER_TEST
@@ -417,9 +403,10 @@ export const parseExtractionResult = (rawOutput) => {
  * @param {Object} options.agentConfig - Agent CLI configuration
  * @param {number} [options.timeout=300000] - Timeout in milliseconds
  * @param {boolean} [options.debug=false] - Enable debug logging
- * @returns {Promise<{ userPrompt: string, promptUnderTest: string, assertions: Array<{ id: number, description: string, requirement: string }> }>}
+ * @param {string} [options.projectRoot=process.cwd()] - Project root directory for resolving import paths
+ * @returns {Promise<{ userPrompt: string, promptUnderTest: string, assertions: Array<{ id: number, requirement: string }> }>}
  */
-export const extractTests = async ({ testContent, testFilePath, agentConfig, timeout = 300000, debug = false }) => {
+export const extractTests = async ({ testContent, testFilePath, agentConfig, timeout = 300000, debug = false, projectRoot = process.cwd() }) => {
   // PHASE 1: Extract structured data from test content
   // The extraction agent returns {userPrompt, importPaths, assertions}
   const extractionPrompt = buildExtractionPrompt(testContent);
@@ -438,7 +425,7 @@ export const extractTests = async ({ testContent, testFilePath, agentConfig, tim
   // PHASE 1.5: Resolve agent-identified imports
   // The agent declaratively identifies import paths; we read the files
   const promptUnderTest = testFilePath && extracted.importPaths.length > 0
-    ? await resolveImportPaths(extracted.importPaths, process.cwd(), debug)
+    ? await resolveImportPaths(extracted.importPaths, projectRoot, debug)
     : '';
 
   // Validate required fields (fail fast on authoring errors)
@@ -475,9 +462,8 @@ export const extractTests = async ({ testContent, testFilePath, agentConfig, tim
   return {
     userPrompt,
     promptUnderTest,
-    assertions: assertions.map(({ id, description, requirement }) => ({
+    assertions: assertions.map(({ id, requirement }) => ({
       id,
-      description,
       requirement
     }))
   };

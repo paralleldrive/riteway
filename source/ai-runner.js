@@ -140,20 +140,20 @@ export const readTestFile = (filePath) => readFile(filePath, 'utf-8');
  * consistent structure with safe defaults for missing fields.
  * @param {Object} raw - Raw judge response (already parsed from TAP YAML)
  * @param {Object} options
- * @param {string} options.description - Test assertion description
+ * @param {string} options.requirement - Test assertion requirement
  * @param {number} options.runIndex - Zero-based run index
  * @param {Object} options.logger - Logger instance with log() method
  * @returns {Object} Normalized judgment with passed, actual, expected, score fields
  * @throws {Error} If raw is not an object (null, string, undefined, etc.)
  */
-export const normalizeJudgment = (raw, { description, runIndex, logger }) => {
+export const normalizeJudgment = (raw, { requirement, runIndex, logger }) => {
   // Fail loud on non-object input per error-causes.md
   if (typeof raw !== 'object' || raw === null) {
     throw createError({
       ...ParseError,
       message: 'Judge returned non-object response',
       code: 'JUDGE_INVALID_RESPONSE',
-      description,
+      requirement,
       runIndex,
       rawResponse: raw
     });
@@ -161,7 +161,7 @@ export const normalizeJudgment = (raw, { description, runIndex, logger }) => {
 
   // Log warning when applying defaults for missing fields
   if (raw?.actual === undefined || raw?.expected === undefined) {
-    logger.log(`Warning: Judge response missing fields for "${description}" run ${runIndex + 1}`);
+    logger.log(`Warning: Judge response missing fields for "${requirement}" run ${runIndex + 1}`);
   }
 
   return {
@@ -479,7 +479,7 @@ const limitConcurrency = async (tasks, limit) => {
  * Each assertion is independently evaluated against the threshold.
  * Overall pass requires all assertions to meet the threshold.
  * @param {Object} options
- * @param {Array<{ description: string, runResults: Array<Object> }>} options.perAssertionResults
+ * @param {Array<{ requirement: string, runResults: Array<Object> }>} options.perAssertionResults
  * @param {number} options.threshold - Required pass percentage (0-100)
  * @param {number} options.runs - Number of runs per assertion
  * @returns {Object} Aggregated results with per-assertion breakdown
@@ -487,7 +487,7 @@ const limitConcurrency = async (tasks, limit) => {
 export const aggregatePerAssertionResults = ({ perAssertionResults, threshold, runs }) => {
   const requiredPasses = calculateRequiredPasses({ runs, threshold });
 
-  const assertions = perAssertionResults.map(({ description, runResults }) => {
+  const assertions = perAssertionResults.map(({ requirement, runResults }) => {
     const passCount = runResults.filter(r => r.passed).length;
 
     // Calculate average score across all runs, treating missing/invalid scores as 0
@@ -497,7 +497,7 @@ export const aggregatePerAssertionResults = ({ perAssertionResults, threshold, r
       : 0;
 
     return {
-      description,
+      requirement,
       passed: passCount >= requiredPasses,
       passCount,
       totalRuns: runs,
@@ -526,6 +526,7 @@ export const aggregatePerAssertionResults = ({ perAssertionResults, threshold, r
  * @param {number} [options.concurrency=4] - Maximum concurrent test executions (across runs)
  * @param {boolean} [options.debug=false] - Enable debug logging
  * @param {string} [options.logFile] - Optional log file path for debug output
+ * @param {string} [options.projectRoot=process.cwd()] - Project root directory for resolving import paths
  * @returns {Promise<Object>} Aggregated per-assertion test results
  */
 export const runAITests = async ({
@@ -536,6 +537,7 @@ export const runAITests = async ({
   concurrency = 4,
   debug = false,
   logFile,
+  projectRoot = process.cwd(),
   agentConfig = {
     command: 'claude',
     args: ['-p', '--output-format', 'json', '--no-session-persistence']
@@ -554,7 +556,8 @@ export const runAITests = async ({
     testFilePath: filePath,
     agentConfig,
     timeout,
-    debug
+    debug,
+    projectRoot
   });
 
   logger.log(`Extracted ${assertions.length} assertions`);
@@ -585,10 +588,10 @@ export const runAITests = async ({
           userPrompt,
           promptUnderTest,
           result,
-          requirement: assertion.description
+          requirement: assertion.requirement
         });
 
-        logger.log(`  Assertion ${assertionIndex + 1}/${assertions.length}: ${assertion.description}`);
+        logger.log(`  Assertion ${assertionIndex + 1}/${assertions.length}: ${assertion.requirement}`);
 
         const judgeOutput = await executeAgent({
           agentConfig,
@@ -602,7 +605,7 @@ export const runAITests = async ({
         // Parse TAP YAML and normalize
         const parsed = parseTAPYAML(judgeOutput);
         return normalizeJudgment(parsed, {
-          description: assertion.description,
+          requirement: assertion.requirement,
           runIndex,
           logger
         });
@@ -616,8 +619,8 @@ export const runAITests = async ({
   const allRunJudgments = await limitConcurrency(runTasks, concurrency);
 
   // Group by assertion across all runs
-  const perAssertionResults = assertions.map(({ description }, assertionIndex) => ({
-    description,
+  const perAssertionResults = assertions.map(({ requirement }, assertionIndex) => ({
+    requirement,
     runResults: allRunJudgments.map(runJudgments => runJudgments[assertionIndex])
   }));
 

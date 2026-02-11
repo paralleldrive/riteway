@@ -897,8 +897,8 @@ score: ${judgmentScore}
         writeFileSync(testFile, '- Given addition, should add\n- Given format, should output JSON');
 
         const extractedTests = [
-          { id: 1, description: 'Given addition, should add', requirement: 'should add' },
-          { id: 2, description: 'Given format, should output JSON', requirement: 'should output JSON' }
+          { id: 1, requirement: 'Given addition, should add' },
+          { id: 2, requirement: 'Given format, should output JSON' }
         ];
 
         const result = await runAITests({
@@ -927,8 +927,8 @@ score: ${judgmentScore}
 
         assert({
           given: 'first assertion with all passes',
-          should: 'preserve the description',
-          actual: result.assertions[0].description,
+          should: 'preserve the requirement',
+          actual: result.assertions[0].requirement,
           expected: 'Given addition, should add'
         });
       } finally {
@@ -945,7 +945,7 @@ score: ${judgmentScore}
         writeFileSync(testFile, '- Given a test, should pass');
 
         const extractedTests = [
-          { id: 1, description: 'Given a test, should pass', requirement: 'should pass' }
+          { id: 1, requirement: 'Given a test, should pass' }
         ];
 
         const result = await runAITests({
@@ -985,7 +985,7 @@ score: ${judgmentScore}
         writeFileSync(testFile, '- Given a test, should fail');
 
         const extractedTests = [
-          { id: 1, description: 'Given a test, should fail', requirement: 'should fail' }
+          { id: 1, requirement: 'Given a test, should fail' }
         ];
 
         const result = await runAITests({
@@ -1029,7 +1029,7 @@ score: ${judgmentScore}
         writeFileSync(testFile, '- Given a test, should pass');
 
         const extractedTests = [
-          { id: 1, description: 'Given a test, should pass', requirement: 'should pass' }
+          { id: 1, requirement: 'Given a test, should pass' }
         ];
 
         const result = await runAITests({
@@ -1153,14 +1153,14 @@ score: ${judgmentScore}
     test('aggregates per-assertion results when all assertions pass', () => {
       const perAssertionResults = [
         {
-          description: 'Given simple addition, should add correctly',
+          requirement: 'Given simple addition, should add correctly',
           runResults: [
             { passed: true, output: 'ok' },
             { passed: true, output: 'ok' }
           ]
         },
         {
-          description: 'Given format, should output JSON',
+          requirement: 'Given format, should output JSON',
           runResults: [
             { passed: true, output: 'ok' },
             { passed: true, output: 'ok' }
@@ -1203,9 +1203,9 @@ score: ${judgmentScore}
       });
 
       assert({
-        given: 'first assertion description',
-        should: 'preserve the description',
-        actual: result.assertions[0].description,
+        given: 'first assertion requirement',
+        should: 'preserve the requirement',
+        actual: result.assertions[0].requirement,
         expected: 'Given simple addition, should add correctly'
       });
     });
@@ -1213,14 +1213,14 @@ score: ${judgmentScore}
     test('fails when any assertion does not meet threshold', () => {
       const perAssertionResults = [
         {
-          description: 'Given addition, should add correctly',
+          requirement: 'Given addition, should add correctly',
           runResults: [
             { passed: true, output: 'ok' },
             { passed: true, output: 'ok' }
           ]
         },
         {
-          description: 'Given format, should output JSON',
+          requirement: 'Given format, should output JSON',
           runResults: [
             { passed: false, output: 'fail' },
             { passed: false, output: 'fail' }
@@ -1269,7 +1269,7 @@ score: ${judgmentScore}
         { passed: false, output: 'run 2' }
       ];
       const perAssertionResults = [
-        { description: 'test assertion', runResults }
+        { requirement: 'test assertion', runResults }
       ];
 
       const result = aggregatePerAssertionResults({
@@ -1296,7 +1296,7 @@ score: ${judgmentScore}
     test('calculates averageScore from run results', () => {
       const perAssertionResults = [
         {
-          description: 'test with scores',
+          requirement: 'test with scores',
           runResults: [
             { passed: true, score: 85 },
             { passed: true, score: 95 },
@@ -1322,7 +1322,7 @@ score: ${judgmentScore}
     test('rounds averageScore to 2 decimal places', () => {
       const perAssertionResults = [
         {
-          description: 'test with fractional average',
+          requirement: 'test with fractional average',
           runResults: [
             { passed: true, score: 85 },
             { passed: true, score: 90 },
@@ -1349,7 +1349,7 @@ score: ${judgmentScore}
     test('defaults missing score values to 0 in average', () => {
       const perAssertionResults = [
         {
-          description: 'test with some missing scores',
+          requirement: 'test with some missing scores',
           runResults: [
             { passed: true, score: 90 },
             { passed: true }, // missing score
@@ -1376,7 +1376,7 @@ score: ${judgmentScore}
     test('handles all missing scores by defaulting to 0', () => {
       const perAssertionResults = [
         {
-          description: 'test with all missing scores',
+          requirement: 'test with all missing scores',
           runResults: [
             { passed: true },
             { passed: false },
@@ -1402,7 +1402,7 @@ score: ${judgmentScore}
     test('handles empty runResults without division by zero', () => {
       const perAssertionResults = [
         {
-          description: 'test with no run results',
+          requirement: 'test with no run results',
           runResults: []
         }
       ];
@@ -1453,7 +1453,7 @@ score: ${judgmentScore}
       };
 
       const result = normalizeJudgment(raw, {
-        description: 'test assertion',
+        requirement: 'test assertion',
         runIndex: 0,
         logger
       });
@@ -1496,7 +1496,7 @@ score: ${judgmentScore}
       };
 
       const result = normalizeJudgment(raw, {
-        description: 'test',
+        requirement: 'test',
         runIndex: 0,
         logger
       });
@@ -1519,7 +1519,7 @@ score: ${judgmentScore}
       };
 
       const result = normalizeJudgment(raw, {
-        description: 'test',
+        requirement: 'test',
         runIndex: 0,
         logger
       });
@@ -1540,7 +1540,7 @@ score: ${judgmentScore}
       };
 
       const result = normalizeJudgment(raw, {
-        description: 'test assertion',
+        requirement: 'test assertion',
         runIndex: 2,
         logger
       });
@@ -1561,7 +1561,7 @@ score: ${judgmentScore}
 
       assert({
         given: 'judgment missing actual and expected',
-        should: 'log warning with description and run number',
+        should: 'log warning with requirement and run number',
         actual: logger.log.mock.calls[0][0],
         expected: 'Warning: Judge response missing fields for "test assertion" run 3'
       });
@@ -1576,7 +1576,7 @@ score: ${judgmentScore}
       };
 
       normalizeJudgment(raw, {
-        description: 'my test',
+        requirement: 'my test',
         runIndex: 0,
         logger
       });
@@ -1598,7 +1598,7 @@ score: ${judgmentScore}
       };
 
       normalizeJudgment(raw, {
-        description: 'my test',
+        requirement: 'my test',
         runIndex: 1,
         logger
       });
@@ -1621,7 +1621,7 @@ score: ${judgmentScore}
       };
 
       const result = normalizeJudgment(raw, {
-        description: 'test',
+        requirement: 'test',
         runIndex: 0,
         logger
       });
@@ -1644,7 +1644,7 @@ score: ${judgmentScore}
       };
 
       const result = normalizeJudgment(raw, {
-        description: 'test',
+        requirement: 'test',
         runIndex: 0,
         logger
       });
@@ -1667,7 +1667,7 @@ score: ${judgmentScore}
       };
 
       const result = normalizeJudgment(raw, {
-        description: 'test',
+        requirement: 'test',
         runIndex: 0,
         logger
       });
@@ -1689,7 +1689,7 @@ score: ${judgmentScore}
       };
 
       const result = normalizeJudgment(raw, {
-        description: 'test',
+        requirement: 'test',
         runIndex: 0,
         logger
       });
@@ -1708,7 +1708,7 @@ score: ${judgmentScore}
 
       try {
         normalizeJudgment(null, {
-          description: 'test assertion',
+          requirement: 'test assertion',
           runIndex: 1,
           logger
         });
@@ -1739,8 +1739,8 @@ score: ${judgmentScore}
 
       assert({
         given: 'null input',
-        should: 'include description in cause',
-        actual: error?.cause?.description,
+        should: 'include requirement in cause',
+        actual: error?.cause?.requirement,
         expected: 'test assertion'
       });
 
@@ -1765,7 +1765,7 @@ score: ${judgmentScore}
 
       try {
         normalizeJudgment('not an object', {
-          description: 'test',
+          requirement: 'test',
           runIndex: 0,
           logger
         });
@@ -1794,7 +1794,7 @@ score: ${judgmentScore}
 
       try {
         normalizeJudgment(undefined, {
-          description: 'test',
+          requirement: 'test',
           runIndex: 0,
           logger
         });

@@ -544,13 +544,11 @@ score: 75
         assertions: [
           {
             id: 1,
-            description: 'Given simple addition, should add correctly',
-            requirement: 'should add correctly'
+            requirement: 'Given simple addition, should add correctly'
           },
           {
             id: 2,
-            description: 'Given format, should output JSON',
-            requirement: 'should output JSON'
+            requirement: 'Given format, should output JSON'
           }
         ]
       });
@@ -587,14 +585,14 @@ score: 75
 
       assert({
         given: 'valid extraction result',
-        should: 'preserve assertion fields',
-        actual: result.assertions[0].description,
+        should: 'preserve assertion requirement field',
+        actual: result.assertions[0].requirement,
         expected: 'Given simple addition, should add correctly'
       });
     });
 
     test('parses JSON wrapped in markdown code fences', () => {
-      const markdownWrapped = '```json\n{\n  "userPrompt": "test prompt",\n  "importPaths": [],\n  "assertions": [\n    {\n      "id": 1,\n      "description": "Given test, should pass",\n      "requirement": "should pass"\n    }\n  ]\n}\n```';
+      const markdownWrapped = '```json\n{\n  "userPrompt": "test prompt",\n  "importPaths": [],\n  "assertions": [\n    {\n      "id": 1,\n      "requirement": "Given test, should pass"\n    }\n  ]\n}\n```';
 
       const result = parseExtractionResult(markdownWrapped);
 
@@ -615,13 +613,13 @@ score: 75
       assert({
         given: 'JSON wrapped in markdown code fences',
         should: 'preserve assertions array',
-        actual: result.assertions[0].description,
+        actual: result.assertions[0].requirement,
         expected: 'Given test, should pass'
       });
     });
 
     test('parses JSON with explanation text and markdown fences', () => {
-      const withExplanation = 'Here is the extraction result you requested:\n\n```json\n{\n  "userPrompt": "test prompt",\n  "importPaths": [],\n  "assertions": [\n    {\n      "id": 1,\n      "description": "Given test, should pass",\n      "requirement": "should pass"\n    }\n  ]\n}\n```\n\nLet me know if you need more help.';
+      const withExplanation = 'Here is the extraction result you requested:\n\n```json\n{\n  "userPrompt": "test prompt",\n  "importPaths": [],\n  "assertions": [\n    {\n      "id": 1,\n      "requirement": "Given test, should pass"\n    }\n  ]\n}\n```\n\nLet me know if you need more help.';
 
       const result = parseExtractionResult(withExplanation);
 
@@ -635,7 +633,7 @@ score: 75
       assert({
         given: 'JSON with explanation text and markdown fences',
         should: 'return the parsed content',
-        actual: result.assertions[0].description,
+        actual: result.assertions[0].requirement,
         expected: 'Given test, should pass'
       });
     });
@@ -737,7 +735,7 @@ score: 75
         userPrompt: 'test',
         importPaths: [],
         assertions: [
-          { id: 1, description: 'test' }
+          { id: 1 }
         ]
       });
 
@@ -777,8 +775,7 @@ score: 75
         assertions: [
           {
             id: 1,
-            description: 'Given a test, should pass',
-            requirement: 'should pass'
+            requirement: 'Given a test, should pass'
           }
         ]
       };
@@ -795,7 +792,7 @@ score: 75
       assert({
         given: 'an already-parsed object',
         should: 'preserve the assertions',
-        actual: result.assertions[0].description,
+        actual: result.assertions[0].requirement,
         expected: 'Given a test, should pass'
       });
     });
@@ -809,8 +806,7 @@ score: 75
         assertions: [
           {
             id: 1,
-            description: 'Given simple addition, should add correctly',
-            requirement: 'should add correctly'
+            requirement: 'Given simple addition, should add correctly'
           }
         ]
       };
@@ -844,8 +840,8 @@ score: 75
 
       assert({
         given: 'a successful extraction',
-        should: 'include assertion description',
-        actual: result.assertions[0].description,
+        should: 'include assertion requirement',
+        actual: result.assertions[0].requirement,
         expected: 'Given simple addition, should add correctly'
       });
 
@@ -866,8 +862,7 @@ score: 75
         assertions: [
           {
             id: 1,
-            description: 'Given a unique marker xyzzy, should verify',
-            requirement: 'should verify'
+            requirement: 'Given a unique marker xyzzy, should verify'
           }
         ]
       };
@@ -932,8 +927,7 @@ score: 75
         assertions: [
           {
             id: 1,
-            description: 'Given a test, should pass',
-            requirement: 'should pass'
+            requirement: 'Given a test, should pass'
           }
         ]
       };
@@ -973,8 +967,8 @@ score: 75
 
       assert({
         given: 'assertion in result',
-        should: 'include description field',
-        actual: result.assertions[0].description,
+        should: 'include requirement field',
+        actual: result.assertions[0].requirement,
         expected: 'Given a test, should pass'
       });
     });
@@ -986,8 +980,7 @@ score: 75
         assertions: [
           {
             id: 1,
-            description: 'Given a test, should pass',
-            requirement: 'should pass'
+            requirement: 'Given a test, should pass'
           }
         ]
       };
@@ -1038,8 +1031,7 @@ score: 75
         assertions: [
           {
             id: 1,
-            description: 'Given a test, should pass',
-            requirement: 'should pass'
+            requirement: 'Given a test, should pass'
           }
         ]
       };
@@ -1083,8 +1075,7 @@ score: 75
         assertions: [
           {
             id: 1,
-            description: 'Given a test, should pass',
-            requirement: 'should pass'
+            requirement: 'Given a test, should pass'
           }
         ]
       };
@@ -1162,7 +1153,6 @@ score: 75
 
     test('E2E: reads real import files from disk', async () => {
       const testDir = createTempDir();
-      const originalCwd = process.cwd();
 
       try {
         mkdirSync(testDir, { recursive: true });
@@ -1181,7 +1171,7 @@ score: 75
           userPrompt: 'What is 2+2?',
           importPaths: ['prompt.mdc'],
           assertions: [
-            { id: 1, description: 'Given a question, should answer', requirement: 'should answer' }
+            { id: 1, requirement: 'Given a question, should answer' }
           ]
         };
 
@@ -1190,14 +1180,12 @@ score: 75
           args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
         };
 
-        // Change to temp dir to simulate project root
-        process.chdir(testDir);
-
         const result = await extractTests({
           testContent,
           testFilePath: testFile,
           agentConfig: mockAgentConfig,
-          timeout: 5000
+          timeout: 5000,
+          projectRoot: testDir
         });
 
         assert({
@@ -1221,14 +1209,12 @@ score: 75
           expected: 1
         });
       } finally {
-        process.chdir(originalCwd);
         rmSync(testDir, { recursive: true, force: true });
       }
     });
 
     test('E2E: reads multiple import files and concatenates', async () => {
       const testDir = createTempDir();
-      const originalCwd = process.cwd();
 
       try {
         mkdirSync(testDir, { recursive: true });
@@ -1247,7 +1233,7 @@ score: 75
           userPrompt: 'Test prompt',
           importPaths: ['rules1.mdc', 'rules2.mdc'],
           assertions: [
-            { id: 1, description: 'Given rules, should follow', requirement: 'should follow' }
+            { id: 1, requirement: 'Given rules, should follow' }
           ]
         };
 
@@ -1256,14 +1242,12 @@ score: 75
           args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
         };
 
-        // Change to temp dir to simulate project root
-        process.chdir(testDir);
-
         const result = await extractTests({
           testContent,
           testFilePath: testFile,
           agentConfig: mockAgentConfig,
-          timeout: 5000
+          timeout: 5000,
+          projectRoot: testDir
         });
 
         assert({
@@ -1273,7 +1257,6 @@ score: 75
           expected: true
         });
       } finally {
-        process.chdir(originalCwd);
         rmSync(testDir, { recursive: true, force: true });
       }
     });
@@ -1292,7 +1275,7 @@ score: 75
           userPrompt: 'Test',
           importPaths: ['nonexistent.mdc'],
           assertions: [
-            { id: 1, description: 'Given test, should pass', requirement: 'should pass' }
+            { id: 1, requirement: 'Given test, should pass' }
           ]
         };
 
@@ -1340,7 +1323,6 @@ score: 75
 
     test('E2E: validates real extraction output structure', async () => {
       const testDir = createTempDir();
-      const originalCwd = process.cwd();
 
       try {
         mkdirSync(testDir, { recursive: true });
@@ -1357,7 +1339,7 @@ score: 75
           userPrompt: 'What is 2+2?',
           importPaths: ['prompt.mdc'],
           assertions: [
-            { id: 1, description: 'Test assertion', requirement: 'should work' }
+            { id: 1, requirement: 'Test assertion' }
           ]
         };
 
@@ -1366,14 +1348,12 @@ score: 75
           args: ['-e', `console.log(JSON.stringify(${JSON.stringify(validExtractionResult)}))`]
         };
 
-        // Change to temp dir to simulate project root
-        process.chdir(testDir);
-
         const result = await extractTests({
           testContent,
           testFilePath: testFile,
           agentConfig: mockAgentConfig,
-          timeout: 5000
+          timeout: 5000,
+          projectRoot: testDir
         });
 
         assert({
@@ -1404,7 +1384,6 @@ score: 75
           expected: true
         });
       } finally {
-        process.chdir(originalCwd);
         rmSync(testDir, { recursive: true, force: true });
       }
     });
@@ -1430,7 +1409,7 @@ score: 75
           userPrompt: 'Test',
           importPaths: ['root-prompt.mdc'],
           assertions: [
-            { id: 1, description: 'Test', requirement: 'should work' }
+            { id: 1, requirement: 'Test' }
           ]
         };
 
@@ -1439,77 +1418,76 @@ score: 75
           args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
         };
 
-        // Change to temp dir to simulate project root
-        const originalCwd = process.cwd();
-        process.chdir(testDir);
+        const result = await extractTests({
+          testContent,
+          testFilePath: testFile,
+          agentConfig: mockAgentConfig,
+          timeout: 5000,
+          projectRoot: testDir
+        });
 
-        try {
-          const result = await extractTests({
-            testContent,
-            testFilePath: testFile,
-            agentConfig: mockAgentConfig,
-            timeout: 5000
-          });
-
-          assert({
-            given: 'import path relative to project root',
-            should: 'resolve and read file correctly',
-            actual: result.promptUnderTest,
-            expected: 'Root level prompt'
-          });
-        } finally {
-          process.chdir(originalCwd);
-        }
+        assert({
+          given: 'import path relative to project root',
+          should: 'resolve and read file correctly',
+          actual: result.promptUnderTest,
+          expected: 'Root level prompt'
+        });
       } finally {
         rmSync(testDir, { recursive: true, force: true });
       }
     });
 
-    test('rejects import path traversal attempts', async () => {
-      const extractedData = {
-        userPrompt: 'test',
-        importPaths: ['../../../../.env'],
-        assertions: [
-          {
-            id: 1,
-            description: 'Given a test, should pass',
-            requirement: 'should pass'
-          }
-        ]
-      };
+    test('allows imports outside project root', async () => {
+      const testDir = createTempDir();
 
-      const mockAgentConfig = {
-        command: 'node',
-        args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
-      };
-
-      const testContent = 'import "../../../../.env"\n\n- Given test, should pass';
-
-      let error;
       try {
-        await extractTests({
+        mkdirSync(testDir, { recursive: true });
+
+        // Create a prompt file OUTSIDE the test project directory
+        const externalDir = join(testDir, 'external');
+        mkdirSync(externalDir, { recursive: true });
+        const externalPrompt = join(externalDir, 'shared-prompt.mdc');
+        writeFileSync(externalPrompt, 'External shared prompt content');
+
+        // Create project directory separate from external prompt
+        const projectDir = join(testDir, 'project');
+        mkdirSync(projectDir, { recursive: true });
+        const testFile = join(projectDir, 'test.sudo');
+
+        // Import path goes OUTSIDE projectRoot (up and over to external)
+        const testContent = 'import "../external/shared-prompt.mdc"\n\n- Given test, should pass';
+        writeFileSync(testFile, testContent);
+
+        const extractedData = {
+          userPrompt: 'test',
+          importPaths: ['../external/shared-prompt.mdc'],
+          assertions: [
+            { id: 1, requirement: 'Given test, should pass' }
+          ]
+        };
+
+        const mockAgentConfig = {
+          command: 'node',
+          args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
+        };
+
+        const result = await extractTests({
           testContent,
-          testFilePath: '/project/test/test.sudo',
+          testFilePath: testFile,
           agentConfig: mockAgentConfig,
-          timeout: 5000
+          timeout: 5000,
+          projectRoot: projectDir
         });
-      } catch (err) {
-        error = err;
+
+        assert({
+          given: 'import path outside project root',
+          should: 'resolve and read the external file',
+          actual: result.promptUnderTest,
+          expected: 'External shared prompt content'
+        });
+      } finally {
+        rmSync(testDir, { recursive: true, force: true });
       }
-
-      assert({
-        given: 'import with path traversal',
-        should: 'throw SecurityError',
-        actual: error?.cause?.name,
-        expected: 'SecurityError'
-      });
-
-      assert({
-        given: 'import with path traversal',
-        should: 'have IMPORT_PATH_TRAVERSAL code',
-        actual: error?.cause?.code,
-        expected: 'IMPORT_PATH_TRAVERSAL'
-      });
     });
   });
 });
