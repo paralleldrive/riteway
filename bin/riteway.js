@@ -177,11 +177,14 @@ export const parseAIArgs = (argv) => {
  * @param {string} assertion.description - Assertion description
  * @param {number} assertion.passCount - Number of passing runs
  * @param {number} assertion.totalRuns - Total number of runs
+ * @param {boolean} [assertion.color=false] - Enable ANSI color codes
  * @returns {string} Formatted assertion report line
  */
-export const formatAssertionReport = ({ passed, description, passCount, totalRuns }) => {
+export const formatAssertionReport = ({ passed, description, passCount, totalRuns, color = false }) => {
   const status = passed ? 'PASS' : 'FAIL';
-  return `  [${status}] ${description} (${passCount}/${totalRuns} runs)`;
+  const colorCode = color ? (passed ? '\x1b[32m' : '\x1b[31m') : '';
+  const resetCode = color ? '\x1b[0m' : '';
+  return `  ${colorCode}[${status}]${resetCode} ${description} (${passCount}/${totalRuns} runs)`;
 };
 
 export const runAICommand = async ({ filePath, runs, threshold, agent, debug, debugLog, color, concurrency, cwd }) => {
@@ -238,8 +241,7 @@ export const runAICommand = async ({ filePath, runs, threshold, agent, debug, de
 
     const outputPath = await recordTestOutput({
       results,
-      testFilename,
-      color
+      testFilename
     }).catch(error => {
       throw createError({
         ...OutputError,
@@ -257,7 +259,7 @@ export const runAICommand = async ({ filePath, runs, threshold, agent, debug, de
       console.log(`Debug log recorded: ${logFile}`);
     }
     console.log(`Assertions: ${passedAssertions}/${totalAssertions} passed`);
-    console.log(assertions.map(formatAssertionReport).join('\n'));
+    console.log(assertions.map(a => formatAssertionReport({ ...a, color })).join('\n'));
 
     if (!results.passed) {
       const passRate = Math.round(passedAssertions / totalAssertions * 100);

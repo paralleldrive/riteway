@@ -169,15 +169,13 @@ export const generateLogFilePath = async (testFilename, outputDir = 'ai-evals') 
  * @param {string} options.testFilename - Test file name
  * @param {string} [options.outputDir='ai-evals'] - Output directory
  * @param {boolean} [options.openBrowser=true] - Whether to open in browser
- * @param {boolean} [options.color=false] - Enable ANSI color codes
  * @returns {Promise<string>} Path to output file
  */
 export const recordTestOutput = async ({
   results,
   testFilename,
   outputDir = 'ai-evals',
-  openBrowser = true,
-  color = false
+  openBrowser = true
 }) => {
   // Create output directory if it doesn't exist
   await mkdir(outputDir, { recursive: true });
@@ -193,7 +191,7 @@ export const recordTestOutput = async ({
   });
   
   // Format and write TAP output
-  const tap = formatTAP(results, { color });
+  const tap = formatTAP(results);
   await writeFile(outputPath, tap, 'utf-8');
   
   // Open in browser if requested

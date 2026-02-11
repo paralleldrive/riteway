@@ -706,4 +706,42 @@ describe('formatAssertionReport()', async assert => {
     }),
     expected: '  [FAIL] partial pass (3/5 runs)'
   });
+
+  assert({
+    given: 'a passing assertion with color enabled',
+    should: 'wrap PASS status in green ANSI code',
+    actual: formatAssertionReport({
+      passed: true,
+      description: 'test assertion',
+      passCount: 4,
+      totalRuns: 4,
+      color: true
+    }),
+    expected: '  \x1b[32m[PASS]\x1b[0m test assertion (4/4 runs)'
+  });
+
+  assert({
+    given: 'a failing assertion with color enabled',
+    should: 'wrap FAIL status in red ANSI code',
+    actual: formatAssertionReport({
+      passed: false,
+      description: 'test assertion',
+      passCount: 2,
+      totalRuns: 4,
+      color: true
+    }),
+    expected: '  \x1b[31m[FAIL]\x1b[0m test assertion (2/4 runs)'
+  });
+
+  assert({
+    given: 'an assertion without color option',
+    should: 'not include ANSI codes',
+    actual: formatAssertionReport({
+      passed: true,
+      description: 'test assertion',
+      passCount: 4,
+      totalRuns: 4
+    }).includes('\x1b['),
+    expected: false
+  });
 });
