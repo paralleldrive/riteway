@@ -22,7 +22,7 @@ const createTempDir = () => {
 
 describe('test-extractor', () => {
   describe('buildExtractionPrompt()', () => {
-    test('includes the test content in the prompt', () => {
+    test('returns complete extraction prompt with test content', () => {
       const testContent = `import @promptUnderTest
 
 userPrompt = """
@@ -34,187 +34,96 @@ userPrompt = """
 
       const result = buildExtractionPrompt(testContent);
 
+      const expected = `You are a test extraction agent. Analyze the following test file and extract structured information.
+
+For each assertion or requirement in the test file (these may be formatted as
+"Given X, should Y", bullet points, YAML entries, natural language sentences,
+SudoLang expressions, or any other format):
+
+1. Identify the userPrompt (the prompt to be tested)
+2. Extract the specific requirement from the assertion
+3. Identify any import file paths (e.g., import 'path/to/file.mdc')
+
+Return a JSON object with:
+- "userPrompt": the test prompt to execute (string)
+- "importPaths": array of import file paths found in the test file (e.g., ["ai/rules/ui.mdc"])
+- "assertions": array of assertion objects, each with:
+  - "id": sequential integer starting at 1
+  - "requirement": the assertion text (e.g., "Given X, should Y")
+
+Return ONLY valid JSON. No markdown fences, no explanation.
+
+<test-file-contents>
+${testContent}
+</test-file-contents>`;
+
       assert({
         given: 'test content with assertions',
-        should: 'include the original test content in the prompt',
-        actual: result.includes(testContent),
-        expected: true
-      });
-    });
-
-    test('includes extraction instructions', () => {
-      const testContent = '- Given a test, should pass';
-
-      const result = buildExtractionPrompt(testContent);
-
-      assert({
-        given: 'any test content',
-        should: 'include instructions to identify assertions',
-        actual: result.includes('assert'),
-        expected: true
-      });
-
-      assert({
-        given: 'any test content',
-        should: 'instruct JSON array output format',
-        actual: result.includes('JSON'),
-        expected: true
-      });
-    });
-
-    test('instructs agent to extract userPrompt, requirement, and import paths', () => {
-      const testContent = '- Given a test, should pass';
-
-      const result = buildExtractionPrompt(testContent);
-
-      assert({
-        given: 'extraction prompt',
-        should: 'instruct agent to extract userPrompt field',
-        actual: result.includes('userPrompt'),
-        expected: true
-      });
-
-      assert({
-        given: 'extraction prompt',
-        should: 'instruct agent to extract requirement field',
-        actual: result.includes('requirement'),
-        expected: true
-      });
-
-      assert({
-        given: 'extraction prompt',
-        should: 'instruct agent to extract import paths',
-        actual: result.includes('importPaths') || result.includes('import'),
-        expected: true
-      });
-    });
-
-    test('accepts flexible assertion formats', () => {
-      const testContent = '- Given a test, should pass';
-
-      const result = buildExtractionPrompt(testContent);
-
-      assert({
-        given: 'extraction prompt',
-        should: 'not mandate specific assertion format',
-        actual: result.includes('any format') || result.includes('flexible') || !result.includes('must be formatted as'),
-        expected: true
-      });
-    });
-
-    test('wraps test content in boundary delimiters', () => {
-      const testContent = '- Given a test, should pass';
-
-      const result = buildExtractionPrompt(testContent);
-
-      assert({
-        given: 'any test content',
-        should: 'include an opening boundary delimiter before the content',
-        actual: result.includes('<test-file-contents>'),
-        expected: true
-      });
-
-      assert({
-        given: 'any test content',
-        should: 'include a closing boundary delimiter after the content',
-        actual: result.includes('</test-file-contents>'),
-        expected: true
-      });
-
-      const openTag = result.indexOf('<test-file-contents>');
-      const contentPos = result.indexOf(testContent);
-      const closeTag = result.indexOf('</test-file-contents>');
-
-      assert({
-        given: 'boundary delimiters',
-        should: 'place the content between the opening and closing tags',
-        actual: openTag < contentPos && contentPos < closeTag,
-        expected: true
+        should: 'return complete extraction prompt with test content wrapped in delimiters',
+        actual: result,
+        expected
       });
     });
   });
 
   describe('buildResultPrompt()', () => {
-    test('includes userPrompt in output', () => {
+    test('returns complete result prompt with context', () => {
       const userPrompt = 'What is 2 + 2?';
       const promptUnderTest = 'You are a math helper.';
 
       const result = buildResultPrompt({ userPrompt, promptUnderTest });
+
+      const expected = `You are an AI assistant. Execute the following prompt and return your response.
+
+CONTEXT (Prompt Under Test):
+You are a math helper.
+
+USER PROMPT:
+What is 2 + 2?
+
+INSTRUCTIONS:
+1. Execute the user prompt above, following the guidance in the prompt under test
+2. Return your complete response as plain text
+
+Respond naturally. Do NOT wrap your response in JSON, markdown fences, or any other structure.
+Your entire output IS the result.`;
 
       assert({
         given: 'userPrompt and promptUnderTest',
-        should: 'include the userPrompt in the output',
-        actual: result.includes(userPrompt),
-        expected: true
+        should: 'return complete result prompt with context section',
+        actual: result,
+        expected
       });
     });
 
-    test('includes promptUnderTest in context section', () => {
+    test('returns result prompt without context when promptUnderTest is omitted', () => {
       const userPrompt = 'What is 2 + 2?';
-      const promptUnderTest = 'You are a math helper.';
 
-      const result = buildResultPrompt({ userPrompt, promptUnderTest });
+      const result = buildResultPrompt({ userPrompt });
 
-      assert({
-        given: 'promptUnderTest',
-        should: 'include promptUnderTest in context section',
-        actual: result.includes(promptUnderTest),
-        expected: true
-      });
+      const expected = `You are an AI assistant. Execute the following prompt and return your response.
 
-      assert({
-        given: 'promptUnderTest',
-        should: 'label context section clearly',
-        actual: result.includes('CONTEXT (Prompt Under Test)'),
-        expected: true
-      });
-    });
+USER PROMPT:
+What is 2 + 2?
 
-    test('instructs plain text response, NOT JSON', () => {
-      const userPrompt = 'What is 2 + 2?';
-      const promptUnderTest = 'You are a math helper.';
+INSTRUCTIONS:
+1. Execute the user prompt above
+2. Return your complete response as plain text
 
-      const result = buildResultPrompt({ userPrompt, promptUnderTest });
+Respond naturally. Do NOT wrap your response in JSON, markdown fences, or any other structure.
+Your entire output IS the result.`;
 
       assert({
-        given: 'result prompt',
-        should: 'instruct plain text response',
-        actual: result.includes('plain text'),
-        expected: true
-      });
-
-      assert({
-        given: 'result prompt',
-        should: 'explicitly say NOT to wrap in JSON',
-        actual: result.toLowerCase().includes('not') && result.toLowerCase().includes('json'),
-        expected: true
-      });
-    });
-
-    test('does NOT include JSON formatting instructions', () => {
-      const userPrompt = 'What is 2 + 2?';
-      const promptUnderTest = 'You are a math helper.';
-
-      const result = buildResultPrompt({ userPrompt, promptUnderTest });
-
-      assert({
-        given: 'result prompt',
-        should: 'NOT include JSON object formatting instructions',
-        actual: result.includes('"passed"') || result.includes('{"'),
-        expected: false
-      });
-
-      assert({
-        given: 'result prompt',
-        should: 'NOT include markdown fence instructions',
-        actual: result.includes('```'),
-        expected: false
+        given: 'userPrompt without promptUnderTest',
+        should: 'return complete result prompt without context section',
+        actual: result,
+        expected
       });
     });
   });
 
   describe('buildJudgePrompt()', () => {
-    test('includes result in output', () => {
+    test('returns complete judge prompt with all required sections', () => {
       const userPrompt = 'What is 2 + 2?';
       const promptUnderTest = 'You are a math helper.';
       const result = '4';
@@ -222,122 +131,42 @@ userPrompt = """
 
       const output = buildJudgePrompt({ userPrompt, promptUnderTest, result, requirement });
 
-      assert({
-        given: 'result string',
-        should: 'include result in output',
-        actual: output.includes(result),
-        expected: true
-      });
-    });
+      const expected = `You are an AI judge. Evaluate whether a given result satisfies a specific requirement.
 
-    test('includes ONE requirement', () => {
-      const userPrompt = 'What is 2 + 2?';
-      const promptUnderTest = 'You are a math helper.';
-      const result = '4';
-      const requirement = 'Given simple addition, should return correct answer';
+CONTEXT (Prompt Under Test):
+You are a math helper.
 
-      const output = buildJudgePrompt({ userPrompt, promptUnderTest, result, requirement });
+ORIGINAL USER PROMPT:
+What is 2 + 2?
 
-      assert({
-        given: 'requirement',
-        should: 'include requirement in output',
-        actual: output.includes(requirement),
-        expected: true
-      });
+ACTUAL RESULT TO EVALUATE:
+4
 
-      assert({
-        given: 'requirement field',
-        should: 'include REQUIREMENT section label',
-        actual: output.includes('REQUIREMENT'),
-        expected: true
-      });
-    });
+REQUIREMENT:
+Given simple addition, should return correct answer
 
-    test('includes full context (promptUnderTest, userPrompt)', () => {
-      const userPrompt = 'What is 2 + 2?';
-      const promptUnderTest = 'You are a math helper.';
-      const result = '4';
-      const requirement = 'Given simple addition, should return correct answer';
+INSTRUCTIONS:
+1. Read the actual result above
+2. Determine whether it satisfies the requirement
+3. Summarize what was actually produced (actual) vs what was expected (expected)
+4. Assign a quality score from 0 (completely fails) to 100 (perfectly satisfies)
 
-      const output = buildJudgePrompt({ userPrompt, promptUnderTest, result, requirement });
+Return your judgment as a TAP YAML diagnostic block:
+---
+passed: true
+actual: "summary of what was produced"
+expected: "what was expected"
+score: 85
+---
+
+CRITICAL: Return ONLY the TAP YAML block. Start with --- on its own line,
+end with --- on its own line. No markdown fences, no explanation outside the block.`;
 
       assert({
-        given: 'promptUnderTest',
-        should: 'include promptUnderTest in context section',
-        actual: output.includes(promptUnderTest),
-        expected: true
-      });
-
-      assert({
-        given: 'promptUnderTest',
-        should: 'label context section clearly',
-        actual: output.includes('CONTEXT (Prompt Under Test)'),
-        expected: true
-      });
-
-      assert({
-        given: 'userPrompt',
-        should: 'include userPrompt in output',
-        actual: output.includes(userPrompt),
-        expected: true
-      });
-
-      assert({
-        given: 'userPrompt',
-        should: 'label original user prompt section',
-        actual: output.includes('ORIGINAL USER PROMPT'),
-        expected: true
-      });
-    });
-
-    test('instructs TAP YAML response format', () => {
-      const userPrompt = 'What is 2 + 2?';
-      const promptUnderTest = 'You are a math helper.';
-      const result = '4';
-      const requirement = 'Given simple addition, should return correct answer';
-
-      const output = buildJudgePrompt({ userPrompt, promptUnderTest, result, requirement });
-
-      assert({
-        given: 'judge prompt',
-        should: 'instruct TAP YAML output format',
-        actual: output.includes('TAP YAML'),
-        expected: true
-      });
-
-      assert({
-        given: 'judge prompt',
-        should: 'show example with --- delimiters',
-        actual: output.includes('---'),
-        expected: true
-      });
-
-      assert({
-        given: 'judge prompt',
-        should: 'instruct passed field',
-        actual: output.includes('passed:'),
-        expected: true
-      });
-
-      assert({
-        given: 'judge prompt',
-        should: 'instruct actual field',
-        actual: output.includes('actual:'),
-        expected: true
-      });
-
-      assert({
-        given: 'judge prompt',
-        should: 'instruct expected field',
-        actual: output.includes('expected:'),
-        expected: true
-      });
-
-      assert({
-        given: 'judge prompt',
-        should: 'instruct score field',
-        actual: output.includes('score:'),
-        expected: true
+        given: 'all judge prompt parameters',
+        should: 'return complete judge prompt with TAP YAML format instructions',
+        actual: output,
+        expected
       });
     });
   });
@@ -370,30 +199,22 @@ userPrompt = """
 
       assert({
         given: 'test content and a mock extraction agent',
-        should: 'return object with userPrompt field',
-        actual: result.userPrompt,
-        expected: 'What is 2 + 2?'
-      });
-
-      assert({
-        given: 'a successful extraction',
-        should: 'return object with assertions array',
-        actual: result.assertions.length,
-        expected: 1
-      });
-
-      assert({
-        given: 'a successful extraction',
-        should: 'include assertion requirement',
-        actual: result.assertions[0].requirement,
-        expected: 'Given simple addition, should add correctly'
-      });
-
-      assert({
-        given: 'a successful extraction',
-        should: 'return object with promptUnderTest from imported file',
-        actual: result.promptUnderTest.length > 0,
-        expected: true
+        should: 'return complete structured extraction result',
+        actual: {
+          userPrompt: result.userPrompt,
+          hasPromptUnderTest: result.promptUnderTest.length > 0,
+          assertions: result.assertions
+        },
+        expected: {
+          userPrompt: 'What is 2 + 2?',
+          hasPromptUnderTest: true,
+          assertions: [
+            {
+              id: 1,
+              requirement: 'Given simple addition, should add correctly'
+            }
+          ]
+        }
       });
     });
 
@@ -425,16 +246,15 @@ userPrompt = """
 
       assert({
         given: 'test content with assertions',
-        should: 'extract structured data',
-        actual: result.assertions.length > 0,
-        expected: true
-      });
-
-      assert({
-        given: 'extraction result',
-        should: 'include userPrompt field',
-        actual: result.userPrompt !== undefined,
-        expected: true
+        should: 'extract complete structured data with userPrompt and assertions',
+        actual: {
+          hasUserPrompt: result.userPrompt !== undefined,
+          hasAssertions: result.assertions.length > 0
+        },
+        expected: {
+          hasUserPrompt: true,
+          hasAssertions: true
+        }
       });
     });
 
@@ -485,30 +305,20 @@ userPrompt = """
 
       assert({
         given: 'extraction agent returns structured data',
-        should: 'include userPrompt field',
-        actual: result.userPrompt,
-        expected: 'What is 2+2?'
-      });
-
-      assert({
-        given: 'extraction result',
-        should: 'include assertions array',
-        actual: Array.isArray(result.assertions),
-        expected: true
-      });
-
-      assert({
-        given: 'assertion in result',
-        should: 'include id field',
-        actual: result.assertions[0].id,
-        expected: 1
-      });
-
-      assert({
-        given: 'assertion in result',
-        should: 'include requirement field',
-        actual: result.assertions[0].requirement,
-        expected: 'Given a test, should pass'
+        should: 'include complete extraction result with userPrompt and assertions',
+        actual: {
+          userPrompt: result.userPrompt,
+          assertions: result.assertions
+        },
+        expected: {
+          userPrompt: 'What is 2+2?',
+          assertions: [
+            {
+              id: 1,
+              requirement: 'Given a test, should pass'
+            }
+          ]
+        }
       });
     });
 
@@ -709,23 +519,17 @@ userPrompt = """
 
         assert({
           given: 'real import file on disk',
-          should: 'read and include file content in promptUnderTest',
-          actual: result.promptUnderTest,
-          expected: promptContent
-        });
-
-        assert({
-          given: 'extraction with real files',
-          should: 'return userPrompt from extraction',
-          actual: result.userPrompt,
-          expected: 'What is 2+2?'
-        });
-
-        assert({
-          given: 'extraction with real files',
-          should: 'return assertions array',
-          actual: result.assertions.length,
-          expected: 1
+          should: 'read file content and return complete extraction result',
+          actual: {
+            promptUnderTest: result.promptUnderTest,
+            userPrompt: result.userPrompt,
+            assertionCount: result.assertions.length
+          },
+          expected: {
+            promptUnderTest: promptContent,
+            userPrompt: 'What is 2+2?',
+            assertionCount: 1
+          }
         });
       } finally {
         rmSync(testDir, { recursive: true, force: true });
@@ -872,30 +676,17 @@ userPrompt = """
 
         assert({
           given: 'valid extraction output from agent',
-          should: 'successfully parse and validate structure',
-          actual: typeof result === 'object' && result !== null,
-          expected: true
-        });
-
-        assert({
-          given: 'valid extraction output',
-          should: 'have userPrompt field',
-          actual: result.userPrompt,
-          expected: 'What is 2+2?'
-        });
-
-        assert({
-          given: 'valid extraction output',
-          should: 'have promptUnderTest with file content',
-          actual: result.promptUnderTest,
-          expected: 'Test prompt content'
-        });
-
-        assert({
-          given: 'valid extraction output',
-          should: 'have assertions array',
-          actual: Array.isArray(result.assertions) && result.assertions.length > 0,
-          expected: true
+          should: 'parse and validate complete extraction structure',
+          actual: {
+            userPrompt: result.userPrompt,
+            promptUnderTest: result.promptUnderTest,
+            hasAssertions: Array.isArray(result.assertions) && result.assertions.length > 0
+          },
+          expected: {
+            userPrompt: 'What is 2+2?',
+            promptUnderTest: 'Test prompt content',
+            hasAssertions: true
+          }
         });
       } finally {
         rmSync(testDir, { recursive: true, force: true });

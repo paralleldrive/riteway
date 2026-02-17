@@ -1,8 +1,7 @@
-import { describe, test } from 'vitest';
+import { describe, test, vi, afterEach } from 'vitest';
 import { assert } from './vitest.js';
 import {
   formatDate,
-  generateSlug,
   generateOutputPath,
   generateLogFilePath,
   formatTAP,
@@ -17,9 +16,13 @@ const createSlug = init({ length: 5 });
 
 describe('test-output', () => {
   describe('formatDate()', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     test('formats date as YYYY-MM-DD', () => {
       const date = new Date('2026-01-23T12:34:56.789Z');
-      
+
       assert({
         given: 'a date object',
         should: 'format as YYYY-MM-DD',
@@ -30,7 +33,7 @@ describe('test-output', () => {
 
     test('pads single-digit months and days', () => {
       const date = new Date('2026-03-05T00:00:00.000Z');
-      
+
       assert({
         given: 'a date with single-digit month and day',
         should: 'pad with zeros',
@@ -40,40 +43,16 @@ describe('test-output', () => {
     });
 
     test('uses current date when not provided', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-23T12:00:00.000Z'));
+
       const result = formatDate();
-      const today = new Date();
-      const expected = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, '0')}-${String(today.getUTCDate()).padStart(2, '0')}`;
-      
+
       assert({
         given: 'no date argument',
         should: 'use current date',
         actual: result,
-        expected
-      });
-    });
-  });
-
-  describe('generateSlug()', () => {
-    test('generates a slug using cuid2', async () => {
-      const slug = await generateSlug();
-      
-      assert({
-        given: 'no arguments',
-        should: 'return a non-empty string',
-        actual: slug.length > 0,
-        expected: true
-      });
-    });
-
-    test('generates unique slugs', async () => {
-      const slug1 = await generateSlug();
-      const slug2 = await generateSlug();
-      
-      assert({
-        given: 'multiple calls',
-        should: 'return different slugs',
-        actual: slug1 !== slug2,
-        expected: true
+        expected: '2026-01-23'
       });
     });
   });

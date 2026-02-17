@@ -30,6 +30,13 @@ describe('aggregation', () => {
         actual: calculateRequiredPasses({ runs: 10, threshold: 80 }),
         expected: 8
       });
+
+      assert({
+        given: '4 runs with 80% threshold',
+        should: 'require 4 passes (ceiling of 3.2)',
+        actual: calculateRequiredPasses({ runs: 4, threshold: 80 }),
+        expected: 4
+      });
     });
 
     test('uses default values', () => {
@@ -42,37 +49,76 @@ describe('aggregation', () => {
     });
 
     test('validates runs is a positive integer', () => {
-      const invalidRunsValues = [
-        { value: 0, label: 'zero' },
-        { value: -1, label: 'negative' },
-        { value: NaN, label: 'NaN' },
-        { value: 1.5, label: 'non-integer' }
-      ];
+      // Zero runs
+      const error0 = Try(calculateRequiredPasses, { runs: 0, threshold: 75 });
+      assert({
+        given: 'zero runs',
+        should: 'indicate minimum value requirement',
+        actual: error0?.message?.includes('runs must be at least 1'),
+        expected: true
+      });
 
-      for (const { value, label } of invalidRunsValues) {
-        const error = Try(calculateRequiredPasses, { runs: value, threshold: 75 });
+      assert({
+        given: 'zero runs',
+        should: 'have ValidationError in cause',
+        actual: error0?.cause?.name,
+        expected: 'ValidationError'
+      });
 
-        assert({
-          given: `runs value of ${label} (${value})`,
-          should: 'throw an error with message',
-          actual: error?.message,
-          expected: 'runs must be a positive integer'
-        });
+      assert({
+        given: 'zero runs',
+        should: 'have INVALID_CALCULATION_PARAMS code',
+        actual: error0?.cause?.code,
+        expected: 'INVALID_CALCULATION_PARAMS'
+      });
 
-        assert({
-          given: `runs value of ${label} (${value})`,
-          should: 'have ValidationError name in cause',
-          actual: error?.cause?.name,
-          expected: 'ValidationError'
-        });
+      // Negative runs
+      const errorNeg = Try(calculateRequiredPasses, { runs: -1, threshold: 75 });
+      assert({
+        given: 'negative runs',
+        should: 'indicate minimum value requirement',
+        actual: errorNeg?.message?.includes('runs must be at least 1'),
+        expected: true
+      });
 
-        assert({
-          given: `runs value of ${label} (${value})`,
-          should: 'have INVALID_RUNS code in cause',
-          actual: error?.cause?.code,
-          expected: 'INVALID_RUNS'
-        });
-      }
+      assert({
+        given: 'negative runs',
+        should: 'have ValidationError in cause',
+        actual: errorNeg?.cause?.name,
+        expected: 'ValidationError'
+      });
+
+      // NaN runs
+      const errorNaN = Try(calculateRequiredPasses, { runs: NaN, threshold: 75 });
+      assert({
+        given: 'NaN runs',
+        should: 'indicate invalid number type',
+        actual: errorNaN?.message?.includes('expected number, received NaN'),
+        expected: true
+      });
+
+      assert({
+        given: 'NaN runs',
+        should: 'have ValidationError in cause',
+        actual: errorNaN?.cause?.name,
+        expected: 'ValidationError'
+      });
+
+      // Non-integer runs
+      const errorFloat = Try(calculateRequiredPasses, { runs: 1.5, threshold: 75 });
+      assert({
+        given: 'non-integer runs',
+        should: 'indicate integer requirement',
+        actual: errorFloat?.message?.includes('runs must be an integer'),
+        expected: true
+      });
+
+      assert({
+        given: 'non-integer runs',
+        should: 'have ValidationError in cause',
+        actual: errorFloat?.cause?.name,
+        expected: 'ValidationError'
+      });
     });
 
     test('validates threshold is between 0 and 100', () => {
@@ -81,8 +127,8 @@ describe('aggregation', () => {
       assert({
         given: 'threshold > 100',
         should: 'throw an error with message',
-        actual: error1?.message,
-        expected: 'threshold must be between 0 and 100'
+        actual: error1?.message?.includes('threshold must be at most 100'),
+        expected: true
       });
 
       assert({
@@ -94,9 +140,9 @@ describe('aggregation', () => {
 
       assert({
         given: 'threshold > 100',
-        should: 'have INVALID_THRESHOLD code in cause',
+        should: 'have INVALID_CALCULATION_PARAMS code in cause',
         actual: error1?.cause?.code,
-        expected: 'INVALID_THRESHOLD'
+        expected: 'INVALID_CALCULATION_PARAMS'
       });
 
       const error2 = Try(calculateRequiredPasses, { runs: 4, threshold: -10 });
@@ -104,8 +150,8 @@ describe('aggregation', () => {
       assert({
         given: 'negative threshold',
         should: 'throw an error with message',
-        actual: error2?.message,
-        expected: 'threshold must be between 0 and 100'
+        actual: error2?.message?.includes('threshold must be at least 0'),
+        expected: true
       });
 
       assert({
@@ -117,9 +163,9 @@ describe('aggregation', () => {
 
       assert({
         given: 'negative threshold',
-        should: 'have INVALID_THRESHOLD code in cause',
+        should: 'have INVALID_CALCULATION_PARAMS code in cause',
         actual: error2?.cause?.code,
-        expected: 'INVALID_THRESHOLD'
+        expected: 'INVALID_CALCULATION_PARAMS'
       });
     });
 
@@ -135,16 +181,16 @@ describe('aggregation', () => {
 
       assert({
         given: 'NaN threshold',
-        should: 'have INVALID_THRESHOLD code',
+        should: 'have INVALID_CALCULATION_PARAMS code',
         actual: error?.cause?.code,
-        expected: 'INVALID_THRESHOLD'
+        expected: 'INVALID_CALCULATION_PARAMS'
       });
 
       assert({
         given: 'NaN threshold',
         should: 'have clear error message',
-        actual: error?.message,
-        expected: 'threshold must be between 0 and 100'
+        actual: error?.message?.includes('expected number, received NaN'),
+        expected: true
       });
     });
   });
@@ -425,6 +471,62 @@ describe('aggregation', () => {
         should: 'not be NaN',
         actual: Number.isNaN(result.assertions[0].averageScore),
         expected: false
+      });
+    });
+
+    test('validates runs parameter at entry point', () => {
+      const perAssertionResults = [
+        { requirement: 'test', runResults: [{ passed: true }] }
+      ];
+
+      const error = Try(() =>
+        aggregatePerAssertionResults({
+          perAssertionResults,
+          threshold: 75,
+          runs: 10000 // Above max
+        })
+      );
+
+      assert({
+        given: 'runs above maximum (10000)',
+        should: 'throw validation error',
+        actual: error instanceof Error,
+        expected: true
+      });
+
+      assert({
+        given: 'runs above maximum',
+        should: 'have correct error code',
+        actual: error?.cause?.code,
+        expected: 'INVALID_AGGREGATION_PARAMS'
+      });
+    });
+
+    test('validates threshold parameter at entry point', () => {
+      const perAssertionResults = [
+        { requirement: 'test', runResults: [{ passed: true }] }
+      ];
+
+      const error = Try(() =>
+        aggregatePerAssertionResults({
+          perAssertionResults,
+          threshold: 150, // Above max
+          runs: 4
+        })
+      );
+
+      assert({
+        given: 'threshold above maximum (150)',
+        should: 'throw validation error',
+        actual: error instanceof Error,
+        expected: true
+      });
+
+      assert({
+        given: 'threshold above maximum',
+        should: 'have correct error code',
+        actual: error?.cause?.code,
+        expected: 'INVALID_AGGREGATION_PARAMS'
       });
     });
   });
