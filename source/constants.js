@@ -1,50 +1,27 @@
 import { z } from 'zod';
 
-/**
- * Default values for AI test runner configuration
- */
 export const defaults = {
-  // Test execution
   runs: 4,
   threshold: 75,
   concurrency: 4,
-  
-  // Agent configuration
   agent: 'claude',
   timeoutMs: 300_000,
-  
-  // UI/UX
   color: false,
   debug: false,
   debugLog: false
 };
 
-/**
- * Validation constraints
- */
 export const constraints = {
-  // Threshold must be a percentage (0-100)
   thresholdMin: 0,
   thresholdMax: 100,
-  
-  // Runs must be positive integer with reasonable upper bound
   runsMin: 1,
   runsMax: 1000,
-  
-  // Concurrency must be positive integer
   concurrencyMin: 1,
-  
-  // Timeout must be positive
+  concurrencyMax: 50,
   timeoutMinMs: 1000,
   timeoutMaxMs: 3_600_000,
-  
-  // Supported agent types
   supportedAgents: ['claude', 'opencode', 'cursor']
 };
-
-/**
- * Zod schemas for validation
- */
 
 export const runsSchema = z.number()
   .int({ message: 'runs must be an integer' })
@@ -58,7 +35,8 @@ export const thresholdSchema = z.number()
 
 export const concurrencySchema = z.number()
   .int({ message: 'concurrency must be an integer' })
-  .min(constraints.concurrencyMin, { message: `concurrency must be at least ${constraints.concurrencyMin}` });
+  .min(constraints.concurrencyMin, { message: `concurrency must be at least ${constraints.concurrencyMin}` })
+  .max(constraints.concurrencyMax, { message: `concurrency must be at most ${constraints.concurrencyMax}` });
 
 export const timeoutSchema = z.number()
   .int({ message: 'timeout must be an integer' })
@@ -85,6 +63,7 @@ export const aiTestOptionsSchema = z.object({
   debug: z.boolean().default(defaults.debug),
   debugLog: z.boolean().default(defaults.debugLog),
   color: z.boolean().default(defaults.color),
-  cwd: z.string().default(process.cwd()),
+  // Lazy default — evaluated at parse time, not module load time
+  cwd: z.string().default(() => process.cwd()),
   projectRoot: z.string().optional()
 });

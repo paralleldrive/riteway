@@ -8,7 +8,8 @@ import {
   concurrencySchema,
   timeoutSchema,
   agentSchema,
-  calculateRequiredPassesSchema 
+  calculateRequiredPassesSchema,
+  aiTestOptionsSchema
 } from './constants.js';
 
 describe('constants module', () => {
@@ -228,7 +229,7 @@ describe('constants module', () => {
   });
 
   describe('concurrencySchema', () => {
-    test('accepts positive integers', () => {
+    test('accepts positive integers within bounds', () => {
       const result = concurrencySchema.safeParse(4);
       
       assert({
@@ -247,6 +248,28 @@ describe('constants module', () => {
         should: 'fail validation',
         actual: result.success,
         expected: false
+      });
+    });
+
+    test('rejects concurrency above maximum', () => {
+      const result = concurrencySchema.safeParse(1000);
+      
+      assert({
+        given: 'concurrency above maximum (1000)',
+        should: 'fail validation',
+        actual: result.success,
+        expected: false
+      });
+    });
+
+    test('accepts concurrency at maximum boundary', () => {
+      const result = concurrencySchema.safeParse(constraints.concurrencyMax);
+      
+      assert({
+        given: `concurrency at maximum (${constraints.concurrencyMax})`,
+        should: 'pass validation',
+        actual: result.success,
+        expected: true
       });
     });
   });
@@ -356,6 +379,105 @@ describe('constants module', () => {
         should: 'report both issues',
         actual: result.error?.issues?.length,
         expected: 2
+      });
+    });
+  });
+
+  describe('aiTestOptionsSchema', () => {
+    test('accepts a valid options object and applies defaults', () => {
+      const result = aiTestOptionsSchema.safeParse({ filePath: 'test.sudo' });
+
+      assert({
+        given: 'minimal options with only filePath',
+        should: 'pass validation',
+        actual: result.success,
+        expected: true
+      });
+
+      assert({
+        given: 'minimal options with only filePath',
+        should: 'apply default runs',
+        actual: result.data?.runs,
+        expected: defaults.runs
+      });
+
+      assert({
+        given: 'minimal options with only filePath',
+        should: 'apply default threshold',
+        actual: result.data?.threshold,
+        expected: defaults.threshold
+      });
+
+      assert({
+        given: 'minimal options with only filePath',
+        should: 'apply default agent',
+        actual: result.data?.agent,
+        expected: defaults.agent
+      });
+    });
+
+    test('rejects missing filePath', () => {
+      const result = aiTestOptionsSchema.safeParse({ runs: 2 });
+
+      assert({
+        given: 'options without filePath',
+        should: 'fail validation',
+        actual: result.success,
+        expected: false
+      });
+    });
+
+    test('rejects empty filePath', () => {
+      const result = aiTestOptionsSchema.safeParse({ filePath: '' });
+
+      assert({
+        given: 'empty filePath string',
+        should: 'fail validation',
+        actual: result.success,
+        expected: false
+      });
+    });
+
+    test('rejects invalid agent name', () => {
+      const result = aiTestOptionsSchema.safeParse({ filePath: 'test.sudo', agent: 'gpt4' });
+
+      assert({
+        given: 'unsupported agent name',
+        should: 'fail validation',
+        actual: result.success,
+        expected: false
+      });
+    });
+
+    test('applies lazy cwd default at parse time', () => {
+      const result = aiTestOptionsSchema.safeParse({ filePath: 'test.sudo' });
+
+      assert({
+        given: 'options without cwd',
+        should: 'default cwd to current working directory',
+        actual: result.data?.cwd,
+        expected: process.cwd()
+      });
+    });
+
+    test('accepts optional agentConfigPath', () => {
+      const result = aiTestOptionsSchema.safeParse({
+        filePath: 'test.sudo',
+        agentConfigPath: '/path/to/config.json'
+      });
+
+      assert({
+        given: 'options with agentConfigPath',
+        should: 'pass validation',
+        actual: result.success,
+        expected: true
+      });
+
+      assert({
+        given: 'options with agentConfigPath',
+        should: 'preserve agentConfigPath value',
+        actual: result.data?.agentConfigPath,
+        expected: '/path/to/config.json'
       });
     });
   });
