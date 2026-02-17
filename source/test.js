@@ -132,4 +132,3 @@ describe('countKeys()', async assert => {
 
 import './match-test.js';
 import '../bin/riteway.test.js';
-import './e2e.test.js';

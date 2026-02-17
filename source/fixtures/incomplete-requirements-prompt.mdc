@@ -1,0 +1,11 @@
+# API Response Format
+
+## Structure
+- Return data in JSON format
+- Include a success field
+
+## Example
+{
+  "success": true,
+  "data": {...}
+}

@@ -283,13 +283,14 @@ testRunner('e2e: --agent-config JSON file flow', async (assert) => {
   });
 });
 
-testRunner('e2e: wrong-prompt test fixture', async (assert) => {
+// Test incomplete requirements scenario: validates that the framework detects missing critical requirements
+testRunner('e2e: incomplete-requirements test fixture', async (assert) => {
   if (!isClaudeAuthenticated) {
     console.log('⚠️  Skipping E2E tests: Claude CLI not authenticated. Run: claude setup-token');
     return;
   }
 
-  const testFilePath = join(__dirname, 'fixtures', 'wrong-prompt-test.sudo');
+  const testFilePath = join(__dirname, 'fixtures', 'incomplete-requirements-test.sudo');
   const agentConfig = {
     command: 'claude',
     args: ['-p', '--output-format', 'json', '--no-session-persistence']
@@ -304,28 +305,28 @@ testRunner('e2e: wrong-prompt test fixture', async (assert) => {
   });
 
   assert({
-    given: 'a deliberately bad prompt that fails assertions',
+    given: 'an incomplete requirements spec that omits critical requirements',
     should: 'return passed false',
     actual: results.passed,
     expected: false
   });
 
   assert({
-    given: 'wrong-prompt fixture with 4 assertions',
+    given: 'incomplete-requirements fixture with 4 assertions',
     should: 'return assertions array with 4 items',
     actual: results.assertions.length,
     expected: 4
   });
 
   assert({
-    given: 'wrong-prompt test results',
+    given: 'incomplete-requirements test results',
     should: 'return assertions array',
     actual: Array.isArray(results.assertions),
     expected: true
   });
 
   assert({
-    given: 'each assertion in wrong-prompt test',
+    given: 'each assertion in incomplete-requirements test',
     should: 'have requirement property',
     actual: typeof results.assertions[0].requirement,
     expected: 'string'

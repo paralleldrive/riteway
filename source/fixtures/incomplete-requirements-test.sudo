@@ -1,0 +1,10 @@
+import 'source/fixtures/incomplete-requirements-prompt.mdc'
+
+userPrompt = """
+Design a REST API response for user authentication.
+"""
+
+- Given the response format, should include error handling structure
+- Given the response format, should include HTTP status codes
+- Given the response format, should include timestamp metadata
+- Given the response format, should specify authentication token format
