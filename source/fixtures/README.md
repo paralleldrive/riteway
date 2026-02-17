@@ -15,11 +15,10 @@ Example test file demonstrating markdown media embed functionality.
 - **Requirements tested**: Markdown media (images, screenshots) embedded in TAP output
 - **Media assets**: References `docs/tap-color-scheme.svg` and `docs/tap-color-screenshot.png`
 
-### `verify-media-embed.js`
-Verification script that demonstrates the media embed feature.
-- **Purpose**: Manual verification of media embed functionality
-- **Usage**: `node source/fixtures/verify-media-embed.js`
-- **Output**: Creates `ai-evals/media-embed-verification.tap.md` with example output
+### `wrong-prompt.mdc`
+Test fixture containing intentionally incorrect design guidelines.
+- **Purpose**: Verify AI agents can identify and fail tests based on objectively bad design principles
+- **⚠️ Note for human reviewers**: This file contains deliberately incorrect design guidance (e.g., inaccessible color choices). The meta-commentary has been removed so AI agents evaluate it on merit rather than being told it's wrong. Tests using this fixture should fail when the AI correctly identifies the design violations.
 
 ## Implementation Status
 
@@ -31,29 +30,6 @@ Verification script that demonstrates the media embed feature.
 - ❌ End-to-end flow doesn't populate media field
 
 See `MEDIA-EMBED-STATUS.md` for detailed implementation gap analysis.
-
-## Manual Verification
-
-To verify the media embed **formatter** (not end-to-end):
-
-1. Run the verification script (uses mock data):
-   ```bash
-   node source/fixtures/verify-media-embed.js
-   ```
-
-2. Open the generated file in your browser or markdown viewer:
-   ```bash
-   open ai-evals/media-embed-verification.tap.md
-   ```
-
-3. Verify TAP formatter behavior:
-   - [ ] Images display correctly in the markdown viewer
-   - [ ] TAP format is preserved and compliant
-   - [ ] Captions are readable and properly formatted
-   - [ ] Multiple media attachments per assertion work
-   - [ ] Assertions without media still format correctly
-
-**Note**: Running `media-embed-test.sudo` through the CLI will NOT produce media embeds because the agent integration is incomplete.
 
 ## Requirements Reference
 

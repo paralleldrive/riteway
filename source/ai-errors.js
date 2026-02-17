@@ -14,4 +14,14 @@ export const [aiErrors, handleAIErrors] = errorCauses({
   ExtractionValidationError: { code: 'EXTRACTION_VALIDATION_FAILURE', message: 'Invalid extraction result' }
 });
 
-export const { ParseError, ValidationError, SecurityError, TimeoutError, AgentProcessError, AITestError, OutputError, ExtractionParseError, ExtractionValidationError } = aiErrors;
+export const {
+  ParseError,
+  ValidationError,
+  SecurityError,
+  TimeoutError,
+  AgentProcessError,
+  AITestError,
+  OutputError,
+  ExtractionParseError,
+  ExtractionValidationError
+} = aiErrors;
