@@ -151,7 +151,7 @@ const handleAIError = handleAIErrors({
   }
 });
 
-const main = (argv) => {
+const main = async (argv) => {
   // Check for help flag
   if (argv.includes('--help') || argv.includes('-h')) {
     console.log(`
@@ -194,7 +194,12 @@ Examples:
 
   // Route to appropriate handler
   if (argv[0] === 'ai') {
-    return mainAIRunner(argv.slice(1)).catch(handleAIError);
+    try {
+      await mainAIRunner(argv.slice(1));
+      process.exit(0);
+    } catch (error) {
+      handleAIError(error);
+    }
   }
   
   return mainTestRunner(argv);

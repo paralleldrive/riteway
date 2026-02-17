@@ -63,14 +63,14 @@ const agentConfigFileSchema = z.object({
 });
 
 /**
- * Load and validate an agent configuration from a JSON file.
- * @param {string} configPath - Path to the JSON config file
- * @returns {Promise<Object>} Validated agent config with command and args
+ * Read agent configuration file from disk.
+ * @param {Object} options - Configuration options
+ * @param {string} options.configPath - Path to the JSON config file
+ * @returns {Promise<string>} Raw file contents
  */
-export const loadAgentConfig = async (configPath) => {
-  let raw;
+const readAgentConfigFile = async ({ configPath }) => {
   try {
-    raw = await readFile(configPath, 'utf-8');
+    return await readFile(configPath, 'utf-8');
   } catch (err) {
     throw createError({
       ...ValidationError,
@@ -79,10 +79,17 @@ export const loadAgentConfig = async (configPath) => {
       cause: err
     });
   }
+};
 
-  let parsed;
+/**
+ * Parse JSON string into an object.
+ * @param {Object} options - Configuration options
+ * @param {string} options.configPath - Path to the config file (for error messages)
+ * @returns {(raw: string) => object} Function that parses raw JSON
+ */
+const parseJson = ({ configPath }) => (raw) => {
   try {
-    parsed = JSON.parse(raw);
+    return JSON.parse(raw);
   } catch (err) {
     throw createError({
       ...ValidationError,
@@ -91,7 +98,13 @@ export const loadAgentConfig = async (configPath) => {
       cause: err
     });
   }
+};
 
+/**
+ * Validate parsed config against schema.
+ * @returns {(parsed: object) => object} Function that validates parsed config
+ */
+const validateAgentConfig = () => (parsed) => {
   try {
     return agentConfigFileSchema.parse(parsed);
   } catch (zodError) {
@@ -102,4 +115,15 @@ export const loadAgentConfig = async (configPath) => {
       cause: zodError
     });
   }
+};
+
+/**
+ * Load and validate an agent configuration from a JSON file.
+ * @param {string} configPath - Path to the JSON config file
+ * @returns {Promise<Object>} Validated agent config with command and args
+ */
+export const loadAgentConfig = async (configPath) => {
+  const raw = await readAgentConfigFile({ configPath });
+  const parsed = await parseJson({ configPath })(raw);
+  return validateAgentConfig()(parsed);
 };

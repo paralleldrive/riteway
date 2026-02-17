@@ -118,17 +118,17 @@ const ANSI = {
  * Pure function to format a single assertion report line
  * @param {Object} assertion - Assertion result object
  * @param {boolean} assertion.passed - Whether the assertion passed
- * @param {string} assertion.description - Assertion description
+ * @param {string} assertion.requirement - Assertion requirement
  * @param {number} assertion.passCount - Number of passing runs
  * @param {number} assertion.totalRuns - Total number of runs
  * @param {boolean} [assertion.color=false] - Enable ANSI color codes
  * @returns {string} Formatted assertion report line
  */
-export const formatAssertionReport = ({ passed, description, passCount, totalRuns, color = false }) => {
+export const formatAssertionReport = ({ passed, requirement, passCount, totalRuns, color = false }) => {
   const status = passed ? 'PASS' : 'FAIL';
   const colorCode = color ? (passed ? ANSI.green : ANSI.red) : '';
   const resetCode = color ? ANSI.reset : '';
-  return `  ${colorCode}[${status}]${resetCode} ${description} (${passCount}/${totalRuns} runs)`;
+  return `  ${colorCode}[${status}]${resetCode} ${requirement} (${passCount}/${totalRuns} runs)`;
 };
 
 /**
@@ -196,16 +196,19 @@ export const runAICommand = async ({ filePath, runs, threshold, agent, agentConf
       logFile
     });
 
-    const outputPath = await recordTestOutput({
-      results,
-      testFilename
-    }).catch(error => {
+    let outputPath;
+    try {
+      outputPath = await recordTestOutput({
+        results,
+        testFilename
+      });
+    } catch (error) {
       throw createError({
         ...OutputError,
         message: `Failed to record test output: ${error.message}`,
         cause: error
       });
-    });
+    }
 
     const { assertions } = results;
     const passedAssertions = assertions.filter(a => a.passed).length;

@@ -1,5 +1,9 @@
 import { createError } from 'error-causes';
 import { ValidationError, ParseError } from './ai-errors.js';
+import { 
+  defaults, 
+  calculateRequiredPassesSchema 
+} from './constants.js';
 
 /**
  * Normalize a judge response with safe defaults, logging, and error handling.
@@ -42,30 +46,34 @@ export const normalizeJudgment = (raw, { requirement, runIndex, logger }) => {
 /**
  * Calculate the number of passes required to meet the threshold.
  * Uses ceiling to ensure threshold is met or exceeded.
+ * Validates input using Zod schema for comprehensive type and range checking.
  * @param {Object} options
  * @param {number} [options.runs=4] - Total number of test runs
  * @param {number} [options.threshold=75] - Required pass percentage (0-100)
  * @returns {number} Number of passes required
- * @throws {Error} If threshold is not between 0 and 100
+ * @throws {Error} If validation fails (non-integer runs, invalid threshold, etc.)
  */
-export const calculateRequiredPasses = ({ runs = 4, threshold = 75 } = {}) => {
-  if (!Number.isInteger(runs) || runs <= 0) {
+export const calculateRequiredPasses = ({ runs = defaults.runs, threshold = defaults.threshold } = {}) => {
+  try {
+    // Validate and apply defaults using Zod schema
+    const validated = calculateRequiredPassesSchema.parse({ runs, threshold });
+    return Math.ceil((validated.runs * validated.threshold) / 100);
+  } catch (zodError) {
+    // Convert Zod error to error-causes format
+    const issues = zodError.issues || [];
+    const messages = issues.map(issue => 
+      `${issue.path.join('.')}: ${issue.message}`
+    ).join('; ');
+    
     throw createError({
       ...ValidationError,
-      message: 'runs must be a positive integer',
-      code: 'INVALID_RUNS',
-      runs
+      message: `Invalid parameters for calculateRequiredPasses: ${messages}`,
+      code: 'INVALID_CALCULATION_PARAMS',
+      runs,
+      threshold,
+      cause: zodError
     });
   }
-  if (!Number.isFinite(threshold) || threshold < 0 || threshold > 100) {
-    throw createError({
-      ...ValidationError,
-      message: 'threshold must be between 0 and 100',
-      code: 'INVALID_THRESHOLD',
-      threshold
-    });
-  }
-  return Math.ceil((runs * threshold) / 100);
 };
 
 /**
@@ -79,6 +87,25 @@ export const calculateRequiredPasses = ({ runs = 4, threshold = 75 } = {}) => {
  * @returns {Object} Aggregated results with per-assertion breakdown
  */
 export const aggregatePerAssertionResults = ({ perAssertionResults, threshold, runs }) => {
+  // Pre-validate inputs once at entry point (performance optimization)
+  try {
+    calculateRequiredPassesSchema.parse({ runs, threshold });
+  } catch (zodError) {
+    const issues = zodError.issues || [];
+    const messages = issues.map(issue => 
+      `${issue.path.join('.')}: ${issue.message}`
+    ).join('; ');
+    
+    throw createError({
+      ...ValidationError,
+      message: `Invalid parameters for aggregatePerAssertionResults: ${messages}`,
+      code: 'INVALID_AGGREGATION_PARAMS',
+      runs,
+      threshold,
+      cause: zodError
+    });
+  }
+
   const requiredPasses = calculateRequiredPasses({ runs, threshold });
 
   const assertions = perAssertionResults.map(({ requirement, runResults }) => {

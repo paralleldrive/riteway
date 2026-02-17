@@ -18,12 +18,6 @@ export const formatDate = (date = new Date()) => {
 const createSlug = init({ length: 5 });
 
 /**
- * Generate a unique 5-character slug using cuid2.
- * @returns {string} Generated slug
- */
-export const generateSlug = () => createSlug();
-
-/**
  * Generate output file path.
  * @param {Object} options
  * @param {string} options.testFilename - Test file name
@@ -57,63 +51,137 @@ const escapeMarkdown = (text) => {
 };
 
 /**
- * Format test results as TAP output with per-assertion breakdown.
- * @param {Object} results - Test results object
- * @param {boolean} results.passed - Overall pass status
- * @param {Array<Object>} results.assertions - Per-assertion results
- * @returns {string} TAP formatted output
+ * Create TAP version header.
+ * @returns {string} TAP version 13 header
  */
-export const formatTAP = (results) => {
-  const { assertions } = results;
+const createHeader = () => 'TAP version 13\n';
 
-  const lines = ['TAP version 13\n'];
+/**
+ * Format assertion result line.
+ * @param {Object} params
+ * @param {boolean} params.passed - Whether assertion passed
+ * @param {number} params.testNumber - Test number
+ * @param {string} params.requirement - Assertion requirement description
+ * @returns {string} TAP result line
+ */
+const formatResultLine = ({ passed, testNumber, requirement }) => {
+  const prefix = passed ? 'ok' : 'not ok';
+  return `${prefix} ${testNumber} - ${requirement}\n`;
+};
 
-  assertions.forEach((assertion, index) => {
-    const testNumber = index + 1;
-    const prefix = assertion.passed ? 'ok' : 'not ok';
-    lines.push(`${prefix} ${testNumber} - ${assertion.requirement}\n`);
-    lines.push(`  # pass rate: ${assertion.passCount}/${assertion.totalRuns}\n`);
+/**
+ * Format pass rate diagnostic.
+ * @param {Object} params
+ * @param {number} params.passCount - Number of passes
+ * @param {number} params.totalRuns - Total number of runs
+ * @returns {string} Pass rate diagnostic line
+ */
+const formatPassRate = ({ passCount, totalRuns }) =>
+  `  # pass rate: ${passCount}/${totalRuns}\n`;
 
-    // Add average score if available
-    if (assertion.averageScore !== undefined) {
-      lines.push(`  # avg score: ${assertion.averageScore.toFixed(2)}\n`);
-    }
+/**
+ * Format average score diagnostic.
+ * @param {Object} params
+ * @param {number} [params.averageScore] - Average score
+ * @returns {string} Average score line or empty string
+ */
+const formatAverageScore = ({ averageScore }) =>
+  averageScore !== undefined
+    ? `  # avg score: ${averageScore.toFixed(2)}\n`
+    : '';
 
-    // Add actual and expected from last run if available
-    if (assertion.runResults && assertion.runResults.length > 0) {
-      const lastRun = assertion.runResults[assertion.runResults.length - 1];
-      if (lastRun.actual !== undefined) {
-        lines.push(`  # actual: ${lastRun.actual}\n`);
-      }
-      if (lastRun.expected !== undefined) {
-        lines.push(`  # expected: ${lastRun.expected}\n`);
-      }
-    }
+/**
+ * Format actual and expected from last run.
+ * @param {Object} params
+ * @param {Array<Object>} [params.runResults] - Run results array
+ * @returns {string} Actual/expected lines or empty string
+ */
+const formatLastRun = ({ runResults }) => {
+  if (!runResults || runResults.length === 0) return '';
 
-    // Add media embeds if present
-    if (assertion.media && assertion.media.length > 0) {
-      assertion.media.forEach(({ path, caption }) => {
-        const escapedCaption = escapeMarkdown(caption);
-        const escapedPath = escapeMarkdown(path);
-        lines.push(`  # ![${escapedCaption}](${escapedPath})\n`);
-      });
-    }
-  });
+  const lastRun = runResults.at(-1);
+  const actualLine = lastRun.actual !== undefined
+    ? `  # actual: ${lastRun.actual}\n`
+    : '';
+  const expectedLine = lastRun.expected !== undefined
+    ? `  # expected: ${lastRun.expected}\n`
+    : '';
 
+  return actualLine + expectedLine;
+};
+
+/**
+ * Format media attachments as markdown images.
+ * @param {Object} params
+ * @param {Array<Object>} [params.media] - Media attachments
+ * @returns {string} Media markdown lines or empty string
+ */
+const formatMedia = ({ media }) => {
+  if (!media || media.length === 0) return '';
+
+  return media
+    .map(({ path, caption }) => {
+      const escapedCaption = escapeMarkdown(caption);
+      const escapedPath = escapeMarkdown(path);
+      return `  # ![${escapedCaption}](${escapedPath})\n`;
+    })
+    .join('');
+};
+
+/**
+ * Format a single assertion with all its diagnostics.
+ * @param {Object} assertion - Assertion data
+ * @param {number} index - Assertion index
+ * @returns {string} Complete assertion TAP output
+ */
+const formatAssertion = (assertion, index) => {
+  const testNumber = index + 1;
+
+  return [
+    formatResultLine({ passed: assertion.passed, testNumber, requirement: assertion.requirement }),
+    formatPassRate({ passCount: assertion.passCount, totalRuns: assertion.totalRuns }),
+    formatAverageScore({ averageScore: assertion.averageScore }),
+    formatLastRun({ runResults: assertion.runResults }),
+    formatMedia({ media: assertion.media })
+  ].filter(Boolean).join('');
+};
+
+/**
+ * Create TAP footer with plan and totals.
+ * @param {Object} params
+ * @param {Array<Object>} params.assertions - All assertions
+ * @returns {string} TAP footer
+ */
+const createFooter = ({ assertions }) => {
   const totalAssertions = assertions.length;
   const passedAssertions = assertions.filter(a => a.passed).length;
-
-  lines.push(`1..${totalAssertions}\n`);
-  lines.push(`# tests ${totalAssertions}\n`);
-  lines.push(`# pass  ${passedAssertions}\n`);
-
   const failCount = totalAssertions - passedAssertions;
+
+  const lines = [
+    `1..${totalAssertions}\n`,
+    `# tests ${totalAssertions}\n`,
+    `# pass  ${passedAssertions}\n`
+  ];
+
   if (failCount > 0) {
     lines.push(`# fail  ${failCount}\n`);
   }
 
   return lines.join('');
 };
+
+/**
+ * Format test results as TAP output with per-assertion breakdown.
+ * @param {Object} [results] - Test results object
+ * @param {Array<Object>} [results.assertions] - Per-assertion results
+ * @returns {string} TAP formatted output
+ */
+export const formatTAP = ({ assertions = [] } = {}) =>
+  [
+    createHeader(),
+    ...assertions.map(formatAssertion),
+    createFooter({ assertions })
+  ].join('');
 
 /**
  * Open a file in the default browser.
@@ -137,9 +205,9 @@ export const openInBrowser = async (filePath) => {
  */
 export const generateLogFilePath = async (testFilename, outputDir = 'ai-evals') => {
   await mkdir(outputDir, { recursive: true });
-  
+
   const date = formatDate();
-  const slug = await generateSlug();
+  const slug = createSlug();
   return generateOutputPath({
     testFilename,
     date,
@@ -166,10 +234,10 @@ export const recordTestOutput = async ({
 }) => {
   // Create output directory if it doesn't exist
   await mkdir(outputDir, { recursive: true });
-  
+
   // Generate output path
   const date = formatDate();
-  const slug = await generateSlug();
+  const slug = createSlug();
   const outputPath = await generateOutputPath({
     testFilename,
     date,
