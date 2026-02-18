@@ -8,7 +8,7 @@ import {
   concurrencySchema,
   timeoutSchema,
   agentSchema,
-  calculateRequiredPassesSchema,
+  aggregationParamsSchema,
   aiTestOptionsSchema
 } from './constants.js';
 
@@ -346,9 +346,9 @@ describe('constants module', () => {
     });
   });
 
-  describe('calculateRequiredPassesSchema', () => {
+  describe('aggregationParamsSchema', () => {
     test('validates complete object with defaults', () => {
-      const result = calculateRequiredPassesSchema.parse({
+      const result = aggregationParamsSchema.parse({
         runs: 5,
         threshold: 80
       });
@@ -362,7 +362,7 @@ describe('constants module', () => {
     });
 
     test('reports multiple validation errors', () => {
-      const result = calculateRequiredPassesSchema.safeParse({
+      const result = aggregationParamsSchema.safeParse({
         runs: -1,
         threshold: 150
       });
