@@ -1,7 +1,58 @@
 import { describe, test } from 'vitest';
 import { assert } from './vitest.js';
 import { Try } from './riteway.js';
-import { getAgentConfig, loadAgentConfig } from './agent-config.js';
+import { formatZodError, getAgentConfig, loadAgentConfig } from './agent-config.js';
+
+describe('formatZodError()', () => {
+  test('formats a single issue', () => {
+    const zodError = { issues: [{ path: ['command'], message: 'required' }] };
+
+    assert({
+      given: 'an error with a single issue',
+      should: 'format as "field: message"',
+      actual: formatZodError(zodError),
+      expected: 'command: required'
+    });
+  });
+
+  test('joins multiple issues with "; "', () => {
+    const zodError = {
+      issues: [
+        { path: ['command'], message: 'required' },
+        { path: ['args', '0'], message: 'must be string' }
+      ]
+    };
+
+    assert({
+      given: 'an error with multiple issues',
+      should: 'join all formatted issues with "; "',
+      actual: formatZodError(zodError),
+      expected: 'command: required; args.0: must be string'
+    });
+  });
+
+  test('falls back to message when no issues array', () => {
+    const zodError = { message: 'something went wrong' };
+
+    assert({
+      given: 'an error with no issues but a message property',
+      should: 'return the message',
+      actual: formatZodError(zodError),
+      expected: 'something went wrong'
+    });
+  });
+
+  test('falls back to "Validation failed" when no issues or message', () => {
+    const zodError = {};
+
+    assert({
+      given: 'an error with neither issues nor message',
+      should: 'return the default fallback message',
+      actual: formatZodError(zodError),
+      expected: 'Validation failed'
+    });
+  });
+});
 
 describe('getAgentConfig()', () => {
   test('returns claude configuration for "claude" agent', () => {

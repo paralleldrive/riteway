@@ -157,7 +157,7 @@ describe('validation', () => {
       });
     });
 
-    test('uses default timeout of 30 seconds', async () => {
+    test('succeeds without explicit timeout argument', async () => {
       const executeAgent = createMockExecuteAgent({ shouldSucceed: true });
       const agentConfig = {
         command: 'mock-agent',

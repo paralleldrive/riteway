@@ -70,7 +70,7 @@ const readAgentConfigFile = async ({ configPath }) => {
   }
 };
 
-const parseJson = ({ configPath }) => (raw) => {
+const parseJson = ({ configPath, raw }) => {
   try {
     return JSON.parse(raw);
   } catch (err) {
@@ -103,6 +103,6 @@ const validateAgentConfig = (parsed) => {
  */
 export const loadAgentConfig = async (configPath) => {
   const raw = await readAgentConfigFile({ configPath });
-  const parsed = await parseJson({ configPath })(raw);
+  const parsed = parseJson({ configPath, raw });
   return validateAgentConfig(parsed);
 };

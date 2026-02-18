@@ -61,10 +61,7 @@ export const verifyAgentAuthentication = async ({ agentConfig, executeAgent, tim
 
     // Provide helpful error message with authentication guidance
     // Since this function's purpose IS auth verification, any failure warrants guidance
-    const errorMessage = err.message + '\n\n💡 Agent authentication required. Run the appropriate setup command:\n' +
-                     '   - Claude:  "claude setup-token" - https://docs.anthropic.com/en/docs/claude-code\n' +
-                     '   - Cursor:  "agent login" - https://docs.cursor.com/context/rules-for-ai\n' +
-                     '   - OpenCode: See https://opencode.ai/docs/cli/ for authentication setup';
+    const errorMessage = `${err.message}\n\n💡 Agent authentication required. Run the appropriate setup command:\n   - Claude:  "claude setup-token" - https://docs.anthropic.com/en/docs/claude-code\n   - Cursor:  "agent login" - https://docs.cursor.com/context/rules-for-ai\n   - OpenCode: See https://opencode.ai/docs/cli/ for authentication setup`;
 
     return { success: false, error: errorMessage };
   }
