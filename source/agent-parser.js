@@ -49,7 +49,7 @@ export const parseOpenCodeNDJSON = (ndjson, logger) => {
       const event = JSON.parse(line);
       if (event.type === 'text' && event.part?.text) {
         logger.log(`Found text event with ${event.part.text.length} characters`);
-        acc.push(event.part.text);
+        return [...acc, event.part.text];
       }
     } catch (err) {
       logger.log(`Warning: Failed to parse NDJSON line: ${err.message}`);

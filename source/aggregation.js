@@ -22,15 +22,15 @@ export const normalizeJudgment = (raw, { requirement, runIndex, logger }) => {
     });
   }
 
-  if (raw?.actual === undefined || raw?.expected === undefined) {
+  if (raw.actual === undefined || raw.expected === undefined) {
     logger.log(`Warning: Judge response missing fields for "${requirement}" run ${runIndex + 1}`);
   }
 
   return {
-    passed: raw?.passed === true,
-    actual: raw?.actual ?? 'No actual provided',
-    expected: raw?.expected ?? 'No expected provided',
-    score: Number.isFinite(raw?.score) ? Math.max(0, Math.min(100, raw.score)) : 0
+    passed: raw.passed === true,
+    actual: raw.actual ?? 'No actual provided',
+    expected: raw.expected ?? 'No expected provided',
+    score: Number.isFinite(raw.score) ? Math.max(0, Math.min(100, raw.score)) : 0
   };
 };
 
@@ -66,8 +66,9 @@ export const calculateRequiredPasses = ({ runs = defaults.runs, threshold = defa
  * Overall pass requires all assertions to meet the threshold.
  */
 export const aggregatePerAssertionResults = ({ perAssertionResults, threshold, runs }) => {
+  let validated;
   try {
-    calculateRequiredPassesSchema.parse({ runs, threshold });
+    validated = calculateRequiredPassesSchema.parse({ runs, threshold });
   } catch (zodError) {
     const issues = zodError.issues || [];
     const messages = issues.map(issue =>
@@ -84,7 +85,7 @@ export const aggregatePerAssertionResults = ({ perAssertionResults, threshold, r
     });
   }
 
-  const requiredPasses = calculateRequiredPasses({ runs, threshold });
+  const requiredPasses = Math.ceil((validated.runs * validated.threshold) / 100);
 
   const assertions = perAssertionResults.map(({ requirement, runResults }) => {
     const passCount = runResults.filter(r => r.passed).length;

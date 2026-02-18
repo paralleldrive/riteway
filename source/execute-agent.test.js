@@ -140,9 +140,23 @@ describe('executeAgent()', () => {
 
     assert({
       given: 'agentConfig with parseOutput function',
-      should: 'call parseOutput with stdout',
+      should: 'call parseOutput exactly once',
       actual: parseOutput.mock.calls.length,
       expected: 1
+    });
+
+    assert({
+      given: 'agentConfig with parseOutput function',
+      should: 'pass the raw stdout as first argument',
+      actual: parseOutput.mock.calls[0][0],
+      expected: ndjsonOutput
+    });
+
+    assert({
+      given: 'agentConfig with parseOutput function',
+      should: 'pass the logger as second argument (WIP fix #8 — logger threading)',
+      actual: typeof parseOutput.mock.calls[0][1]?.log,
+      expected: 'function'
     });
 
     assert({

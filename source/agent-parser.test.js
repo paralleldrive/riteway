@@ -332,20 +332,10 @@ describe('unwrapEnvelope()', () => {
     ['object without result field', { passed: true, score: 80 }, { passed: true, score: 80 }],
   ])('%s', (_, input, expected) => {
     assert({
-      given: `parsed object: ${_}`,
+      given: _,
       should: 'return the unwrapped value',
       actual: unwrapEnvelope(input),
       expected
-    });
-  });
-
-  test('returns object as-is when result key is absent', () => {
-    const input = { status: 'ok', data: [1, 2, 3] };
-    assert({
-      given: 'object with no result key',
-      should: 'return the original object',
-      actual: unwrapEnvelope(input),
-      expected: input
     });
   });
 });

@@ -284,6 +284,28 @@ describe('aggregatePerAssertionResults()', () => {
     });
   });
 
+  test('passes with empty assertions array (vacuous truth)', () => {
+    const result = aggregatePerAssertionResults({
+      perAssertionResults: [],
+      threshold: 75,
+      runs: 4
+    });
+
+    assert({
+      given: 'empty perAssertionResults array',
+      should: 'return passed: true (all zero assertions meet threshold)',
+      actual: result.passed,
+      expected: true
+    });
+
+    assert({
+      given: 'empty perAssertionResults array',
+      should: 'return empty assertions array',
+      actual: result.assertions,
+      expected: []
+    });
+  });
+
   test.each([
     ['runs above maximum', { runs: 1001, threshold: 75 }, 'INVALID_AGGREGATION_PARAMS'],
     ['threshold above maximum', { runs: 4, threshold: 150 }, 'INVALID_AGGREGATION_PARAMS'],
@@ -314,15 +336,6 @@ describe('aggregatePerAssertionResults()', () => {
 
 describe('normalizeJudgment()', () => {
   const createMockLogger = () => ({ log: vi.fn() });
-
-  test('is exported as a function', () => {
-    assert({
-      given: 'aggregation module',
-      should: 'export normalizeJudgment',
-      actual: typeof normalizeJudgment,
-      expected: 'function'
-    });
-  });
 
   test('passes through complete valid input unchanged', () => {
     const logger = createMockLogger();
