@@ -3,93 +3,8 @@ import { assert } from './vitest.js';
 import { Try } from './riteway.js';
 import {
   normalizeJudgment,
-  calculateRequiredPasses,
   aggregatePerAssertionResults
 } from './aggregation.js';
-
-describe('calculateRequiredPasses()', () => {
-  test.each([
-    ['4 runs, 75% threshold', { runs: 4, threshold: 75 }, 3],
-    ['5 runs, 75% threshold', { runs: 5, threshold: 75 }, 4],
-    ['10 runs, 80% threshold', { runs: 10, threshold: 80 }, 8],
-    ['4 runs, 80% threshold', { runs: 4, threshold: 80 }, 4],
-  ])('%s requires correct pass count', (_, options, expected) => {
-    assert({
-      given: _,
-      should: `require ${expected} passes`,
-      actual: calculateRequiredPasses(options),
-      expected
-    });
-  });
-
-  test('uses default values when called with no arguments', () => {
-    assert({
-      given: 'no arguments',
-      should: 'use defaults (4 runs, 75% threshold) requiring 3 passes',
-      actual: calculateRequiredPasses(),
-      expected: 3
-    });
-  });
-
-  test.each([
-    ['zero runs', { runs: 0, threshold: 75 }, 'runs must be at least 1'],
-    ['negative runs', { runs: -1, threshold: 75 }, 'runs must be at least 1'],
-    ['non-integer runs', { runs: 1.5, threshold: 75 }, 'runs must be an integer'],
-    ['NaN runs', { runs: NaN, threshold: 75 }, 'expected number, received NaN'],
-  ])('throws ValidationError for %s', (_, options, expectedMessage) => {
-    const error = Try(calculateRequiredPasses, options);
-
-    assert({
-      given: _,
-      should: 'have ValidationError in cause',
-      actual: error?.cause?.name,
-      expected: 'ValidationError'
-    });
-
-    assert({
-      given: _,
-      should: 'have INVALID_CALCULATION_PARAMS code',
-      actual: error?.cause?.code,
-      expected: 'INVALID_CALCULATION_PARAMS'
-    });
-
-    assert({
-      given: _,
-      should: 'include descriptive message',
-      actual: error?.message?.includes(expectedMessage),
-      expected: true
-    });
-  });
-
-  test.each([
-    ['threshold above 100', { runs: 4, threshold: 150 }, 'threshold must be at most 100'],
-    ['negative threshold', { runs: 4, threshold: -10 }, 'threshold must be at least 0'],
-    ['NaN threshold', { runs: 4, threshold: NaN }, 'expected number, received NaN'],
-  ])('throws ValidationError for %s', (_, options, expectedMessage) => {
-    const error = Try(calculateRequiredPasses, options);
-
-    assert({
-      given: _,
-      should: 'have ValidationError in cause',
-      actual: error?.cause?.name,
-      expected: 'ValidationError'
-    });
-
-    assert({
-      given: _,
-      should: 'have INVALID_CALCULATION_PARAMS code',
-      actual: error?.cause?.code,
-      expected: 'INVALID_CALCULATION_PARAMS'
-    });
-
-    assert({
-      given: _,
-      should: 'include descriptive message',
-      actual: error?.message?.includes(expectedMessage),
-      expected: true
-    });
-  });
-});
 
 describe('aggregatePerAssertionResults()', () => {
   test('aggregates per-assertion results when all assertions pass', () => {
@@ -314,9 +229,7 @@ describe('aggregatePerAssertionResults()', () => {
       { requirement: 'test', runResults: [{ passed: true }] }
     ];
 
-    const error = Try(() =>
-      aggregatePerAssertionResults({ perAssertionResults, threshold, runs })
-    );
+    const error = Try(aggregatePerAssertionResults, { perAssertionResults, threshold, runs });
 
     assert({
       given: _,
@@ -339,9 +252,9 @@ describe('normalizeJudgment()', () => {
 
   test('passes through complete valid input unchanged', () => {
     const logger = createMockLogger();
-    const raw = { passed: true, actual: 'Result from agent', expected: 'Expected output', score: 85 };
+    const judgeResponse = { passed: true, actual: 'Result from agent', expected: 'Expected output', score: 85 };
 
-    const result = normalizeJudgment(raw, { requirement: 'test assertion', runIndex: 0, logger });
+    const result = normalizeJudgment({ judgeResponse, requirement: 'test assertion', runIndex: 0, logger });
 
     assert({
       given: 'complete valid judgment with passed: true',
@@ -374,10 +287,12 @@ describe('normalizeJudgment()', () => {
 
   test('defaults passed to false when missing', () => {
     const logger = createMockLogger();
-    const result = normalizeJudgment(
-      { actual: 'Result', expected: 'Expected', score: 50 },
-      { requirement: 'test', runIndex: 0, logger }
-    );
+    const result = normalizeJudgment({
+      judgeResponse: { actual: 'Result', expected: 'Expected', score: 50 },
+      requirement: 'test',
+      runIndex: 0,
+      logger
+    });
 
     assert({
       given: 'judgment missing passed field',
@@ -389,10 +304,12 @@ describe('normalizeJudgment()', () => {
 
   test('defaults missing actual and expected with warning log', () => {
     const logger = createMockLogger();
-    const result = normalizeJudgment(
-      { passed: true, score: 100 },
-      { requirement: 'test assertion', runIndex: 2, logger }
-    );
+    const result = normalizeJudgment({
+      judgeResponse: { passed: true, score: 100 },
+      requirement: 'test assertion',
+      runIndex: 2,
+      logger
+    });
 
     assert({
       given: 'judgment missing actual',
@@ -422,10 +339,12 @@ describe('normalizeJudgment()', () => {
     ['NaN score', NaN, 0],
   ])('normalizes %s correctly', (_, score, expected) => {
     const logger = createMockLogger();
-    const result = normalizeJudgment(
-      { passed: true, actual: 'Result', expected: 'Expected', score },
-      { requirement: 'test', runIndex: 0, logger }
-    );
+    const result = normalizeJudgment({
+      judgeResponse: { passed: true, actual: 'Result', expected: 'Expected', score },
+      requirement: 'test',
+      runIndex: 0,
+      logger
+    });
 
     assert({
       given: `judgment with ${_}`,
@@ -437,10 +356,12 @@ describe('normalizeJudgment()', () => {
 
   test('defaults missing score to 0', () => {
     const logger = createMockLogger();
-    const result = normalizeJudgment(
-      { passed: true, actual: 'Result', expected: 'Expected' },
-      { requirement: 'test', runIndex: 0, logger }
-    );
+    const result = normalizeJudgment({
+      judgeResponse: { passed: true, actual: 'Result', expected: 'Expected' },
+      requirement: 'test',
+      runIndex: 0,
+      logger
+    });
 
     assert({
       given: 'judgment missing score',
@@ -456,7 +377,7 @@ describe('normalizeJudgment()', () => {
     ['undefined input', undefined],
   ])('throws ParseError for %s', (_, input) => {
     const logger = createMockLogger();
-    const error = Try(normalizeJudgment, input, { requirement: 'test assertion', runIndex: 1, logger });
+    const error = Try(normalizeJudgment, { judgeResponse: input, requirement: 'test assertion', runIndex: 1, logger });
 
     assert({
       given: _,
@@ -475,7 +396,7 @@ describe('normalizeJudgment()', () => {
 
   test('includes requirement and runIndex in ParseError cause', () => {
     const logger = createMockLogger();
-    const error = Try(normalizeJudgment, null, { requirement: 'test assertion', runIndex: 1, logger });
+    const error = Try(normalizeJudgment, { judgeResponse: null, requirement: 'test assertion', runIndex: 1, logger });
 
     assert({
       given: 'null input',

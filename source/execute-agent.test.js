@@ -1,5 +1,6 @@
 import { describe, test, vi, beforeEach } from 'vitest';
 import { assert } from './vitest.js';
+import { Try } from './riteway.js';
 
 vi.mock('child_process', () => ({
   spawn: vi.fn()
@@ -174,36 +175,28 @@ describe('executeAgent()', () => {
       exitCode: 1
     }));
 
-    try {
-      await executeAgent({ agentConfig, prompt: 'test prompt' });
-      assert({
-        given: 'non-zero exit code',
-        should: 'have thrown an error',
-        actual: false,
-        expected: true
-      });
-    } catch (err) {
-      assert({
-        given: 'non-zero exit code from agent process',
-        should: 'throw Error with AgentProcessError cause',
-        actual: err?.cause?.name,
-        expected: 'AgentProcessError'
-      });
+    const err = await Try(executeAgent, { agentConfig, prompt: 'test prompt' });
 
-      assert({
-        given: 'non-zero exit code',
-        should: 'have AGENT_PROCESS_FAILURE code',
-        actual: err?.cause?.code,
-        expected: 'AGENT_PROCESS_FAILURE'
-      });
+    assert({
+      given: 'non-zero exit code from agent process',
+      should: 'throw Error with AgentProcessError cause',
+      actual: err?.cause?.name,
+      expected: 'AgentProcessError'
+    });
 
-      assert({
-        given: 'non-zero exit code',
-        should: 'include exit code in cause',
-        actual: err?.cause?.exitCode,
-        expected: 1
-      });
-    }
+    assert({
+      given: 'non-zero exit code',
+      should: 'have AGENT_PROCESS_FAILURE code',
+      actual: err?.cause?.code,
+      expected: 'AGENT_PROCESS_FAILURE'
+    });
+
+    assert({
+      given: 'non-zero exit code',
+      should: 'include exit code in cause',
+      actual: err?.cause?.exitCode,
+      expected: 1
+    });
   });
 
   test('throws TimeoutError when timeout is exceeded', async () => {
@@ -216,54 +209,34 @@ describe('executeAgent()', () => {
     };
     spawn.mockReturnValue(proc);
 
-    try {
-      await executeAgent({
-        agentConfig,
-        prompt: 'test prompt',
-        timeout: 1
-      });
-      assert({
-        given: 'timeout exceeded',
-        should: 'have thrown an error',
-        actual: false,
-        expected: true
-      });
-    } catch (err) {
-      assert({
-        given: 'agent process that exceeds timeout',
-        should: 'throw Error with TimeoutError cause',
-        actual: err?.cause?.name,
-        expected: 'TimeoutError'
-      });
+    const err = await Try(executeAgent, { agentConfig, prompt: 'test prompt', timeout: 1 });
 
-      assert({
-        given: 'timeout exceeded',
-        should: 'have AGENT_TIMEOUT code',
-        actual: err?.cause?.code,
-        expected: 'AGENT_TIMEOUT'
-      });
-    }
+    assert({
+      given: 'agent process that exceeds timeout',
+      should: 'throw Error with TimeoutError cause',
+      actual: err?.cause?.name,
+      expected: 'TimeoutError'
+    });
+
+    assert({
+      given: 'timeout exceeded',
+      should: 'have AGENT_TIMEOUT code',
+      actual: err?.cause?.code,
+      expected: 'AGENT_TIMEOUT'
+    });
   });
 
   test('throws ParseError when stdout is not valid JSON (rawOutput: false)', async () => {
     spawn.mockReturnValue(createMockProcess({ stdout: 'not valid json output' }));
 
-    try {
-      await executeAgent({ agentConfig, prompt: 'test prompt' });
-      assert({
-        given: 'invalid JSON stdout',
-        should: 'have thrown an error',
-        actual: false,
-        expected: true
-      });
-    } catch (err) {
-      assert({
-        given: 'stdout that is not valid JSON',
-        should: 'throw Error with ParseError cause',
-        actual: err?.cause?.name,
-        expected: 'ParseError'
-      });
-    }
+    const err = await Try(executeAgent, { agentConfig, prompt: 'test prompt' });
+
+    assert({
+      given: 'stdout that is not valid JSON',
+      should: 'throw Error with ParseError cause',
+      actual: err?.cause?.name,
+      expected: 'ParseError'
+    });
   });
 
   test('spawns the agent with command, args, and prompt appended', async () => {

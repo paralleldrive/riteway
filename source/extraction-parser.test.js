@@ -59,8 +59,8 @@ describe('parseExtractionResult()', () => {
 
     assert({
       given: 'JSON wrapped in markdown code fences',
-      should: 'extract and parse the JSON object',
-      actual: typeof result === 'object' && result !== null,
+      should: 'parse importPaths as an array',
+      actual: Array.isArray(result.importPaths),
       expected: true
     });
 
@@ -87,8 +87,8 @@ describe('parseExtractionResult()', () => {
     assert({
       given: 'JSON with explanation text and markdown fences',
       should: 'extract and parse the JSON object',
-      actual: typeof result === 'object' && result !== null,
-      expected: true
+      actual: result.userPrompt,
+      expected: 'test prompt'
     });
 
     assert({
@@ -142,9 +142,9 @@ describe('parseExtractionResult()', () => {
 
     assert({
       given: 'non-JSON input',
-      should: 'preserve original parse error as cause',
-      actual: error?.cause?.cause !== undefined,
-      expected: true
+      should: 'preserve original JSON SyntaxError as cause',
+      actual: error?.cause?.cause?.name,
+      expected: 'SyntaxError'
     });
   });
 

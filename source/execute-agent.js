@@ -4,6 +4,8 @@ import { ParseError, TimeoutError, AgentProcessError } from './ai-errors.js';
 import { createDebugLogger } from './debug-logger.js';
 import { unwrapEnvelope, unwrapAgentResult } from './agent-parser.js';
 
+const maxOutputPreviewLength = 500;
+
 const withTimeout = (promise, ms, errorFactory) =>
   Promise.race([
     promise,
@@ -95,7 +97,7 @@ const processAgentOutput = ({ agentConfig, rawOutput, logger }) => ({ stdout }) 
     logger.flush();
     return result;
   } catch (err) {
-    const truncatedStdout = stdout.length > 500 ? `${stdout.slice(0, 500)}...` : stdout;
+    const truncatedStdout = stdout.length > maxOutputPreviewLength ? `${stdout.slice(0, maxOutputPreviewLength)}...` : stdout;
     logger.log('JSON parsing failed:', err.message);
     logger.flush();
 
@@ -131,8 +133,8 @@ const runAgentProcess = async ({ agentConfig, prompt, timeout, logger }) => {
   logger.log(`Stderr length: ${stderr.length} characters`);
 
   if (code !== 0) {
-    const truncatedStdout = stdout.length > 500 ? `${stdout.slice(0, 500)}...` : stdout;
-    const truncatedStderr = stderr.length > 500 ? `${stderr.slice(0, 500)}...` : stderr;
+    const truncatedStdout = stdout.length > maxOutputPreviewLength ? `${stdout.slice(0, maxOutputPreviewLength)}...` : stdout;
+    const truncatedStderr = stderr.length > maxOutputPreviewLength ? `${stderr.slice(0, maxOutputPreviewLength)}...` : stderr;
 
     logger.log('Process failed with non-zero exit code');
     logger.flush();
