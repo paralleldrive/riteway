@@ -6,7 +6,7 @@ export default [
   {
     files: ['**/*.js', '**/*.jsx'],
     languageOptions: {
-      ecmaVersion: 2017,
+      ecmaVersion: 2022,
       sourceType: 'module',
       parserOptions: {
         ecmaFeatures: {
@@ -37,12 +37,13 @@ export default [
     plugins: {
       react
     },
-    rules: Object.assign({}, react.configs.recommended.rules, {
+    rules: {
+      ...react.configs.recommended.rules,
       'indent': ['error', 2],
       'linebreak-style': ['error', 'unix'],
       'quotes': ['error', 'single'],
       'semi': ['error', 'always']
-    }),
+    },
     settings: {
       react: {
         version: 'detect'

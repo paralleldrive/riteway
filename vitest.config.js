@@ -11,7 +11,9 @@ export default defineConfig({
       // Exclude bin/riteway.test.js as it uses Tape instead of Vitest
       '**/bin/riteway.test.js',
       // Exclude bun.test.js as it uses bun:test instead of Vitest
-      '**/bun.test.js'
+      '**/bun.test.js',
+      // Exclude source/e2e.test.js as it uses Riteway/Tape for E2E testing
+      '**/source/e2e.test.js'
     ]
   }
 });
