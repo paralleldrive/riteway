@@ -9,6 +9,7 @@ export const limitConcurrency = async (tasks, limit) => {
   const results = [];
   const executing = [];
 
+  // Sequential launch is required; await throttles entry into the pool
   for (const task of tasks) {
     const promise = task().then(result => {
       executing.splice(executing.indexOf(promise), 1);

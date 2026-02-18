@@ -1,4 +1,4 @@
-import { describe, test } from 'vitest';
+import { describe, test, vi } from 'vitest';
 import { assert } from './vitest.js';
 import { Try } from './riteway.js';
 import { limitConcurrency } from './limit-concurrency.js';
@@ -23,6 +23,7 @@ describe('limit-concurrency', () => {
     });
 
     test('limits concurrent execution to the specified limit', async () => {
+      vi.useFakeTimers();
       let activeConcurrent = 0;
       let maxConcurrent = 0;
 
@@ -34,7 +35,10 @@ describe('limit-concurrency', () => {
       };
 
       const tasks = Array.from({ length: 6 }, makeTask);
-      await limitConcurrency(tasks, 2);
+      const run = limitConcurrency(tasks, 2);
+      await vi.runAllTimersAsync();
+      await run;
+      vi.useRealTimers();
 
       assert({
         given: '6 tasks with a limit of 2',

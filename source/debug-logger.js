@@ -10,11 +10,8 @@ import { appendFileSync } from 'fs';
 export const createDebugLogger = ({ debug = false, logFile } = {}) => {
   const buffer = [];
 
-  const formatMessage = (parts) => {
-    return parts.map(part => 
-      typeof part === 'object' ? JSON.stringify(part) : String(part)
-    ).join(' ');
-  };
+  const formatMessage = (parts) =>
+    parts.map(part => typeof part === 'object' ? JSON.stringify(part) : String(part)).join(' ');
 
   const writeToFile = (message) => {
     if (!logFile) return;

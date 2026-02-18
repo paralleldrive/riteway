@@ -145,6 +145,18 @@ describe('debug-logger', () => {
       });
     });
 
+    test('flush is a no-op when no logFile is configured', () => {
+      const logger = createDebugLogger({ debug: true });
+      logger.log('test message');
+
+      assert({
+        given: 'no logFile configured',
+        should: 'not throw when flush is called',
+        actual: (() => { logger.flush(); return true; })(),
+        expected: true
+      });
+    });
+
     test('default debug value is false', () => {
       const logger = createDebugLogger();
       logger.log('test');
