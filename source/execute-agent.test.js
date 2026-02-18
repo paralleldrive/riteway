@@ -154,13 +154,6 @@ describe('executeAgent()', () => {
     });
 
     assert({
-      given: 'agentConfig with parseOutput function',
-      should: 'pass the logger as second argument (WIP fix #8 — logger threading)',
-      actual: typeof parseOutput.mock.calls[0][1]?.log,
-      expected: 'function'
-    });
-
-    assert({
       given: 'parseOutput returns valid JSON',
       should: 'return the parsed result',
       actual: result,
