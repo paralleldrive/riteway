@@ -223,7 +223,13 @@ describe('aggregatePerAssertionResults()', () => {
 
   test.each([
     ['runs above maximum', { runs: 1001, threshold: 75 }, 'INVALID_AGGREGATION_PARAMS'],
+    ['zero runs', { runs: 0, threshold: 75 }, 'INVALID_AGGREGATION_PARAMS'],
+    ['negative runs', { runs: -1, threshold: 75 }, 'INVALID_AGGREGATION_PARAMS'],
+    ['non-integer runs', { runs: 1.5, threshold: 75 }, 'INVALID_AGGREGATION_PARAMS'],
+    ['NaN runs', { runs: NaN, threshold: 75 }, 'INVALID_AGGREGATION_PARAMS'],
     ['threshold above maximum', { runs: 4, threshold: 150 }, 'INVALID_AGGREGATION_PARAMS'],
+    ['negative threshold', { runs: 4, threshold: -10 }, 'INVALID_AGGREGATION_PARAMS'],
+    ['NaN threshold', { runs: 4, threshold: NaN }, 'INVALID_AGGREGATION_PARAMS'],
   ])('throws ValidationError for %s', (_, { runs, threshold }, expectedCode) => {
     const perAssertionResults = [
       { requirement: 'test', runResults: [{ passed: true }] }

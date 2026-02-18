@@ -1,6 +1,6 @@
 import { createError } from 'error-causes';
 import { ValidationError, ParseError } from './ai-errors.js';
-import { calculateRequiredPassesSchema } from './constants.js';
+import { aggregationParamsSchema } from './constants.js';
 
 /**
  * Normalize a judge response (already parsed from TAP YAML) to ensure consistent
@@ -39,7 +39,7 @@ export const normalizeJudgment = ({ judgeResponse, requirement, runIndex, logger
 export const aggregatePerAssertionResults = ({ perAssertionResults, threshold, runs }) => {
   let validated;
   try {
-    validated = calculateRequiredPassesSchema.parse({ runs, threshold });
+    validated = aggregationParamsSchema.parse({ runs, threshold });
   } catch (zodError) {
     const issues = zodError.issues || [];
     const messages = issues.map(issue =>
