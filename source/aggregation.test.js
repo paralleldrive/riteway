@@ -222,6 +222,41 @@ describe('aggregatePerAssertionResults()', () => {
   });
 
   test.each([
+    ['4 runs, 75% threshold', 4, 75, 3, 3, true],
+    ['4 runs, 75% threshold', 4, 75, 2, 2, false],
+    ['5 runs, 75% threshold', 5, 75, 4, 4, true],
+    ['5 runs, 75% threshold', 5, 75, 3, 3, false],
+    ['10 runs, 80% threshold', 10, 80, 8, 8, true],
+    ['4 runs, 80% threshold', 4, 80, 4, 4, true],
+    ['4 runs, 80% threshold', 4, 80, 3, 3, false],
+  ])('applies threshold correctly: %s with %i passes', (_, runs, threshold, passCount, totalPasses, expectedPass) => {
+    const runResults = [
+      ...Array(passCount).fill({ passed: true, score: 100 }),
+      ...Array(runs - passCount).fill({ passed: false, score: 0 })
+    ];
+
+    const result = aggregatePerAssertionResults({
+      perAssertionResults: [{ requirement: 'test assertion', runResults }],
+      threshold,
+      runs
+    });
+
+    assert({
+      given: `${_} with ${passCount} of ${runs} passes`,
+      should: expectedPass ? 'pass the assertion' : 'fail the assertion',
+      actual: result.assertions[0].passed,
+      expected: expectedPass
+    });
+
+    assert({
+      given: `${_} with ${passCount} passes`,
+      should: `report passCount of ${totalPasses}`,
+      actual: result.assertions[0].passCount,
+      expected: totalPasses
+    });
+  });
+
+  test.each([
     ['runs above maximum', { runs: 1001, threshold: 75 }, 'INVALID_AGGREGATION_PARAMS'],
     ['zero runs', { runs: 0, threshold: 75 }, 'INVALID_AGGREGATION_PARAMS'],
     ['negative runs', { runs: -1, threshold: 75 }, 'INVALID_AGGREGATION_PARAMS'],
@@ -239,14 +274,14 @@ describe('aggregatePerAssertionResults()', () => {
 
     assert({
       given: _,
-      should: 'throw validation error',
-      actual: error instanceof Error,
-      expected: true
+      should: 'have ValidationError name in cause',
+      actual: error?.cause?.name,
+      expected: 'ValidationError'
     });
 
     assert({
       given: _,
-      should: 'have correct error code',
+      should: 'have correct error code in cause',
       actual: error?.cause?.code,
       expected: expectedCode
     });

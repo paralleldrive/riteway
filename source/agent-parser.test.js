@@ -261,13 +261,6 @@ describe('parseOpenCodeNDJSON()', () => {
 
     assert({
       given: 'NDJSON with no text events',
-      should: 'throw Error with cause',
-      actual: error instanceof Error && error.cause !== undefined,
-      expected: true
-    });
-
-    assert({
-      given: 'NDJSON with no text events',
       should: 'have ParseError name in cause',
       actual: error?.cause?.name,
       expected: 'ParseError'
