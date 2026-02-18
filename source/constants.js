@@ -47,7 +47,7 @@ export const agentSchema = z.enum(constraints.supportedAgents, {
   message: `agent must be one of: ${constraints.supportedAgents.join(', ')}`
 });
 
-export const calculateRequiredPassesSchema = z.object({
+export const aggregationParamsSchema = z.object({
   runs: runsSchema,
   threshold: thresholdSchema
 });
