@@ -26,8 +26,8 @@ describe('parseStringResult()', () => {
     assert({
       given: 'JSON string starting with {',
       should: 'parse as JSON object',
-      actual: JSON.stringify(result),
-      expected: '{"passed":true,"output":"test"}'
+      actual: result,
+      expected: { passed: true, output: 'test' }
     });
 
     assert({
@@ -61,8 +61,8 @@ describe('parseStringResult()', () => {
     assert({
       given: 'markdown-wrapped JSON',
       should: 'extract and parse JSON',
-      actual: JSON.stringify(result),
-      expected: '{"passed":true,"output":"test"}'
+      actual: result,
+      expected: { passed: true, output: 'test' }
     });
 
     assert({
@@ -254,30 +254,15 @@ describe('parseOpenCodeNDJSON()', () => {
 
     assert({
       given: 'NDJSON with no text events',
-      should: 'have ParseError name in cause',
-      actual: error?.cause?.name,
-      expected: 'ParseError'
-    });
-
-    assert({
-      given: 'NDJSON with no text events',
-      should: 'have NO_TEXT_EVENTS code in cause',
-      actual: error?.cause?.code,
-      expected: 'NO_TEXT_EVENTS'
-    });
-
-    assert({
-      given: 'NDJSON with no text events',
-      should: 'include ndjsonLength in cause',
-      actual: error?.cause?.ndjsonLength,
-      expected: ndjson.length
-    });
-
-    assert({
-      given: 'NDJSON with no text events',
-      should: 'include linesProcessed in cause',
-      actual: error?.cause?.linesProcessed,
-      expected: 2
+      should: 'throw Error with full ParseError cause',
+      actual: error?.cause,
+      expected: {
+        name: 'ParseError',
+        code: 'NO_TEXT_EVENTS',
+        message: 'No text events found in OpenCode output',
+        ndjsonLength: ndjson.length,
+        linesProcessed: 2
+      }
     });
   });
 
@@ -362,9 +347,14 @@ describe('unwrapAgentResult()', () => {
 
     assert({
       given: 'plain text that is not valid JSON',
-      should: 'throw Error with ParseError cause',
-      actual: error?.cause?.name,
-      expected: 'ParseError'
+      should: 'throw Error with full ParseError cause',
+      actual: error?.cause,
+      expected: {
+        name: 'ParseError',
+        code: 'PARSE_FAILURE',
+        message: 'Agent output is not valid JSON: plain text response',
+        outputPreview: 'plain text response'
+      }
     });
   });
 
