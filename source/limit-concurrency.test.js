@@ -1,4 +1,4 @@
-import { describe, test, vi } from 'vitest';
+import { describe, test, vi, onTestFinished } from 'vitest';
 import { assert } from './vitest.js';
 import { Try } from './riteway.js';
 import { limitConcurrency } from './limit-concurrency.js';
@@ -24,6 +24,7 @@ describe('limit-concurrency', () => {
 
     test('limits concurrent execution to the specified limit', async () => {
       vi.useFakeTimers();
+      onTestFinished(() => vi.useRealTimers());
       let activeConcurrent = 0;
       let maxConcurrent = 0;
 
@@ -38,7 +39,6 @@ describe('limit-concurrency', () => {
       const run = limitConcurrency(tasks, 2);
       await vi.runAllTimersAsync();
       await run;
-      vi.useRealTimers();
 
       assert({
         given: '6 tasks with a limit of 2',
@@ -94,6 +94,32 @@ describe('limit-concurrency', () => {
         should: 'execute all tasks and return results',
         actual: results,
         expected: ['a', 'b'],
+      });
+    });
+
+    test('throws RangeError for zero limit', async () => {
+      const tasks = [() => Promise.resolve(1)];
+
+      const error = await Try(limitConcurrency, tasks, 0);
+
+      assert({
+        given: 'limit of 0',
+        should: 'throw RangeError',
+        actual: error?.name,
+        expected: 'RangeError',
+      });
+    });
+
+    test('throws RangeError for negative limit', async () => {
+      const tasks = [() => Promise.resolve(1)];
+
+      const error = await Try(limitConcurrency, tasks, -1);
+
+      assert({
+        given: 'negative limit',
+        should: 'throw RangeError',
+        actual: error?.name,
+        expected: 'RangeError',
       });
     });
   });

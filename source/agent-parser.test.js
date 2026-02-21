@@ -47,8 +47,8 @@ describe('parseStringResult()', () => {
     assert({
       given: 'JSON string starting with [',
       should: 'parse as JSON array',
-      actual: result.length,
-      expected: 2
+      actual: result,
+      expected: [{ id: 1 }, { id: 2 }]
     });
   });
 
@@ -82,8 +82,8 @@ describe('parseStringResult()', () => {
     assert({
       given: 'markdown without json tag',
       should: 'extract and parse JSON',
-      actual: result.passed,
-      expected: true
+      actual: result,
+      expected: { passed: true }
     });
   });
 
@@ -96,8 +96,8 @@ describe('parseStringResult()', () => {
     assert({
       given: 'malformed JSON with markdown fallback',
       should: 'extract from markdown block',
-      actual: result.passed,
-      expected: true
+      actual: result,
+      expected: { passed: true }
     });
 
     assert({
@@ -155,13 +155,6 @@ describe('parseStringResult()', () => {
     const input = '  \n  {"passed": true}  \n  ';
 
     const result = parseStringResult(input, logger);
-
-    assert({
-      given: 'JSON with surrounding whitespace',
-      should: 'parse successfully',
-      actual: result.passed,
-      expected: true
-    });
 
     assert({
       given: 'JSON with surrounding whitespace',
@@ -276,8 +269,8 @@ describe('parseOpenCodeNDJSON()', () => {
     assert({
       given: 'NDJSON with no text events',
       should: 'include ndjsonLength in cause',
-      actual: typeof error?.cause?.ndjsonLength === 'number',
-      expected: true
+      actual: error?.cause?.ndjsonLength,
+      expected: ndjson.length
     });
 
     assert({

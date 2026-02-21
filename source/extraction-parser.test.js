@@ -18,37 +18,16 @@ describe('parseExtractionResult()', () => {
 
     assert({
       given: 'valid extraction result',
-      should: 'preserve the userPrompt field',
-      actual: result.userPrompt,
-      expected: 'What is 2 + 2?'
-    });
-
-    assert({
-      given: 'valid extraction result',
-      should: 'preserve the importPaths array',
-      actual: Array.isArray(result.importPaths),
-      expected: true
-    });
-
-    assert({
-      given: 'valid extraction result',
-      should: 'preserve importPaths values',
-      actual: result.importPaths[0],
-      expected: 'test.mdc'
-    });
-
-    assert({
-      given: 'valid extraction result',
-      should: 'preserve assertions array length',
-      actual: result.assertions.length,
-      expected: 2
-    });
-
-    assert({
-      given: 'valid extraction result',
-      should: 'preserve assertion requirement field',
-      actual: result.assertions[0].requirement,
-      expected: 'Given simple addition, should add correctly'
+      should: 'return the parsed extraction object',
+      actual: result,
+      expected: {
+        userPrompt: 'What is 2 + 2?',
+        importPaths: ['test.mdc'],
+        assertions: [
+          { id: 1, requirement: 'Given simple addition, should add correctly' },
+          { id: 2, requirement: 'Given format, should output JSON' }
+        ]
+      }
     });
   });
 
@@ -59,23 +38,13 @@ describe('parseExtractionResult()', () => {
 
     assert({
       given: 'JSON wrapped in markdown code fences',
-      should: 'parse importPaths as an array',
-      actual: Array.isArray(result.importPaths),
-      expected: true
-    });
-
-    assert({
-      given: 'JSON wrapped in markdown code fences',
-      should: 'preserve the userPrompt field',
-      actual: result.userPrompt,
-      expected: 'test prompt'
-    });
-
-    assert({
-      given: 'JSON wrapped in markdown code fences',
-      should: 'preserve assertions array',
-      actual: result.assertions[0].requirement,
-      expected: 'Given test, should pass'
+      should: 'extract and parse the JSON object',
+      actual: result,
+      expected: {
+        userPrompt: 'test prompt',
+        importPaths: [],
+        assertions: [{ id: 1, requirement: 'Given test, should pass' }]
+      }
     });
   });
 
@@ -87,15 +56,12 @@ describe('parseExtractionResult()', () => {
     assert({
       given: 'JSON with explanation text and markdown fences',
       should: 'extract and parse the JSON object',
-      actual: result.userPrompt,
-      expected: 'test prompt'
-    });
-
-    assert({
-      given: 'JSON with explanation text and markdown fences',
-      should: 'return the parsed content',
-      actual: result.assertions[0].requirement,
-      expected: 'Given test, should pass'
+      actual: result,
+      expected: {
+        userPrompt: 'test prompt',
+        importPaths: [],
+        assertions: [{ id: 1, requirement: 'Given test, should pass' }]
+      }
     });
   });
 
@@ -111,15 +77,12 @@ describe('parseExtractionResult()', () => {
     assert({
       given: 'an already-parsed object instead of a JSON string',
       should: 'validate and return the object directly',
-      actual: result.userPrompt,
-      expected: 'test prompt'
-    });
-
-    assert({
-      given: 'an already-parsed object',
-      should: 'preserve the assertions',
-      actual: result.assertions[0].requirement,
-      expected: 'Given a test, should pass'
+      actual: result,
+      expected: {
+        userPrompt: 'test prompt',
+        importPaths: [],
+        assertions: [{ id: 1, requirement: 'Given a test, should pass' }]
+      }
     });
   });
 

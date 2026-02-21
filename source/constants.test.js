@@ -1,7 +1,6 @@
 import { describe, test } from 'vitest';
 import { assert } from './vitest.js';
 import { 
-  defaults, 
   constraints,
   runsSchema, 
   thresholdSchema,
@@ -13,49 +12,6 @@ import {
 } from './constants.js';
 
 describe('constants module', () => {
-  describe('defaults', () => {
-    test('exports standard test configuration', () => {
-      assert({
-        given: 'defaults export',
-        should: 'contain runs value',
-        actual: defaults.runs,
-        expected: 4
-      });
-
-      assert({
-        given: 'defaults export',
-        should: 'contain threshold value',
-        actual: defaults.threshold,
-        expected: 75
-      });
-
-      assert({
-        given: 'defaults export',
-        should: 'contain timeout in milliseconds',
-        actual: defaults.timeoutMs,
-        expected: 300_000
-      });
-    });
-  });
-
-  describe('constraints', () => {
-    test('defines validation boundaries', () => {
-      assert({
-        given: 'constraints export',
-        should: 'define threshold min/max',
-        actual: [constraints.thresholdMin, constraints.thresholdMax],
-        expected: [0, 100]
-      });
-
-      assert({
-        given: 'constraints export',
-        should: 'list supported agents',
-        actual: constraints.supportedAgents,
-        expected: ['claude', 'opencode', 'cursor']
-      });
-    });
-  });
-
   describe('runsSchema', () => {
     test('accepts positive integers', () => {
       const result = runsSchema.safeParse(5);
@@ -398,21 +354,21 @@ describe('constants module', () => {
         given: 'minimal options with only filePath',
         should: 'apply default runs',
         actual: result.data?.runs,
-        expected: defaults.runs
+        expected: 4
       });
 
       assert({
         given: 'minimal options with only filePath',
         should: 'apply default threshold',
         actual: result.data?.threshold,
-        expected: defaults.threshold
+        expected: 75
       });
 
       assert({
         given: 'minimal options with only filePath',
         should: 'apply default agent',
         actual: result.data?.agent,
-        expected: defaults.agent
+        expected: 'claude'
       });
     });
 
