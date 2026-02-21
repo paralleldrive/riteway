@@ -17,30 +17,14 @@ score: 100
 
       assert({
         given: 'TAP YAML with passed: true',
-        should: 'parse passed as boolean true',
-        actual: result.passed,
-        expected: true
-      });
-
-      assert({
-        given: 'TAP YAML with passed: true',
-        should: 'parse actual field',
-        actual: result.actual,
-        expected: 'the result was correct'
-      });
-
-      assert({
-        given: 'TAP YAML with passed: true',
-        should: 'parse expected field',
-        actual: result.expected,
-        expected: 'a correct result'
-      });
-
-      assert({
-        given: 'TAP YAML with passed: true',
-        should: 'parse score as number',
-        actual: result.score,
-        expected: 100
+        should: 'parse all fields correctly',
+        actual: result,
+        expected: {
+          passed: true,
+          actual: 'the result was correct',
+          expected: 'a correct result',
+          score: 100
+        }
       });
     });
 
@@ -56,16 +40,14 @@ score: 20
 
       assert({
         given: 'TAP YAML with passed: false',
-        should: 'parse passed as boolean false',
-        actual: result.passed,
-        expected: false
-      });
-
-      assert({
-        given: 'TAP YAML with passed: false',
-        should: 'parse score as number',
-        actual: result.score,
-        expected: 20
+        should: 'parse all fields correctly',
+        actual: result,
+        expected: {
+          passed: false,
+          actual: 'incorrect output',
+          expected: 'correct output',
+          score: 20
+        }
       });
     });
 
@@ -89,16 +71,26 @@ score: 90
 
       assert({
         given: 'quoted string values',
-        should: 'strip quotes from actual',
-        actual: resultQuoted.actual,
-        expected: 'quoted value'
+        should: 'strip quotes from all fields',
+        actual: resultQuoted,
+        expected: {
+          passed: true,
+          actual: 'quoted value',
+          expected: 'another quoted',
+          score: 90
+        }
       });
 
       assert({
         given: 'unquoted string values',
-        should: 'parse unquoted actual',
-        actual: resultUnquoted.actual,
-        expected: 'unquoted value'
+        should: 'parse all fields without alteration',
+        actual: resultUnquoted,
+        expected: {
+          passed: true,
+          actual: 'unquoted value',
+          expected: 'another unquoted',
+          score: 90
+        }
       });
     });
 
@@ -109,23 +101,14 @@ score: 90
 
       assert({
         given: 'input without --- markers',
-        should: 'throw error',
-        actual: error !== undefined,
-        expected: true
-      });
-
-      assert({
-        given: 'input without --- markers',
-        should: 'have ParseError cause name',
-        actual: error?.cause?.name,
-        expected: 'ParseError'
-      });
-
-      assert({
-        given: 'input without --- markers',
-        should: 'have JUDGE_INVALID_TAP_YAML code',
-        actual: error?.cause?.code,
-        expected: 'JUDGE_INVALID_TAP_YAML'
+        should: 'throw with ParseError cause with all fields',
+        actual: error?.cause,
+        expected: {
+          name: 'ParseError',
+          code: 'JUDGE_INVALID_TAP_YAML',
+          message: 'Judge output does not contain a valid TAP YAML block (--- delimited)',
+          rawOutput: invalidInput
+        }
       });
     });
 
@@ -141,16 +124,14 @@ score: 85
 
       assert({
         given: 'score field with numeric value',
-        should: 'parse score as number type',
-        actual: typeof result.score === 'number',
-        expected: true
-      });
-
-      assert({
-        given: 'score field with numeric value',
-        should: 'parse correct score value',
-        actual: result.score,
-        expected: 85
+        should: 'parse all fields including score as a number',
+        actual: result,
+        expected: {
+          passed: true,
+          actual: 'result',
+          expected: 'something',
+          score: 85
+        }
       });
     });
 
@@ -163,31 +144,13 @@ score: 75
       const result = parseTAPYAML(input);
 
       assert({
-        given: 'YAML block missing actual and expected fields',
-        should: 'parse passed field correctly',
-        actual: result.passed,
-        expected: true
-      });
-
-      assert({
-        given: 'YAML block missing actual and expected fields',
-        should: 'parse score field correctly',
-        actual: result.score,
-        expected: 75
-      });
-
-      assert({
-        given: 'YAML block missing actual field',
-        should: 'not include actual in result',
-        actual: result.actual,
-        expected: undefined
-      });
-
-      assert({
-        given: 'YAML block missing expected field',
-        should: 'not include expected in result',
-        actual: result.expected,
-        expected: undefined
+        given: 'YAML block with only passed and score fields',
+        should: 'return only the present fields without actual or expected',
+        actual: result,
+        expected: {
+          passed: true,
+          score: 75
+        }
       });
     });
   });

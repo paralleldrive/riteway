@@ -169,26 +169,22 @@ describe('executeAgent()', () => {
     }));
 
     const err = await Try(executeAgent, { agentConfig, prompt: 'test prompt' });
+    const args = '-p --output-format json --no-session-persistence';
 
     assert({
       given: 'non-zero exit code from agent process',
-      should: 'throw Error with AgentProcessError cause',
-      actual: err?.cause?.name,
-      expected: 'AgentProcessError'
-    });
-
-    assert({
-      given: 'non-zero exit code',
-      should: 'have AGENT_PROCESS_FAILURE code',
-      actual: err?.cause?.code,
-      expected: 'AGENT_PROCESS_FAILURE'
-    });
-
-    assert({
-      given: 'non-zero exit code',
-      should: 'include exit code in cause',
-      actual: err?.cause?.exitCode,
-      expected: 1
+      should: 'throw with AgentProcessError cause including all fields',
+      actual: err?.cause,
+      expected: {
+        name: 'AgentProcessError',
+        code: 'AGENT_PROCESS_FAILURE',
+        message: `Agent process exited with code 1\nCommand: claude ${args}\nStderr: Permission denied\nStdout preview: `,
+        command: 'claude',
+        args,
+        exitCode: 1,
+        stderr: 'Permission denied',
+        stdoutPreview: ''
+      }
     });
   });
 
@@ -203,19 +199,20 @@ describe('executeAgent()', () => {
     spawn.mockReturnValue(proc);
 
     const err = await Try(executeAgent, { agentConfig, prompt: 'test prompt', timeout: 1 });
+    const args = '-p --output-format json --no-session-persistence';
 
     assert({
       given: 'agent process that exceeds timeout',
-      should: 'throw Error with TimeoutError cause',
-      actual: err?.cause?.name,
-      expected: 'TimeoutError'
-    });
-
-    assert({
-      given: 'timeout exceeded',
-      should: 'have AGENT_TIMEOUT code',
-      actual: err?.cause?.code,
-      expected: 'AGENT_TIMEOUT'
+      should: 'throw with TimeoutError cause including all fields',
+      actual: err?.cause,
+      expected: {
+        name: 'TimeoutError',
+        code: 'AGENT_TIMEOUT',
+        message: `Agent process timed out after 1ms. Command: claude ${args}`,
+        command: 'claude',
+        args,
+        timeout: 1
+      }
     });
   });
 
@@ -223,12 +220,23 @@ describe('executeAgent()', () => {
     spawn.mockReturnValue(createMockProcess({ stdout: 'not valid json output' }));
 
     const err = await Try(executeAgent, { agentConfig, prompt: 'test prompt' });
+    const args = '-p --output-format json --no-session-persistence';
 
     assert({
       given: 'stdout that is not valid JSON',
-      should: 'throw Error with ParseError cause',
-      actual: err?.cause?.name,
-      expected: 'ParseError'
+      should: 'throw with ParseError cause including all fields',
+      // 3-deep chain: processAgentOutput wraps unwrapAgentResult's ParseError,
+      // so err.cause.cause is a standard Error and err.cause.cause.cause is the inner plain cause
+      actual: { ...err?.cause, cause: err?.cause?.cause?.cause?.name },
+      expected: {
+        name: 'ParseError',
+        code: 'AGENT_OUTPUT_PARSE_ERROR',
+        message: 'Failed to parse agent output as JSON: Agent output is not valid JSON: not valid json output',
+        command: 'claude',
+        args,
+        stdoutPreview: 'not valid json output',
+        cause: 'ParseError'
+      }
     });
   });
 
