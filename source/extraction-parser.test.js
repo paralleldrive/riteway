@@ -18,37 +18,16 @@ describe('parseExtractionResult()', () => {
 
     assert({
       given: 'valid extraction result',
-      should: 'preserve the userPrompt field',
-      actual: result.userPrompt,
-      expected: 'What is 2 + 2?'
-    });
-
-    assert({
-      given: 'valid extraction result',
-      should: 'preserve the importPaths array',
-      actual: Array.isArray(result.importPaths),
-      expected: true
-    });
-
-    assert({
-      given: 'valid extraction result',
-      should: 'preserve importPaths values',
-      actual: result.importPaths[0],
-      expected: 'test.mdc'
-    });
-
-    assert({
-      given: 'valid extraction result',
-      should: 'preserve assertions array length',
-      actual: result.assertions.length,
-      expected: 2
-    });
-
-    assert({
-      given: 'valid extraction result',
-      should: 'preserve assertion requirement field',
-      actual: result.assertions[0].requirement,
-      expected: 'Given simple addition, should add correctly'
+      should: 'return the parsed extraction object',
+      actual: result,
+      expected: {
+        userPrompt: 'What is 2 + 2?',
+        importPaths: ['test.mdc'],
+        assertions: [
+          { id: 1, requirement: 'Given simple addition, should add correctly' },
+          { id: 2, requirement: 'Given format, should output JSON' }
+        ]
+      }
     });
   });
 
@@ -59,23 +38,13 @@ describe('parseExtractionResult()', () => {
 
     assert({
       given: 'JSON wrapped in markdown code fences',
-      should: 'parse importPaths as an array',
-      actual: Array.isArray(result.importPaths),
-      expected: true
-    });
-
-    assert({
-      given: 'JSON wrapped in markdown code fences',
-      should: 'preserve the userPrompt field',
-      actual: result.userPrompt,
-      expected: 'test prompt'
-    });
-
-    assert({
-      given: 'JSON wrapped in markdown code fences',
-      should: 'preserve assertions array',
-      actual: result.assertions[0].requirement,
-      expected: 'Given test, should pass'
+      should: 'extract and parse the JSON object',
+      actual: result,
+      expected: {
+        userPrompt: 'test prompt',
+        importPaths: [],
+        assertions: [{ id: 1, requirement: 'Given test, should pass' }]
+      }
     });
   });
 
@@ -87,15 +56,12 @@ describe('parseExtractionResult()', () => {
     assert({
       given: 'JSON with explanation text and markdown fences',
       should: 'extract and parse the JSON object',
-      actual: result.userPrompt,
-      expected: 'test prompt'
-    });
-
-    assert({
-      given: 'JSON with explanation text and markdown fences',
-      should: 'return the parsed content',
-      actual: result.assertions[0].requirement,
-      expected: 'Given test, should pass'
+      actual: result,
+      expected: {
+        userPrompt: 'test prompt',
+        importPaths: [],
+        assertions: [{ id: 1, requirement: 'Given test, should pass' }]
+      }
     });
   });
 
@@ -111,15 +77,12 @@ describe('parseExtractionResult()', () => {
     assert({
       given: 'an already-parsed object instead of a JSON string',
       should: 'validate and return the object directly',
-      actual: result.userPrompt,
-      expected: 'test prompt'
-    });
-
-    assert({
-      given: 'an already-parsed object',
-      should: 'preserve the assertions',
-      actual: result.assertions[0].requirement,
-      expected: 'Given a test, should pass'
+      actual: result,
+      expected: {
+        userPrompt: 'test prompt',
+        importPaths: [],
+        assertions: [{ id: 1, requirement: 'Given a test, should pass' }]
+      }
     });
   });
 
@@ -128,41 +91,33 @@ describe('parseExtractionResult()', () => {
 
     assert({
       given: 'non-JSON input',
-      should: 'throw ExtractionParseError cause',
-      actual: error?.cause?.name,
-      expected: 'ExtractionParseError'
-    });
-
-    assert({
-      given: 'non-JSON input',
-      should: 'have EXTRACTION_PARSE_FAILURE code',
-      actual: error?.cause?.code,
-      expected: 'EXTRACTION_PARSE_FAILURE'
-    });
-
-    assert({
-      given: 'non-JSON input',
-      should: 'preserve original JSON SyntaxError as cause',
-      actual: error?.cause?.cause?.name,
-      expected: 'SyntaxError'
+      should: 'throw ExtractionParseError cause with all fields including nested SyntaxError',
+      // SyntaxError sets .name as an own property, so .name suffices (unlike ZodError)
+      actual: { ...error?.cause, cause: error?.cause?.cause?.name },
+      expected: {
+        name: 'ExtractionParseError',
+        code: 'EXTRACTION_PARSE_FAILURE',
+        message: 'Failed to parse extraction result',
+        rawInput: 'This is not JSON at all',
+        cause: 'SyntaxError'
+      }
     });
   });
 
   test('throws ExtractionValidationError when result has wrong structure', () => {
-    const error = Try(parseExtractionResult, JSON.stringify({ id: 1, description: 'test', prompt: 'test' }));
+    const rawOutput = JSON.stringify({ id: 1, description: 'test', prompt: 'test' });
+    const error = Try(parseExtractionResult, rawOutput);
 
     assert({
       given: 'extraction result with invalid structure',
-      should: 'throw ExtractionValidationError cause',
-      actual: error?.cause?.name,
-      expected: 'ExtractionValidationError'
-    });
-
-    assert({
-      given: 'extraction result with invalid structure',
-      should: 'have EXTRACTION_VALIDATION_FAILURE code',
-      actual: error?.cause?.code,
-      expected: 'EXTRACTION_VALIDATION_FAILURE'
+      should: 'throw ExtractionValidationError cause with all fields',
+      actual: error?.cause,
+      expected: {
+        name: 'ExtractionValidationError',
+        code: 'EXTRACTION_VALIDATION_FAILURE',
+        message: 'Extraction result is missing required field: userPrompt',
+        rawOutput
+      }
     });
   });
 
@@ -170,26 +125,35 @@ describe('parseExtractionResult()', () => {
     [
       'missing importPaths',
       { userPrompt: 'test', assertions: [] },
-      'importPaths'
+      'importPaths',
+      'Extraction result is missing required field: importPaths (must be an array)'
     ],
     [
       'missing userPrompt',
       { importPaths: [], assertions: [] },
-      'userPrompt'
+      'userPrompt',
+      'Extraction result is missing required field: userPrompt'
     ],
     [
       'missing assertions',
       { userPrompt: 'test', importPaths: [] },
-      'assertions'
+      'assertions',
+      'Extraction result is missing required field: assertions (must be an array)'
     ],
-  ])('throws when %s is missing', (_, input, missingField) => {
-    const error = Try(parseExtractionResult, JSON.stringify(input));
+  ])('throws when %s is missing', (_, input, missingField, expectedCauseMessage) => {
+    const rawOutput = JSON.stringify(input);
+    const error = Try(parseExtractionResult, rawOutput);
 
     assert({
       given: `extraction result missing ${missingField}`,
-      should: 'throw ExtractionValidationError',
-      actual: error?.cause?.name,
-      expected: 'ExtractionValidationError'
+      should: 'throw ExtractionValidationError cause with all fields',
+      actual: error?.cause,
+      expected: {
+        name: 'ExtractionValidationError',
+        code: 'EXTRACTION_VALIDATION_FAILURE',
+        message: expectedCauseMessage,
+        rawOutput
+      }
     });
 
     assert({
@@ -201,19 +165,26 @@ describe('parseExtractionResult()', () => {
   });
 
   test('throws when assertion is missing required field', () => {
-    const missingAssertionFields = JSON.stringify({
+    const rawOutput = JSON.stringify({
       userPrompt: 'test',
       importPaths: [],
       assertions: [{ id: 1 }]
     });
 
-    const error = Try(parseExtractionResult, missingAssertionFields);
+    const error = Try(parseExtractionResult, rawOutput);
 
     assert({
       given: 'assertion missing the requirement field',
-      should: 'throw ExtractionValidationError',
-      actual: error?.cause?.name,
-      expected: 'ExtractionValidationError'
+      should: 'throw ExtractionValidationError cause with all fields',
+      actual: error?.cause,
+      expected: {
+        name: 'ExtractionValidationError',
+        code: 'EXTRACTION_VALIDATION_FAILURE',
+        message: 'Assertion at index 0 is missing required field: requirement',
+        assertionIndex: 0,
+        missingField: 'requirement',
+        rawOutput
+      }
     });
 
     assert({

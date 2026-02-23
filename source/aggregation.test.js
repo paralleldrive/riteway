@@ -8,21 +8,17 @@ import {
 
 describe('aggregatePerAssertionResults()', () => {
   test('aggregates per-assertion results when all assertions pass', () => {
+    const runResultsA = [
+      { passed: true, output: 'ok' },
+      { passed: true, output: 'ok' }
+    ];
+    const runResultsB = [
+      { passed: true, output: 'ok' },
+      { passed: true, output: 'ok' }
+    ];
     const perAssertionResults = [
-      {
-        requirement: 'Given simple addition, should add correctly',
-        runResults: [
-          { passed: true, output: 'ok' },
-          { passed: true, output: 'ok' }
-        ]
-      },
-      {
-        requirement: 'Given format, should output JSON',
-        runResults: [
-          { passed: true, output: 'ok' },
-          { passed: true, output: 'ok' }
-        ]
-      }
+      { requirement: 'Given simple addition, should add correctly', runResults: runResultsA },
+      { requirement: 'Given format, should output JSON', runResults: runResultsB }
     ];
 
     const result = aggregatePerAssertionResults({
@@ -32,57 +28,45 @@ describe('aggregatePerAssertionResults()', () => {
     });
 
     assert({
-      given: 'all assertions meeting threshold',
-      should: 'return passed: true',
-      actual: result.passed,
-      expected: true
-    });
-
-    assert({
-      given: 'two assertions',
-      should: 'return assertions array of length 2',
-      actual: result.assertions.length,
-      expected: 2
-    });
-
-    assert({
-      given: 'first assertion with all passes',
-      should: 'mark the assertion as passed',
-      actual: result.assertions[0].passed,
-      expected: true
-    });
-
-    assert({
-      given: 'first assertion with 2 passes',
-      should: 'report passCount 2',
-      actual: result.assertions[0].passCount,
-      expected: 2
-    });
-
-    assert({
-      given: 'first assertion requirement',
-      should: 'preserve the requirement',
-      actual: result.assertions[0].requirement,
-      expected: 'Given simple addition, should add correctly'
+      given: 'two assertions both meeting threshold',
+      should: 'return full aggregated result with all assertions passed',
+      actual: result,
+      expected: {
+        passed: true,
+        assertions: [
+          {
+            requirement: 'Given simple addition, should add correctly',
+            passed: true,
+            passCount: 2,
+            totalRuns: 2,
+            averageScore: 0,
+            runResults: runResultsA
+          },
+          {
+            requirement: 'Given format, should output JSON',
+            passed: true,
+            passCount: 2,
+            totalRuns: 2,
+            averageScore: 0,
+            runResults: runResultsB
+          }
+        ]
+      }
     });
   });
 
   test('fails when any assertion does not meet threshold', () => {
+    const runResultsA = [
+      { passed: true, output: 'ok' },
+      { passed: true, output: 'ok' }
+    ];
+    const runResultsB = [
+      { passed: false, output: 'fail' },
+      { passed: false, output: 'fail' }
+    ];
     const perAssertionResults = [
-      {
-        requirement: 'Given addition, should add correctly',
-        runResults: [
-          { passed: true, output: 'ok' },
-          { passed: true, output: 'ok' }
-        ]
-      },
-      {
-        requirement: 'Given format, should output JSON',
-        runResults: [
-          { passed: false, output: 'fail' },
-          { passed: false, output: 'fail' }
-        ]
-      }
+      { requirement: 'Given addition, should add correctly', runResults: runResultsA },
+      { requirement: 'Given format, should output JSON', runResults: runResultsB }
     ];
 
     const result = aggregatePerAssertionResults({
@@ -92,31 +76,30 @@ describe('aggregatePerAssertionResults()', () => {
     });
 
     assert({
-      given: 'one assertion failing threshold',
-      should: 'return passed: false',
-      actual: result.passed,
-      expected: false
-    });
-
-    assert({
-      given: 'the passing assertion',
-      should: 'mark it as passed',
-      actual: result.assertions[0].passed,
-      expected: true
-    });
-
-    assert({
-      given: 'the failing assertion',
-      should: 'mark it as failed',
-      actual: result.assertions[1].passed,
-      expected: false
-    });
-
-    assert({
-      given: 'the failing assertion',
-      should: 'have passCount 0',
-      actual: result.assertions[1].passCount,
-      expected: 0
+      given: 'one assertion meeting threshold and one failing',
+      should: 'return full result with overall passed: false and correct per-assertion states',
+      actual: result,
+      expected: {
+        passed: false,
+        assertions: [
+          {
+            requirement: 'Given addition, should add correctly',
+            passed: true,
+            passCount: 2,
+            totalRuns: 2,
+            averageScore: 0,
+            runResults: runResultsA
+          },
+          {
+            requirement: 'Given format, should output JSON',
+            passed: false,
+            passCount: 0,
+            totalRuns: 2,
+            averageScore: 0,
+            runResults: runResultsB
+          }
+        ]
+      }
     });
   });
 
@@ -134,17 +117,20 @@ describe('aggregatePerAssertionResults()', () => {
     });
 
     assert({
-      given: 'per-assertion run results',
-      should: 'include run results in the assertion',
-      actual: result.assertions[0].runResults,
-      expected: runResults
-    });
-
-    assert({
-      given: 'per-assertion run results',
-      should: 'include totalRuns per assertion',
-      actual: result.assertions[0].totalRuns,
-      expected: 2
+      given: 'per-assertion run results with 1 of 2 passes at 50% threshold',
+      should: 'return full result preserving run results and totalRuns',
+      actual: result,
+      expected: {
+        passed: true,
+        assertions: [{
+          requirement: 'test assertion',
+          passed: true,
+          passCount: 1,
+          totalRuns: 2,
+          averageScore: 0,
+          runResults
+        }]
+      }
     });
   });
 
@@ -208,16 +194,9 @@ describe('aggregatePerAssertionResults()', () => {
 
     assert({
       given: 'empty perAssertionResults array',
-      should: 'return passed: true (all zero assertions meet threshold)',
-      actual: result.passed,
-      expected: true
-    });
-
-    assert({
-      given: 'empty perAssertionResults array',
-      should: 'return empty assertions array',
-      actual: result.assertions,
-      expected: []
+      should: 'return passed: true with empty assertions (vacuous truth)',
+      actual: result,
+      expected: { passed: true, assertions: [] }
     });
   });
 
@@ -241,31 +220,36 @@ describe('aggregatePerAssertionResults()', () => {
       runs
     });
 
-    assert({
-      given: `${_} with ${passCount} of ${runs} passes`,
-      should: expectedPass ? 'pass the assertion' : 'fail the assertion',
-      actual: result.assertions[0].passed,
-      expected: expectedPass
-    });
+    const averageScore = Math.round((passCount * 100 / runs) * 100) / 100;
 
     assert({
-      given: `${_} with ${passCount} passes`,
-      should: `report passCount of ${totalPasses}`,
-      actual: result.assertions[0].passCount,
-      expected: totalPasses
+      given: `${_} with ${passCount} of ${runs} passes`,
+      should: expectedPass ? 'pass the assertion with correct counts and score' : 'fail the assertion with correct counts and score',
+      actual: result,
+      expected: {
+        passed: expectedPass,
+        assertions: [{
+          requirement: 'test assertion',
+          passed: expectedPass,
+          passCount: totalPasses,
+          totalRuns: runs,
+          averageScore,
+          runResults
+        }]
+      }
     });
   });
 
   test.each([
-    ['runs above maximum', { runs: 1001, threshold: 75 }, 'INVALID_AGGREGATION_PARAMS'],
-    ['zero runs', { runs: 0, threshold: 75 }, 'INVALID_AGGREGATION_PARAMS'],
-    ['negative runs', { runs: -1, threshold: 75 }, 'INVALID_AGGREGATION_PARAMS'],
-    ['non-integer runs', { runs: 1.5, threshold: 75 }, 'INVALID_AGGREGATION_PARAMS'],
-    ['NaN runs', { runs: NaN, threshold: 75 }, 'INVALID_AGGREGATION_PARAMS'],
-    ['threshold above maximum', { runs: 4, threshold: 150 }, 'INVALID_AGGREGATION_PARAMS'],
-    ['negative threshold', { runs: 4, threshold: -10 }, 'INVALID_AGGREGATION_PARAMS'],
-    ['NaN threshold', { runs: 4, threshold: NaN }, 'INVALID_AGGREGATION_PARAMS'],
-  ])('throws ValidationError for %s', (_, { runs, threshold }, expectedCode) => {
+    ['runs above maximum', { runs: 1001, threshold: 75 }, 'runs: runs must be at most 1000'],
+    ['zero runs', { runs: 0, threshold: 75 }, 'runs: runs must be at least 1'],
+    ['negative runs', { runs: -1, threshold: 75 }, 'runs: runs must be at least 1'],
+    ['non-integer runs', { runs: 1.5, threshold: 75 }, 'runs: runs must be an integer'],
+    ['NaN runs', { runs: NaN, threshold: 75 }, 'runs: Invalid input: expected number, received NaN'],
+    ['threshold above maximum', { runs: 4, threshold: 150 }, 'threshold: threshold must be at most 100'],
+    ['negative threshold', { runs: 4, threshold: -10 }, 'threshold: threshold must be at least 0'],
+    ['NaN threshold', { runs: 4, threshold: NaN }, 'threshold: Invalid input: expected number, received NaN'],
+  ])('throws ValidationError for %s', (_, { runs, threshold }, zodMessages) => {
     const perAssertionResults = [
       { requirement: 'test', runResults: [{ passed: true }] }
     ];
@@ -274,16 +258,17 @@ describe('aggregatePerAssertionResults()', () => {
 
     assert({
       given: _,
-      should: 'have ValidationError name in cause',
-      actual: error?.cause?.name,
-      expected: 'ValidationError'
-    });
-
-    assert({
-      given: _,
-      should: 'have correct error code in cause',
-      actual: error?.cause?.code,
-      expected: expectedCode
+      should: 'throw ValidationError cause with all fields',
+      // ZodError doesn't set .name as an own property, so use .constructor.name
+      actual: { ...error?.cause, cause: error?.cause?.cause?.constructor?.name },
+      expected: {
+        name: 'ValidationError',
+        code: 'INVALID_AGGREGATION_PARAMS',
+        message: `Invalid parameters for aggregatePerAssertionResults: ${zodMessages}`,
+        runs,
+        threshold,
+        cause: 'ZodError'
+      }
     });
   });
 });
@@ -298,31 +283,15 @@ describe('normalizeJudgment()', () => {
     const result = normalizeJudgment({ judgeResponse, requirement: 'test assertion', runIndex: 0, logger });
 
     assert({
-      given: 'complete valid judgment with passed: true',
-      should: 'preserve passed as true',
-      actual: result.passed,
-      expected: true
-    });
-
-    assert({
       given: 'complete valid judgment',
-      should: 'preserve actual value',
-      actual: result.actual,
-      expected: 'Result from agent'
-    });
-
-    assert({
-      given: 'complete valid judgment',
-      should: 'preserve expected value',
-      actual: result.expected,
-      expected: 'Expected output'
-    });
-
-    assert({
-      given: 'complete valid judgment with score 85',
-      should: 'preserve score value',
-      actual: result.score,
-      expected: 85
+      should: 'return the full normalized result unchanged',
+      actual: result,
+      expected: {
+        passed: true,
+        actual: 'Result from agent',
+        expected: 'Expected output',
+        score: 85
+      }
     });
   });
 
@@ -353,17 +322,15 @@ describe('normalizeJudgment()', () => {
     });
 
     assert({
-      given: 'judgment missing actual',
-      should: 'default actual to "No actual provided"',
-      actual: result.actual,
-      expected: 'No actual provided'
-    });
-
-    assert({
-      given: 'judgment missing expected',
-      should: 'default expected to "No expected provided"',
-      actual: result.expected,
-      expected: 'No expected provided'
+      given: 'judgment missing actual and expected fields',
+      should: 'return full result with default placeholder strings',
+      actual: result,
+      expected: {
+        passed: true,
+        actual: 'No actual provided',
+        expected: 'No expected provided',
+        score: 100
+      }
     });
 
     assert({
@@ -422,42 +389,17 @@ describe('normalizeJudgment()', () => {
 
     assert({
       given: _,
-      should: 'have ParseError name in cause',
-      actual: error?.cause?.name,
-      expected: 'ParseError'
-    });
-
-    assert({
-      given: _,
-      should: 'have JUDGE_INVALID_RESPONSE code in cause',
-      actual: error?.cause?.code,
-      expected: 'JUDGE_INVALID_RESPONSE'
-    });
-  });
-
-  test('includes requirement and runIndex in ParseError cause', () => {
-    const logger = createMockLogger();
-    const error = Try(normalizeJudgment, { judgeResponse: null, requirement: 'test assertion', runIndex: 1, logger });
-
-    assert({
-      given: 'null input',
-      should: 'include requirement in cause',
-      actual: error?.cause?.requirement,
-      expected: 'test assertion'
-    });
-
-    assert({
-      given: 'null input',
-      should: 'include runIndex in cause',
-      actual: error?.cause?.runIndex,
-      expected: 1
-    });
-
-    assert({
-      given: 'null input',
-      should: 'include rawResponse in cause',
-      actual: error?.cause?.rawResponse,
-      expected: null
+      should: 'throw ParseError cause with all fields',
+      actual: error?.cause,
+      expected: {
+        name: 'ParseError',
+        code: 'JUDGE_INVALID_RESPONSE',
+        message: 'Judge returned non-object response',
+        requirement: 'test assertion',
+        runIndex: 1,
+        rawResponse: input
+      }
     });
   });
+
 });
