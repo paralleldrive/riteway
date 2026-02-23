@@ -34,7 +34,7 @@ const spawnProcess = async ({ agentConfig, prompt, logger }) => {
   const allArgs = [...args, prompt];
 
   logger.log('\nExecuting agent command:');
-  logger.command(command, args);
+  logger.command(command, ...args);
   logger.log(`Prompt length: ${prompt.length} characters`);
 
   try {
