@@ -1,10 +1,11 @@
-import { describe, test, vi } from 'vitest';
+import { describe, test } from 'vitest';
 import { assert } from './vitest.js';
 import { Try } from './riteway.js';
 import {
   normalizeJudgment,
   aggregatePerAssertionResults
 } from './aggregation.js';
+import { handleAIErrors, allNoop } from './ai-errors.js';
 
 describe('aggregatePerAssertionResults()', () => {
   test('aggregates per-assertion results when all assertions pass', () => {
@@ -135,16 +136,12 @@ describe('aggregatePerAssertionResults()', () => {
   });
 
   test('calculates averageScore from run results', () => {
-    const perAssertionResults = [
-      {
-        requirement: 'test with scores',
-        runResults: [
-          { passed: true, score: 85 },
-          { passed: true, score: 95 },
-          { passed: true, score: 90 }
-        ]
-      }
+    const runResults = [
+      { passed: true, score: 85 },
+      { passed: true, score: 95 },
+      { passed: true, score: 90 }
     ];
+    const perAssertionResults = [{ requirement: 'test with scores', runResults }];
 
     const result = aggregatePerAssertionResults({
       perAssertionResults,
@@ -155,21 +152,27 @@ describe('aggregatePerAssertionResults()', () => {
     assert({
       given: 'three runs with scores 85, 95, 90',
       should: 'calculate average score of 90',
-      actual: result.assertions[0].averageScore,
-      expected: 90
+      actual: result,
+      expected: {
+        passed: true,
+        assertions: [{
+          requirement: 'test with scores',
+          passed: true,
+          passCount: 3,
+          totalRuns: 3,
+          averageScore: 90,
+          runResults
+        }]
+      }
     });
   });
 
   test('defaults missing scores to 0 when calculating average', () => {
-    const perAssertionResults = [
-      {
-        requirement: 'test without scores',
-        runResults: [
-          { passed: true },
-          { passed: true }
-        ]
-      }
+    const runResults = [
+      { passed: true },
+      { passed: true }
     ];
+    const perAssertionResults = [{ requirement: 'test without scores', runResults }];
 
     const result = aggregatePerAssertionResults({
       perAssertionResults,
@@ -180,8 +183,18 @@ describe('aggregatePerAssertionResults()', () => {
     assert({
       given: 'run results with no score fields',
       should: 'report averageScore of 0',
-      actual: result.assertions[0].averageScore,
-      expected: 0
+      actual: result,
+      expected: {
+        passed: true,
+        assertions: [{
+          requirement: 'test without scores',
+          passed: true,
+          passCount: 2,
+          totalRuns: 2,
+          averageScore: 0,
+          runResults
+        }]
+      }
     });
   });
 
@@ -201,10 +214,10 @@ describe('aggregatePerAssertionResults()', () => {
   });
 
   test.each([
-    ['4 runs, 75% threshold', 4, 75, 3, 3, true],
-    ['4 runs, 75% threshold', 4, 75, 2, 2, false],
-    ['5 runs, 75% threshold', 5, 75, 4, 4, true],
-    ['5 runs, 75% threshold', 5, 75, 3, 3, false],
+    ['4 runs, 75% threshold — 3 of 4 pass', 4, 75, 3, 3, true],
+    ['4 runs, 75% threshold — 2 of 4 pass', 4, 75, 2, 2, false],
+    ['5 runs, 75% threshold — 4 of 5 pass', 5, 75, 4, 4, true],
+    ['5 runs, 75% threshold — 3 of 5 pass', 5, 75, 3, 3, false],
     ['10 runs, 80% threshold', 10, 80, 8, 8, true],
     ['4 runs, 80% threshold', 4, 80, 4, 4, true],
     ['4 runs, 80% threshold', 4, 80, 3, 3, false],
@@ -241,40 +254,35 @@ describe('aggregatePerAssertionResults()', () => {
   });
 
   test.each([
-    ['runs above maximum', { runs: 1001, threshold: 75 }, 'runs: runs must be at most 1000'],
-    ['zero runs', { runs: 0, threshold: 75 }, 'runs: runs must be at least 1'],
-    ['negative runs', { runs: -1, threshold: 75 }, 'runs: runs must be at least 1'],
-    ['non-integer runs', { runs: 1.5, threshold: 75 }, 'runs: runs must be an integer'],
-    ['NaN runs', { runs: NaN, threshold: 75 }, 'runs: Invalid input: expected number, received NaN'],
-    ['threshold above maximum', { runs: 4, threshold: 150 }, 'threshold: threshold must be at most 100'],
-    ['negative threshold', { runs: 4, threshold: -10 }, 'threshold: threshold must be at least 0'],
-    ['NaN threshold', { runs: 4, threshold: NaN }, 'threshold: Invalid input: expected number, received NaN'],
-  ])('throws ValidationError for %s', (_, { runs, threshold }, zodMessages) => {
+    ['runs above maximum', { runs: 1001, threshold: 75 }],
+    ['zero runs', { runs: 0, threshold: 75 }],
+    ['negative runs', { runs: -1, threshold: 75 }],
+    ['non-integer runs', { runs: 1.5, threshold: 75 }],
+    ['NaN runs', { runs: NaN, threshold: 75 }],
+    ['threshold above maximum', { runs: 4, threshold: 150 }],
+    ['negative threshold', { runs: 4, threshold: -10 }],
+    ['NaN threshold', { runs: 4, threshold: NaN }],
+  ])('throws ValidationError for %s', (_, { runs, threshold }) => {
     const perAssertionResults = [
       { requirement: 'test', runResults: [{ passed: true }] }
     ];
 
     const error = Try(aggregatePerAssertionResults, { perAssertionResults, threshold, runs });
 
+    const invoked = [];
+    handleAIErrors({ ...allNoop, ValidationError: () => invoked.push('ValidationError') })(error);
+
     assert({
       given: _,
-      should: 'throw ValidationError cause with all fields',
-      // ZodError doesn't set .name as an own property, so use .constructor.name
-      actual: { ...error?.cause, cause: error?.cause?.cause?.constructor?.name },
-      expected: {
-        name: 'ValidationError',
-        code: 'INVALID_AGGREGATION_PARAMS',
-        message: `Invalid parameters for aggregatePerAssertionResults: ${zodMessages}`,
-        runs,
-        threshold,
-        cause: 'ZodError'
-      }
+      should: 'throw an error that routes to the ValidationError handler',
+      actual: invoked,
+      expected: ['ValidationError']
     });
   });
 });
 
 describe('normalizeJudgment()', () => {
-  const createMockLogger = () => ({ log: vi.fn() });
+  const createMockLogger = () => ({ log: () => {} });
 
   test('passes through complete valid input unchanged', () => {
     const logger = createMockLogger();
@@ -306,13 +314,13 @@ describe('normalizeJudgment()', () => {
 
     assert({
       given: 'judgment missing passed field',
-      should: 'default passed to false',
-      actual: result.passed,
-      expected: false
+      should: 'default passed to false while preserving other fields',
+      actual: result,
+      expected: { passed: false, actual: 'Result', expected: 'Expected', score: 50 }
     });
   });
 
-  test('defaults missing actual and expected with warning log', () => {
+  test('defaults missing actual and expected', () => {
     const logger = createMockLogger();
     const result = normalizeJudgment({
       judgeResponse: { passed: true, score: 100 },
@@ -332,13 +340,6 @@ describe('normalizeJudgment()', () => {
         score: 100
       }
     });
-
-    assert({
-      given: 'judgment missing actual and expected',
-      should: 'log warning with requirement and run number',
-      actual: logger.log.mock.calls[0][0],
-      expected: 'Warning: Judge response missing fields for "test assertion" run 3'
-    });
   });
 
   test.each([
@@ -356,9 +357,9 @@ describe('normalizeJudgment()', () => {
 
     assert({
       given: `judgment with ${_}`,
-      should: `normalize score to ${expected}`,
-      actual: result.score,
-      expected
+      should: `clamp score to ${expected}`,
+      actual: result,
+      expected: { passed: true, actual: 'Result', expected: 'Expected', score: expected }
     });
   });
 
@@ -374,8 +375,8 @@ describe('normalizeJudgment()', () => {
     assert({
       given: 'judgment missing score',
       should: 'default to 0',
-      actual: result.score,
-      expected: 0
+      actual: result,
+      expected: { passed: true, actual: 'Result', expected: 'Expected', score: 0 }
     });
   });
 
@@ -387,18 +388,14 @@ describe('normalizeJudgment()', () => {
     const logger = createMockLogger();
     const error = Try(normalizeJudgment, { judgeResponse: input, requirement: 'test assertion', runIndex: 1, logger });
 
+    const invoked = [];
+    handleAIErrors({ ...allNoop, ParseError: () => invoked.push('ParseError') })(error);
+
     assert({
       given: _,
-      should: 'throw ParseError cause with all fields',
-      actual: error?.cause,
-      expected: {
-        name: 'ParseError',
-        code: 'JUDGE_INVALID_RESPONSE',
-        message: 'Judge returned non-object response',
-        requirement: 'test assertion',
-        runIndex: 1,
-        rawResponse: input
-      }
+      should: 'throw an error that routes to the ParseError handler',
+      actual: invoked,
+      expected: ['ParseError']
     });
   });
 

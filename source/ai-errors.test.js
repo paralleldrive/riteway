@@ -3,21 +3,13 @@ import { assert } from './vitest.js';
 import { createError } from 'error-causes';
 import {
   handleAIErrors,
+  allNoop,
   ParseError,
   ValidationError,
 } from './ai-errors.js';
 
 describe('ai-errors module', () => {
   describe('handleAIErrors', () => {
-    // handleAIErrors is exhaustive: every registered error type must have a handler.
-    // Build a no-op map for all types, then override the one under test.
-    const noop = () => {};
-    const allNoop = {
-      ParseError: noop, ValidationError: noop, SecurityError: noop,
-      TimeoutError: noop, AgentProcessError: noop, AITestError: noop,
-      OutputError: noop, ExtractionParseError: noop, ExtractionValidationError: noop
-    };
-
     test('routes a ParseError to the ParseError handler', () => {
       const err = createError(ParseError);
       const invoked = [];

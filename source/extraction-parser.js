@@ -1,5 +1,5 @@
 import { createError } from 'error-causes';
-import { ExtractionParseError, ExtractionValidationError } from './ai-errors.js';
+import { ExtractionParseError, ExtractionValidationError, ValidationError } from './ai-errors.js';
 import { readFile } from 'fs/promises';
 import { resolve } from 'path';
 
@@ -27,7 +27,7 @@ export const resolveImportPaths = async (importPaths, projectRoot, debug) => {
         return await readFile(resolvedPath, 'utf-8');
       } catch (originalError) {
         throw createError({
-          name: 'ValidationError',
+          ...ValidationError,
           message: `Failed to read imported prompt file: ${importPath}`,
           code: 'PROMPT_READ_FAILED',
           path: importPath,

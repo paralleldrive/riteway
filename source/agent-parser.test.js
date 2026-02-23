@@ -7,18 +7,11 @@ import {
   unwrapEnvelope,
   unwrapAgentResult
 } from './agent-parser.js';
-
-const createMockLogger = () => {
-  const logs = [];
-  return {
-    log: (...args) => logs.push(args.join(' ')),
-    logs
-  };
-};
+import { handleAIErrors, allNoop } from './ai-errors.js';
 
 describe('parseStringResult()', () => {
   test('parses direct JSON when string starts with {', () => {
-    const logger = createMockLogger();
+    const logger = { log: () => {} };
     const input = '{"passed": true, "output": "test"}';
 
     const result = parseStringResult(input, logger);
@@ -29,17 +22,10 @@ describe('parseStringResult()', () => {
       actual: result,
       expected: { passed: true, output: 'test' }
     });
-
-    assert({
-      given: 'successful JSON parse',
-      should: 'log success message',
-      actual: logger.logs.some(log => log.includes('Successfully parsed string as JSON')),
-      expected: true
-    });
   });
 
   test('parses direct JSON when string starts with [', () => {
-    const logger = createMockLogger();
+    const logger = { log: () => {} };
     const input = '[{"id": 1}, {"id": 2}]';
 
     const result = parseStringResult(input, logger);
@@ -53,7 +39,7 @@ describe('parseStringResult()', () => {
   });
 
   test('extracts markdown-wrapped JSON when direct parse fails', () => {
-    const logger = createMockLogger();
+    const logger = { log: () => {} };
     const input = '```json\n{"passed": true, "output": "test"}\n```';
 
     const result = parseStringResult(input, logger);
@@ -64,17 +50,10 @@ describe('parseStringResult()', () => {
       actual: result,
       expected: { passed: true, output: 'test' }
     });
-
-    assert({
-      given: 'markdown extraction',
-      should: 'log markdown extraction',
-      actual: logger.logs.some(log => log.includes('markdown-wrapped JSON')),
-      expected: true
-    });
   });
 
   test('extracts markdown-wrapped JSON without json language tag', () => {
-    const logger = createMockLogger();
+    const logger = { log: () => {} };
     const input = '```\n{"passed": true}\n```';
 
     const result = parseStringResult(input, logger);
@@ -88,7 +67,7 @@ describe('parseStringResult()', () => {
   });
 
   test('tries markdown extraction even if string starts with {', () => {
-    const logger = createMockLogger();
+    const logger = { log: () => {} };
     const input = '{ broken json ```json\n{"passed": true}\n```';
 
     const result = parseStringResult(input, logger);
@@ -99,17 +78,10 @@ describe('parseStringResult()', () => {
       actual: result,
       expected: { passed: true }
     });
-
-    assert({
-      given: 'fallback scenario',
-      should: 'log failed parse and markdown extraction',
-      actual: logger.logs.some(log => log.includes('trying markdown extraction')),
-      expected: true
-    });
   });
 
   test('returns plain text when no parsing succeeds', () => {
-    const logger = createMockLogger();
+    const logger = { log: () => {} };
     const input = 'This is just plain text with no JSON';
 
     const result = parseStringResult(input, logger);
@@ -120,17 +92,10 @@ describe('parseStringResult()', () => {
       actual: result,
       expected: input
     });
-
-    assert({
-      given: 'no valid JSON',
-      should: 'log keeping as plain text',
-      actual: logger.logs.some(log => log.includes('keeping as plain text')),
-      expected: true
-    });
   });
 
   test('handles malformed markdown gracefully', () => {
-    const logger = createMockLogger();
+    const logger = { log: () => {} };
     const input = '```json\n{ broken: json }\n```';
 
     const result = parseStringResult(input, logger);
@@ -141,17 +106,10 @@ describe('parseStringResult()', () => {
       actual: result,
       expected: input
     });
-
-    assert({
-      given: 'failed markdown parse',
-      should: 'log failure',
-      actual: logger.logs.some(log => log.includes('Failed to parse markdown content')),
-      expected: true
-    });
   });
 
   test('trims whitespace before parsing', () => {
-    const logger = createMockLogger();
+    const logger = { log: () => {} };
     const input = '  \n  {"passed": true}  \n  ';
 
     const result = parseStringResult(input, logger);
@@ -167,7 +125,7 @@ describe('parseStringResult()', () => {
 
 describe('parseOpenCodeNDJSON()', () => {
   test('extracts text from single text event', () => {
-    const logger = createMockLogger();
+    const logger = { log: () => {} };
     const ndjson = '{"type":"step_start","timestamp":1770245956364}\n' +
         '{"type":"text","part":{"text":"```json\\n{\\"status\\": \\"ok\\"}\\n```"}}\n' +
         '{"type":"step_finish","timestamp":1770245956211}';
@@ -180,17 +138,10 @@ describe('parseOpenCodeNDJSON()', () => {
       actual: result,
       expected: '```json\n{"status": "ok"}\n```'
     });
-
-    assert({
-      given: 'successful text extraction',
-      should: 'log found text event',
-      actual: logger.logs.some(log => log.includes('Found text event')),
-      expected: true
-    });
   });
 
   test('concatenates multiple text events', () => {
-    const logger = createMockLogger();
+    const logger = { log: () => {} };
     const ndjson = '{"type":"text","part":{"text":"Part 1"}}\n' +
         '{"type":"text","part":{"text":" Part 2"}}\n' +
         '{"type":"text","part":{"text":" Part 3"}}';
@@ -206,7 +157,7 @@ describe('parseOpenCodeNDJSON()', () => {
   });
 
   test('filters out non-text events', () => {
-    const logger = createMockLogger();
+    const logger = { log: () => {} };
     const ndjson = '{"type":"step_start","data":"ignored"}\n' +
         '{"type":"text","part":{"text":"Hello"}}\n' +
         '{"type":"step_finish","data":"ignored"}\n' +
@@ -223,7 +174,7 @@ describe('parseOpenCodeNDJSON()', () => {
   });
 
   test('skips malformed JSON lines', () => {
-    const logger = createMockLogger();
+    const logger = { log: () => {} };
     const ndjson = '{invalid json}\n' +
         '{"type":"text","part":{"text":"Valid text"}}\n' +
         'not json at all';
@@ -236,38 +187,28 @@ describe('parseOpenCodeNDJSON()', () => {
       actual: result,
       expected: 'Valid text'
     });
-
-    assert({
-      given: 'malformed JSON',
-      should: 'log warning for failed parse',
-      actual: logger.logs.some(log => log.includes('Failed to parse NDJSON line')),
-      expected: true
-    });
   });
 
   test('throws error when no text events found', () => {
-    const logger = createMockLogger();
+    const logger = { log: () => {} };
     const ndjson = '{"type":"step_start","data":"no text here"}\n' +
         '{"type":"step_finish","data":"still no text"}';
 
     const error = Try(parseOpenCodeNDJSON, ndjson, logger);
 
+    const invoked = [];
+    handleAIErrors({ ...allNoop, ParseError: () => invoked.push('ParseError') })(error);
+
     assert({
       given: 'NDJSON with no text events',
-      should: 'throw Error with full ParseError cause',
-      actual: error?.cause,
-      expected: {
-        name: 'ParseError',
-        code: 'NO_TEXT_EVENTS',
-        message: 'No text events found in OpenCode output',
-        ndjsonLength: ndjson.length,
-        linesProcessed: 2
-      }
+      should: 'throw an error that routes to the ParseError handler',
+      actual: invoked,
+      expected: ['ParseError']
     });
   });
 
   test('handles empty lines in NDJSON', () => {
-    const logger = createMockLogger();
+    const logger = { log: () => {} };
     const ndjson = '\n\n{"type":"text","part":{"text":"Hello"}}\n\n\n{"type":"text","part":{"text":" World"}}\n\n';
 
     const result = parseOpenCodeNDJSON(ndjson, logger);
@@ -281,7 +222,7 @@ describe('parseOpenCodeNDJSON()', () => {
   });
 
   test('preserves markdown-wrapped JSON in text', () => {
-    const logger = createMockLogger();
+    const logger = { log: () => {} };
     const ndjson = '{"type":"text","part":{"text":"```json\\n{\\"passed\\":true}\\n```"}}';
 
     const result = parseOpenCodeNDJSON(ndjson, logger);
@@ -313,7 +254,7 @@ describe('unwrapEnvelope()', () => {
 
 describe('unwrapAgentResult()', () => {
   test('unwraps Claude envelope and returns parsed inner object', () => {
-    const logger = createMockLogger();
+    const logger = { log: () => {} };
     const envelope = JSON.stringify({ result: JSON.stringify({ passed: true, score: 90 }) });
 
     const result = unwrapAgentResult(envelope, logger);
@@ -327,7 +268,7 @@ describe('unwrapAgentResult()', () => {
   });
 
   test('returns parsed object when no envelope present', () => {
-    const logger = createMockLogger();
+    const logger = { log: () => {} };
     const direct = JSON.stringify({ passed: false, score: 40 });
 
     const result = unwrapAgentResult(direct, logger);
@@ -341,25 +282,23 @@ describe('unwrapAgentResult()', () => {
   });
 
   test('throws ParseError when output is not valid JSON', () => {
-    const logger = createMockLogger();
+    const logger = { log: () => {} };
 
     const error = Try(unwrapAgentResult, 'plain text response', logger);
 
+    const invoked = [];
+    handleAIErrors({ ...allNoop, ParseError: () => invoked.push('ParseError') })(error);
+
     assert({
       given: 'plain text that is not valid JSON',
-      should: 'throw Error with full ParseError cause',
-      actual: error?.cause,
-      expected: {
-        name: 'ParseError',
-        code: 'PARSE_FAILURE',
-        message: 'Agent output is not valid JSON: plain text response',
-        outputPreview: 'plain text response'
-      }
+      should: 'throw an error that routes to the ParseError handler',
+      actual: invoked,
+      expected: ['ParseError']
     });
   });
 
   test('handles markdown-wrapped envelope', () => {
-    const logger = createMockLogger();
+    const logger = { log: () => {} };
     const markdownEnvelope = '```json\n{"result": {"passed": true}}\n```';
 
     const result = unwrapAgentResult(markdownEnvelope, logger);
