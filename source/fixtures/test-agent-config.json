@@ -1,0 +1,4 @@
+{
+  "command": "my-agent",
+  "args": ["--print", "--format", "json"]
+}
