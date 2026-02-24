@@ -1,4 +1,4 @@
-import { errorCauses } from 'error-causes';
+import { errorCauses, noop } from 'error-causes';
 
 // Error types for AI agent execution and related operations
 export const [aiErrors, handleAIErrors] = errorCauses({
@@ -12,6 +12,10 @@ export const [aiErrors, handleAIErrors] = errorCauses({
   ExtractionParseError: { code: 'EXTRACTION_PARSE_FAILURE', message: 'Failed to parse extraction result' },
   ExtractionValidationError: { code: 'EXTRACTION_VALIDATION_FAILURE', message: 'Invalid extraction result' }
 });
+
+// handleAIErrors is exhaustive — every registered type must have a handler.
+// allNoop satisfies that requirement; spread it and override the type under test.
+export const allNoop = Object.fromEntries(Object.keys(aiErrors).map(k => [k, noop]));
 
 export const {
   ParseError,
