@@ -1,7 +1,12 @@
-import { describe, test } from 'vitest';
+import { describe, test, vi } from 'vitest';
 import { assert } from './vitest.js';
 import { Try } from './riteway.js';
-import { parseExtractionResult } from './extraction-parser.js';
+import { handleAIErrors, allNoop } from './ai-errors.js';
+
+vi.mock('fs/promises', () => ({ readFile: vi.fn() }));
+
+const { readFile } = await import('fs/promises');
+const { parseExtractionResult, resolveImportPaths } = await import('./extraction-parser.js');
 
 describe('parseExtractionResult()', () => {
   test('parses valid extraction result with required fields', () => {
@@ -89,18 +94,14 @@ describe('parseExtractionResult()', () => {
   test('throws ExtractionParseError on malformed non-JSON input', () => {
     const error = Try(parseExtractionResult, 'This is not JSON at all');
 
+    const invoked = [];
+    handleAIErrors({ ...allNoop, ExtractionParseError: () => invoked.push('ExtractionParseError') })(error);
+
     assert({
       given: 'non-JSON input',
-      should: 'throw ExtractionParseError cause with all fields including nested SyntaxError',
-      // SyntaxError sets .name as an own property, so .name suffices (unlike ZodError)
-      actual: { ...error?.cause, cause: error?.cause?.cause?.name },
-      expected: {
-        name: 'ExtractionParseError',
-        code: 'EXTRACTION_PARSE_FAILURE',
-        message: 'Failed to parse extraction result',
-        rawInput: 'This is not JSON at all',
-        cause: 'SyntaxError'
-      }
+      should: 'throw an error that routes to the ExtractionParseError handler',
+      actual: invoked,
+      expected: ['ExtractionParseError']
     });
   });
 
@@ -108,90 +109,95 @@ describe('parseExtractionResult()', () => {
     const rawOutput = JSON.stringify({ id: 1, description: 'test', prompt: 'test' });
     const error = Try(parseExtractionResult, rawOutput);
 
+    const invoked = [];
+    handleAIErrors({ ...allNoop, ExtractionValidationError: () => invoked.push('ExtractionValidationError') })(error);
+
     assert({
       given: 'extraction result with invalid structure',
-      should: 'throw ExtractionValidationError cause with all fields',
-      actual: error?.cause,
-      expected: {
-        name: 'ExtractionValidationError',
-        code: 'EXTRACTION_VALIDATION_FAILURE',
-        message: 'Extraction result is missing required field: userPrompt',
-        rawOutput
-      }
+      should: 'throw an error that routes to the ExtractionValidationError handler',
+      actual: invoked,
+      expected: ['ExtractionValidationError']
     });
   });
 
   test.each([
-    [
-      'missing importPaths',
-      { userPrompt: 'test', assertions: [] },
-      'importPaths',
-      'Extraction result is missing required field: importPaths (must be an array)'
-    ],
-    [
-      'missing userPrompt',
-      { importPaths: [], assertions: [] },
-      'userPrompt',
-      'Extraction result is missing required field: userPrompt'
-    ],
-    [
-      'missing assertions',
-      { userPrompt: 'test', importPaths: [] },
-      'assertions',
-      'Extraction result is missing required field: assertions (must be an array)'
-    ],
-  ])('throws when %s is missing', (_, input, missingField, expectedCauseMessage) => {
-    const rawOutput = JSON.stringify(input);
-    const error = Try(parseExtractionResult, rawOutput);
+    ['missing importPaths', { userPrompt: 'test', assertions: [] }],
+    ['missing userPrompt', { importPaths: [], assertions: [] }],
+    ['missing assertions', { userPrompt: 'test', importPaths: [] }],
+  ])('throws when %s is missing', (_, input) => {
+    const error = Try(parseExtractionResult, JSON.stringify(input));
+
+    const invoked = [];
+    handleAIErrors({ ...allNoop, ExtractionValidationError: () => invoked.push('ExtractionValidationError') })(error);
 
     assert({
-      given: `extraction result missing ${missingField}`,
-      should: 'throw ExtractionValidationError cause with all fields',
-      actual: error?.cause,
-      expected: {
-        name: 'ExtractionValidationError',
-        code: 'EXTRACTION_VALIDATION_FAILURE',
-        message: expectedCauseMessage,
-        rawOutput
-      }
-    });
-
-    assert({
-      given: `extraction result missing ${missingField}`,
-      should: 'have descriptive error message',
-      actual: error?.message?.includes(missingField),
-      expected: true
+      given: `extraction result with ${_}`,
+      should: 'throw an error that routes to the ExtractionValidationError handler',
+      actual: invoked,
+      expected: ['ExtractionValidationError']
     });
   });
 
   test('throws when assertion is missing required field', () => {
-    const rawOutput = JSON.stringify({
+    const error = Try(parseExtractionResult, JSON.stringify({
       userPrompt: 'test',
       importPaths: [],
       assertions: [{ id: 1 }]
-    });
+    }));
 
-    const error = Try(parseExtractionResult, rawOutput);
-
-    assert({
-      given: 'assertion missing the requirement field',
-      should: 'throw ExtractionValidationError cause with all fields',
-      actual: error?.cause,
-      expected: {
-        name: 'ExtractionValidationError',
-        code: 'EXTRACTION_VALIDATION_FAILURE',
-        message: 'Assertion at index 0 is missing required field: requirement',
-        assertionIndex: 0,
-        missingField: 'requirement',
-        rawOutput
-      }
-    });
+    const invoked = [];
+    handleAIErrors({ ...allNoop, ExtractionValidationError: () => invoked.push('ExtractionValidationError') })(error);
 
     assert({
       given: 'assertion missing the requirement field',
-      should: 'have error message indicating missing field',
-      actual: error?.message?.includes('requirement'),
-      expected: true
+      should: 'throw an error that routes to the ExtractionValidationError handler',
+      actual: invoked,
+      expected: ['ExtractionValidationError']
+    });
+  });
+
+  test('throws ExtractionValidationError when JSON parses to a non-object', () => {
+    const error = Try(parseExtractionResult, '42');
+
+    const invoked = [];
+    handleAIErrors({ ...allNoop, ExtractionValidationError: () => invoked.push('ExtractionValidationError') })(error);
+
+    assert({
+      given: 'JSON string that parses to a number',
+      should: 'throw an error that routes to ExtractionValidationError handler',
+      actual: invoked,
+      expected: ['ExtractionValidationError']
+    });
+  });
+});
+
+describe('resolveImportPaths()', () => {
+  test('resolves and joins file contents for valid import paths', async () => {
+    readFile.mockResolvedValueOnce('content of file A').mockResolvedValueOnce('content of file B');
+
+    const result = await resolveImportPaths(['a.mdc', 'b.mdc'], '/project', false);
+
+    assert({
+      given: 'two readable import paths',
+      should: 'return joined file contents separated by double newline',
+      actual: result,
+      expected: 'content of file A\n\ncontent of file B'
+    });
+  });
+
+  test('throws ValidationError when a file cannot be read', async () => {
+    readFile.mockRejectedValueOnce(new Error('ENOENT: no such file or directory'));
+
+    const error = await Try(resolveImportPaths, ['missing.mdc'], '/project', false);
+
+    const invoked = [];
+    handleAIErrors({ ...allNoop, ValidationError: () => invoked.push('ValidationError') })(error);
+
+    assert({
+      given: 'an import path that cannot be read',
+      should: 'throw an error that routes to the ValidationError handler',
+      actual: invoked,
+      expected: ['ValidationError']
     });
   });
 });

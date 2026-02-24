@@ -1,4 +1,5 @@
 import { createError } from 'error-causes';
+import { ParseError } from './ai-errors.js';
 
 /**
  * Parse the judge agent's TAP YAML diagnostic output into a structured object.
@@ -13,7 +14,7 @@ export const parseTAPYAML = (output) => {
   const match = output.match(/^---\s*\n([\s\S]*?)\n---\s*$/m);
   if (!match) {
     throw createError({
-      name: 'ParseError',
+      ...ParseError,
       message: 'Judge output does not contain a valid TAP YAML block (--- delimited)',
       code: 'JUDGE_INVALID_TAP_YAML',
       rawOutput: output

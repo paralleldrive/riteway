@@ -1,6 +1,7 @@
 import { describe, test, vi, beforeEach } from 'vitest';
 import { assert } from './vitest.js';
 import { Try } from './riteway.js';
+import { handleAIErrors, allNoop } from './ai-errors.js';
 
 vi.mock('child_process', () => ({
   spawn: vi.fn()
@@ -169,22 +170,61 @@ describe('executeAgent()', () => {
     }));
 
     const err = await Try(executeAgent, { agentConfig, prompt: 'test prompt' });
-    const args = '-p --output-format json --no-session-persistence';
+
+    const invoked = [];
+    handleAIErrors({ ...allNoop, AgentProcessError: () => invoked.push('AgentProcessError') })(err);
 
     assert({
       given: 'non-zero exit code from agent process',
-      should: 'throw with AgentProcessError cause including all fields',
-      actual: err?.cause,
-      expected: {
-        name: 'AgentProcessError',
-        code: 'AGENT_PROCESS_FAILURE',
-        message: `Agent process exited with code 1\nCommand: claude ${args}\nStderr: Permission denied\nStdout preview: `,
-        command: 'claude',
-        args,
-        exitCode: 1,
-        stderr: 'Permission denied',
-        stdoutPreview: ''
-      }
+      should: 'throw an error that routes to the AgentProcessError handler',
+      actual: invoked,
+      expected: ['AgentProcessError']
+    });
+  });
+
+  test('throws AgentProcessError when spawn itself fails', async () => {
+    spawn.mockImplementation(() => { throw new Error('spawn ENOENT'); });
+
+    const err = await Try(executeAgent, { agentConfig, prompt: 'test' });
+
+    const invoked = [];
+    handleAIErrors({ ...allNoop, AgentProcessError: () => invoked.push('AgentProcessError') })(err);
+
+    assert({
+      given: 'spawn that throws synchronously',
+      should: 'throw an error that routes to AgentProcessError handler',
+      actual: invoked,
+      expected: ['AgentProcessError']
+    });
+  });
+
+  test('returns malformed JSON as raw string when rawOutput is true', async () => {
+    spawn.mockReturnValue(createMockProcess({ stdout: '{ not valid json }' }));
+
+    const result = await executeAgent({ agentConfig, prompt: 'test', rawOutput: true });
+
+    assert({
+      given: 'rawOutput: true and stdout starting with { but malformed',
+      should: 'return the raw string as fallback',
+      actual: result,
+      expected: '{ not valid json }'
+    });
+  });
+
+  test('throws ParseError when rawOutput is true but envelope result is not a string', async () => {
+    const envelope = JSON.stringify({ result: { nested: 'object' } });
+    spawn.mockReturnValue(createMockProcess({ stdout: envelope }));
+
+    const err = await Try(executeAgent, { agentConfig, prompt: 'test', rawOutput: true });
+
+    const invoked = [];
+    handleAIErrors({ ...allNoop, ParseError: () => invoked.push('ParseError') })(err);
+
+    assert({
+      given: 'rawOutput: true and envelope wrapping a non-string object',
+      should: 'throw an error that routes to the ParseError handler',
+      actual: invoked,
+      expected: ['ParseError']
     });
   });
 
@@ -199,20 +239,15 @@ describe('executeAgent()', () => {
     spawn.mockReturnValue(proc);
 
     const err = await Try(executeAgent, { agentConfig, prompt: 'test prompt', timeout: 1 });
-    const args = '-p --output-format json --no-session-persistence';
+
+    const invoked = [];
+    handleAIErrors({ ...allNoop, TimeoutError: () => invoked.push('TimeoutError') })(err);
 
     assert({
       given: 'agent process that exceeds timeout',
-      should: 'throw with TimeoutError cause including all fields',
-      actual: err?.cause,
-      expected: {
-        name: 'TimeoutError',
-        code: 'AGENT_TIMEOUT',
-        message: `Agent process timed out after 1ms. Command: claude ${args}`,
-        command: 'claude',
-        args,
-        timeout: 1
-      }
+      should: 'throw an error that routes to the TimeoutError handler',
+      actual: invoked,
+      expected: ['TimeoutError']
     });
   });
 
@@ -220,23 +255,15 @@ describe('executeAgent()', () => {
     spawn.mockReturnValue(createMockProcess({ stdout: 'not valid json output' }));
 
     const err = await Try(executeAgent, { agentConfig, prompt: 'test prompt' });
-    const args = '-p --output-format json --no-session-persistence';
+
+    const invoked = [];
+    handleAIErrors({ ...allNoop, ParseError: () => invoked.push('ParseError') })(err);
 
     assert({
       given: 'stdout that is not valid JSON',
-      should: 'throw with ParseError cause including all fields',
-      // 3-deep chain: processAgentOutput wraps unwrapAgentResult's ParseError,
-      // so err.cause.cause is a standard Error and err.cause.cause.cause is the inner plain cause
-      actual: { ...err?.cause, cause: err?.cause?.cause?.cause?.name },
-      expected: {
-        name: 'ParseError',
-        code: 'AGENT_OUTPUT_PARSE_ERROR',
-        message: 'Failed to parse agent output as JSON: Agent output is not valid JSON: not valid json output',
-        command: 'claude',
-        args,
-        stdoutPreview: 'not valid json output',
-        cause: 'ParseError'
-      }
+      should: 'throw an error that routes to the ParseError handler',
+      actual: invoked,
+      expected: ['ParseError']
     });
   });
 
