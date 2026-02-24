@@ -172,10 +172,12 @@ describe('parseExtractionResult()', () => {
 });
 
 describe('resolveImportPaths()', () => {
+  const noopLogger = { log: () => {} };
+
   test('resolves and joins file contents for valid import paths', async () => {
     readFile.mockResolvedValueOnce('content of file A').mockResolvedValueOnce('content of file B');
 
-    const result = await resolveImportPaths(['a.mdc', 'b.mdc'], '/project', false);
+    const result = await resolveImportPaths(['a.mdc', 'b.mdc'], '/project', noopLogger);
 
     assert({
       given: 'two readable import paths',
@@ -188,7 +190,7 @@ describe('resolveImportPaths()', () => {
   test('throws ValidationError when a file cannot be read', async () => {
     readFile.mockRejectedValueOnce(new Error('ENOENT: no such file or directory'));
 
-    const error = await Try(resolveImportPaths, ['missing.mdc'], '/project', false);
+    const error = await Try(resolveImportPaths, ['missing.mdc'], '/project', noopLogger);
 
     const invoked = [];
     handleAIErrors({ ...allNoop, ValidationError: () => invoked.push('ValidationError') })(error);

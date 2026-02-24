@@ -6,6 +6,9 @@ import { unwrapEnvelope, unwrapAgentResult } from './agent-parser.js';
 
 const maxOutputPreviewLength = 500;
 
+const truncateOutput = (str) =>
+  str.length > maxOutputPreviewLength ? `${str.slice(0, maxOutputPreviewLength)}...` : str;
+
 const withTimeout = (promise, ms, errorFactory) =>
   Promise.race([
     promise,
@@ -97,7 +100,7 @@ const processAgentOutput = ({ agentConfig, rawOutput, logger }) => ({ stdout }) 
     logger.flush();
     return result;
   } catch (err) {
-    const truncatedStdout = stdout.length > maxOutputPreviewLength ? `${stdout.slice(0, maxOutputPreviewLength)}...` : stdout;
+    const truncatedStdout = truncateOutput(stdout);
     logger.log('JSON parsing failed:', err.message);
     logger.flush();
 
@@ -133,8 +136,8 @@ const runAgentProcess = async ({ agentConfig, prompt, timeout, logger }) => {
   logger.log(`Stderr length: ${stderr.length} characters`);
 
   if (code !== 0) {
-    const truncatedStdout = stdout.length > maxOutputPreviewLength ? `${stdout.slice(0, maxOutputPreviewLength)}...` : stdout;
-    const truncatedStderr = stderr.length > maxOutputPreviewLength ? `${stderr.slice(0, maxOutputPreviewLength)}...` : stderr;
+    const truncatedStdout = truncateOutput(stdout);
+    const truncatedStderr = truncateOutput(stderr);
 
     logger.log('Process failed with non-zero exit code');
     logger.flush();

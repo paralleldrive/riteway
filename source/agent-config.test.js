@@ -1,7 +1,8 @@
 import { describe, test } from 'vitest';
 import { assert } from './vitest.js';
 import { Try } from './riteway.js';
-import { formatZodError, getAgentConfig, loadAgentConfig } from './agent-config.js';
+import { handleAIErrors, allNoop, formatZodError } from './ai-errors.js';
+import { getAgentConfig, loadAgentConfig } from './agent-config.js';
 
 describe('formatZodError()', () => {
   test('formats a single issue', () => {
@@ -162,18 +163,14 @@ describe('getAgentConfig()', () => {
   test('throws ValidationError for invalid agent name', () => {
     const error = Try(getAgentConfig, 'invalid-agent');
 
-    assert({
-      given: 'invalid agent name',
-      should: 'throw Error with cause',
-      actual: error instanceof Error && error.cause !== undefined,
-      expected: true
-    });
+    const invoked = [];
+    handleAIErrors({ ...allNoop, ValidationError: () => invoked.push('ValidationError') })(error);
 
     assert({
       given: 'invalid agent name',
-      should: 'have ValidationError name in cause',
-      actual: error?.cause?.name,
-      expected: 'ValidationError'
+      should: 'throw an error that routes to the ValidationError handler',
+      actual: invoked,
+      expected: ['ValidationError']
     });
 
     assert({
@@ -218,78 +215,45 @@ describe('loadAgentConfig()', () => {
     });
   });
 
-  test('throws ValidationError with AGENT_CONFIG_PARSE_ERROR for invalid JSON', async () => {
+  test('throws AgentConfigParseError for invalid JSON', async () => {
     const error = await Try(loadAgentConfig, './source/fixtures/invalid-agent-config.txt');
 
-    assert({
-      given: 'invalid JSON file',
-      should: 'throw Error with cause',
-      actual: error instanceof Error && error.cause !== undefined,
-      expected: true
-    });
+    const invoked = [];
+    handleAIErrors({ ...allNoop, AgentConfigParseError: () => invoked.push('AgentConfigParseError') })(error);
 
     assert({
       given: 'invalid JSON file',
-      should: 'have ValidationError name in cause',
-      actual: error?.cause?.name,
-      expected: 'ValidationError'
-    });
-
-    assert({
-      given: 'invalid JSON file',
-      should: 'have AGENT_CONFIG_PARSE_ERROR code in cause',
-      actual: error?.cause?.code,
-      expected: 'AGENT_CONFIG_PARSE_ERROR'
+      should: 'throw an error that routes to the AgentConfigParseError handler',
+      actual: invoked,
+      expected: ['AgentConfigParseError']
     });
   });
 
-  test('throws ValidationError with AGENT_CONFIG_VALIDATION_ERROR when command field missing', async () => {
+  test('throws AgentConfigValidationError when command field missing', async () => {
     const error = await Try(loadAgentConfig, './source/fixtures/no-command-agent-config.json');
 
-    assert({
-      given: 'config file missing command field',
-      should: 'throw Error with cause',
-      actual: error instanceof Error && error.cause !== undefined,
-      expected: true
-    });
+    const invoked = [];
+    handleAIErrors({ ...allNoop, AgentConfigValidationError: () => invoked.push('AgentConfigValidationError') })(error);
 
     assert({
       given: 'config file missing command field',
-      should: 'have ValidationError name in cause',
-      actual: error?.cause?.name,
-      expected: 'ValidationError'
-    });
-
-    assert({
-      given: 'config file missing command field',
-      should: 'have AGENT_CONFIG_VALIDATION_ERROR code in cause',
-      actual: error?.cause?.code,
-      expected: 'AGENT_CONFIG_VALIDATION_ERROR'
+      should: 'throw an error that routes to the AgentConfigValidationError handler',
+      actual: invoked,
+      expected: ['AgentConfigValidationError']
     });
   });
 
-  test('throws ValidationError with AGENT_CONFIG_READ_ERROR for nonexistent file', async () => {
+  test('throws AgentConfigReadError for nonexistent file', async () => {
     const error = await Try(loadAgentConfig, './nonexistent/path.json');
 
-    assert({
-      given: 'nonexistent file path',
-      should: 'throw Error with cause',
-      actual: error instanceof Error && error.cause !== undefined,
-      expected: true
-    });
+    const invoked = [];
+    handleAIErrors({ ...allNoop, AgentConfigReadError: () => invoked.push('AgentConfigReadError') })(error);
 
     assert({
       given: 'nonexistent file path',
-      should: 'have ValidationError name in cause',
-      actual: error?.cause?.name,
-      expected: 'ValidationError'
-    });
-
-    assert({
-      given: 'nonexistent file path',
-      should: 'have AGENT_CONFIG_READ_ERROR code in cause',
-      actual: error?.cause?.code,
-      expected: 'AGENT_CONFIG_READ_ERROR'
+      should: 'throw an error that routes to the AgentConfigReadError handler',
+      actual: invoked,
+      expected: ['AgentConfigReadError']
     });
   });
 });

@@ -1,20 +1,8 @@
 import { readFile } from 'fs/promises';
 import { z } from 'zod';
 import { createError } from 'error-causes';
-import { ValidationError } from './ai-errors.js';
+import { ValidationError, AgentConfigReadError, AgentConfigParseError, AgentConfigValidationError, formatZodError } from './ai-errors.js';
 import { parseOpenCodeNDJSON } from './agent-parser.js';
-
-/**
- * Format Zod validation errors into a human-readable message.
- * @param {any} zodError - Zod validation error
- * @returns {string} Formatted error message
- */
-export const formatZodError = (zodError) => {
-  const issues = zodError.issues || zodError.errors;
-  return issues
-    ? issues.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')
-    : zodError.message || 'Validation failed';
-};
 
 /**
  * Get agent configuration based on agent name.
@@ -62,9 +50,8 @@ const readAgentConfigFile = async ({ configPath }) => {
     return await readFile(configPath, 'utf-8');
   } catch (err) {
     throw createError({
-      ...ValidationError,
+      ...AgentConfigReadError,
       message: `Failed to read agent config file: ${configPath}`,
-      code: 'AGENT_CONFIG_READ_ERROR',
       cause: err
     });
   }
@@ -75,9 +62,8 @@ const parseJson = ({ configPath, raw }) => {
     return JSON.parse(raw);
   } catch (err) {
     throw createError({
-      ...ValidationError,
+      ...AgentConfigParseError,
       message: `Agent config file is not valid JSON: ${configPath}`,
-      code: 'AGENT_CONFIG_PARSE_ERROR',
       cause: err
     });
   }
@@ -88,9 +74,8 @@ const validateAgentConfig = (parsed) => {
     return agentConfigFileSchema.parse(parsed);
   } catch (zodError) {
     throw createError({
-      ...ValidationError,
+      ...AgentConfigValidationError,
       message: `Invalid agent config: ${formatZodError(zodError)}`,
-      code: 'AGENT_CONFIG_VALIDATION_ERROR',
       cause: zodError
     });
   }

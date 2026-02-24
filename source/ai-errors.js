@@ -10,7 +10,10 @@ export const [aiErrors, handleAIErrors] = errorCauses({
   AITestError: { code: 'AI_TEST_ERROR', message: 'AI test execution failed' },
   OutputError: { code: 'OUTPUT_ERROR', message: 'Test output recording failed' },
   ExtractionParseError: { code: 'EXTRACTION_PARSE_FAILURE', message: 'Failed to parse extraction result' },
-  ExtractionValidationError: { code: 'EXTRACTION_VALIDATION_FAILURE', message: 'Invalid extraction result' }
+  ExtractionValidationError: { code: 'EXTRACTION_VALIDATION_FAILURE', message: 'Invalid extraction result' },
+  AgentConfigReadError: { code: 'AGENT_CONFIG_READ_ERROR', message: 'Failed to read agent config file' },
+  AgentConfigParseError: { code: 'AGENT_CONFIG_PARSE_ERROR', message: 'Agent config file is not valid JSON' },
+  AgentConfigValidationError: { code: 'AGENT_CONFIG_VALIDATION_ERROR', message: 'Invalid agent config' }
 });
 
 // handleAIErrors is exhaustive — every registered type must have a handler.
@@ -26,5 +29,22 @@ export const {
   AITestError,
   OutputError,
   ExtractionParseError,
-  ExtractionValidationError
+  ExtractionValidationError,
+  AgentConfigReadError,
+  AgentConfigParseError,
+  AgentConfigValidationError
 } = aiErrors;
+
+/**
+ * Format Zod validation errors into a human-readable message.
+ * Lives here because ai-runner.js also needs Zod error formatting; importing
+ * a utility from agent-config.js would create a wrong dependency direction.
+ * @param {any} zodError - Zod validation error
+ * @returns {string} Formatted error message
+ */
+export const formatZodError = (zodError) => {
+  const issues = zodError.issues || zodError.errors;
+  return issues
+    ? issues.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')
+    : zodError.message || 'Validation failed';
+};

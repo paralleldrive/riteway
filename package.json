@@ -104,6 +104,7 @@
     "watch": "^1.0.2"
   },
   "dependencies": {
+    "@paralleldrive/cuid2": "^3.3.0",
     "cheerio": "1.2.0",
     "dotignore": "^0.1.2",
     "error-causes": "^3.0.2",
