@@ -1,0 +1,171 @@
+---
+description: Use error-causes library for all error handling in JavaScript code
+globs: **/*.js,**/*.jsx,**/*.ts,**/*.tsx
+alwaysApply: false
+---
+
+# Error Causes Rule
+
+Use the `error-causes` library for all error handling in JavaScript/TypeScript code to enable structured error handling with named causes.
+
+## Why Error Causes?
+
+- Enables structured error handling with named causes instead of relying on `instanceof` checks
+- Works across memory realms (e.g., iframes) unlike `instanceof`
+- Provides consistent error metadata (name, code, message, cause)
+- Makes error handling explicit and self-documenting
+- Allows for automatic error routing based on error names
+
+## Import Statement
+
+```js
+import { createError } from "error-causes";
+```
+
+## Basic Usage
+
+Instead of throwing plain errors:
+
+```js
+// ❌ DON'T
+throw new Error('Config key "API_KEY" is required');
+```
+
+Use `createError` with structured metadata:
+
+```js
+// ✅ DO
+throw createError({
+  name: 'ConfigurationError',
+  message: 'Required configuration key "API_KEY" is not defined',
+  code: 'MISSING_CONFIG_KEY',
+  requestedKey: 'API_KEY'
+});
+```
+
+## Error Properties
+
+Always include these properties in `createError`:
+
+- `name` - Error name for matching (e.g., 'ValidationError', 'AuthenticationError')
+- `message` - Human-readable error message
+- `code` (optional) - Error code for programmatic handling
+- Custom properties (optional) - Any additional context relevant to the error
+
+## Wrapping Caught Errors
+
+When catching and re-throwing errors, preserve the original error as `cause`:
+
+```js
+try {
+  await someOperation();
+} catch (originalError) {
+  throw createError({
+    name: 'OperationError',
+    message: 'Failed to perform operation',
+    code: 'OPERATION_FAILED',
+    cause: originalError  // Preserve original error
+  });
+}
+```
+
+## Factory Validation Errors
+
+For factory functions that validate parameters at creation time:
+
+```js
+const createMiddleware = ({ requiredParam } = {}) => {
+  if (!requiredParam) {
+    throw createError({
+      name: 'ValidationError',
+      message: 'requiredParam is required',
+      code: 'MISSING_REQUIRED_PARAM'
+    });
+  }
+  
+  return async ({ request, response }) => {
+    // middleware implementation
+  };
+};
+```
+
+## Testing Error Causes
+
+In tests, verify the error's `cause` property:
+
+```js
+let error;
+try {
+  functionThatThrows();
+} catch (e) {
+  error = e;
+}
+
+assert({
+  given: 'invalid input',
+  should: 'throw Error with cause',
+  actual: error instanceof Error && error.cause !== undefined,
+  expected: true
+});
+
+assert({
+  given: 'invalid input',
+  should: 'have correct error name',
+  actual: error.cause.name,
+  expected: 'ValidationError'
+});
+
+assert({
+  given: 'invalid input',
+  should: 'have correct error code',
+  actual: error.cause.code,
+  expected: 'MISSING_REQUIRED_PARAM'
+});
+```
+
+## Error Handler Pattern
+
+For APIs that define multiple error types, use the `errorCauses` pattern:
+
+```js
+import { errorCauses, createError } from "error-causes";
+
+// Define all possible errors for your API
+const [apiErrors, handleApiErrors] = errorCauses({
+  NotFound: {
+    code: 404,
+    message: 'Resource not found'
+  },
+  ValidationError: {
+    code: 400,
+    message: 'Invalid input'
+  },
+  Unauthorized: {
+    code: 401,
+    message: 'Authentication required'
+  }
+});
+
+const { NotFound, ValidationError, Unauthorized } = apiErrors;
+
+// Throw errors
+if (!resource) throw createError(NotFound);
+
+// Handle errors with automatic routing
+someAsyncCall()
+  .catch(handleApiErrors({
+    NotFound: ({ message }) => console.log(message),
+    ValidationError: ({ message }) => console.log(message),
+    Unauthorized: ({ message }) => redirect('/login')
+  }));
+```
+
+## Rules
+
+1. **Always use `createError`** instead of `new Error()` for thrown errors
+2. **Always include `name` and `message`** in error metadata
+3. **Include `code`** when the error needs programmatic handling
+4. **Preserve original errors** using the `cause` property when re-throwing
+5. **Add context** with custom properties relevant to the error
+6. **Test the `cause` property** in error tests, not just the error message
+7. **Define error types** using `errorCauses()` for APIs with multiple error types

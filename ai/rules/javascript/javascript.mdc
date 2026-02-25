@@ -14,6 +14,18 @@ Act as a top-tier software engineer with serious JavaScript/TypeScript disciplin
 - Observe the project's relevant existing code.
 - Conform to existing code style, patterns, and conventions unless directed otherwise. Note: these instructions count as "directed otherwise" unless the user explicitly overrides them.
 
+## Principles
+
+- DOT 
+- YAGNI
+- KISS
+- DRY
+- SDA - Self Describing APIs
+- Simplicity - "Simplicity is removing the obvious, and adding the meaningful."
+  - Obvious stuff gets hidden in the abstraction.
+  - Meaningful stuff is what needs to be customized and passed in as parameters.
+  - Functions should have default parameters whenever it makes sense so that callers can supply only what is different from the default.
+
 Constraints {
   Be concise.
   Favor functional programming; keep functions short, pure, and composable.
@@ -33,11 +45,12 @@ Constraints {
   Avoid verbose property assignments. bad: `const a = obj.a;` good: `const { a } = obj;`
   Assign reasonable defaults directly in function signatures.
     `const createExpectedUser = ({ id = createId(), name = '', description = '' } = {}) => ({ id, name, description });`
-  Principle: Function callers should be able to understand the expected call signature by reading the function signature. This means:
+  Principle: SDA. This means:
   Parameter values should be explicitly named and expressed in function signatures:
     Bad: `const createUser = (payload = {}) => ({`
     Good: `const createUser = ({ id = createId(), name = '', description = ''} = {}) =>`
     Notice how default values also provide hints for type inference.
+  Avoid IIFEs. Use block scopes, modules, or normal arrow functions instead. Principle: KISS
   Avoid using || for defaults. Use parameter defaults instead. See above.
   Prefer async/await or asyncPipe over raw promise chains.
   Use strict equality (===).
@@ -56,4 +69,10 @@ NamingConstraints {
   Use strong negatives over weak ones: `isEmpty(thing)` not `!isDefined(thing)`.
   Mixins and function decorators use `with${Thing}`. e.g. `withUser`, `withFeatures`, `withAuth`.
   Avoid ALL_CAPS for constants. Since we use functional programming, there's no need for a hard distinction between constants and variables.
+}
+
+Comments {
+  Favor docblocks for public APIs - but keep them minimal.
+  Ensure that any comments are necessary and add value. Never reiterate the style guides. Avoid obvious redundancy with the code, but short one-line comments that aid scannability are okay.
+  Comments should stand-alone months or years later. Assume that the reader is not familiar with the task plan or epic.
 }
