@@ -2,6 +2,8 @@ import { resolve, relative } from 'path';
 import { createError } from 'error-causes';
 import { SecurityError } from './ai-errors.js';
 
+export const authGuidance = '💡 Agent authentication required. Run the appropriate setup command:\n   - Claude:  "claude setup-token" - https://docs.anthropic.com/en/docs/claude-code\n   - Cursor:  "agent login" - https://docs.cursor.com/context/rules-for-ai\n   - OpenCode: See https://opencode.ai/docs/cli/ for authentication setup';
+
 /**
  * Validate that a file path does not escape the base directory.
  * @param {string} filePath - Path to validate
@@ -39,6 +41,7 @@ export const verifyAgentAuthentication = async ({ agentConfig, executeAgent, tim
   console.log('Verifying agent authentication...');
 
   try {
+    // Generic smoke-test prompt accepted by any agent CLI
     await executeAgent({
       agentConfig,
       prompt: 'Respond with valid JSON: {"status": "ok"}',
@@ -48,11 +51,11 @@ export const verifyAgentAuthentication = async ({ agentConfig, executeAgent, tim
     console.log('Agent authentication verified successfully');
     return { success: true };
   } catch (err) {
-    console.log('Agent authentication failed:', err.message);
+    console.warn('Agent authentication failed:', err.message);
 
     return {
       success: false,
-      error: `${err.message}\n\n💡 Agent authentication required. Run the appropriate setup command:\n   - Claude:  "claude setup-token" - https://docs.anthropic.com/en/docs/claude-code\n   - Cursor:  "agent login" - https://docs.cursor.com/context/rules-for-ai\n   - OpenCode: See https://opencode.ai/docs/cli/ for authentication setup`
+      error: `${err.message}\n\n${authGuidance}`
     };
   }
 };

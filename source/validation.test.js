@@ -4,7 +4,8 @@ import { Try } from './riteway.js';
 import { handleAIErrors, allNoop } from './ai-errors.js';
 import {
   validateFilePath,
-  verifyAgentAuthentication
+  verifyAgentAuthentication,
+  authGuidance
 } from './validation.js';
 
 describe('validation', () => {
@@ -121,7 +122,7 @@ describe('validation', () => {
         actual: result,
         expected: {
           success: false,
-          error: 'Process failed\n\n💡 Agent authentication required. Run the appropriate setup command:\n   - Claude:  "claude setup-token" - https://docs.anthropic.com/en/docs/claude-code\n   - Cursor:  "agent login" - https://docs.cursor.com/context/rules-for-ai\n   - OpenCode: See https://opencode.ai/docs/cli/ for authentication setup'
+          error: `Process failed\n\n${authGuidance}`
         }
       });
     });

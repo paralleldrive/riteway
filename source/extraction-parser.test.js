@@ -188,7 +188,7 @@ describe('resolveImportPaths()', () => {
   test('throws ValidationError when a file cannot be read', async () => {
     readFile.mockRejectedValueOnce(new Error('ENOENT: no such file or directory'));
 
-    const error = await Try(() => resolveImportPaths({ importPaths: ['missing.mdc'], projectRoot: '/project' }));
+    const error = await Try(resolveImportPaths, { importPaths: ['missing.mdc'], projectRoot: '/project' });
 
     const invoked = [];
     handleAIErrors({ ...allNoop, ValidationError: () => invoked.push('ValidationError') })(error);

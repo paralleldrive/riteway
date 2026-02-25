@@ -141,7 +141,7 @@ const runAgentProcess = async ({ agentConfig, prompt, timeout }) => {
  * @param {Object} options.agentConfig - Agent configuration
  * @param {string} options.agentConfig.command - Command to execute
  * @param {Array<string>} [options.agentConfig.args=[]] - Command arguments
- * @param {Function} [options.agentConfig.parseOutput] - Optional stdout preprocessor
+ * @param {Function} [options.agentConfig.parseOutput] - Optional stdout preprocessor: (stdout: string) => string
  * @param {string} options.prompt - Prompt to send to the agent
  * @param {number} [options.timeout=300000] - Timeout in ms (default: 5 minutes)
  * @param {boolean} [options.rawOutput=false] - Return raw stdout string without JSON parsing
