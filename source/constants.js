@@ -6,9 +6,7 @@ export const defaults = {
   concurrency: 4,
   agent: 'claude',
   timeoutMs: 300_000,
-  color: false,
-  debug: false,
-  debugLog: false
+  color: false
 };
 
 export const constraints = {
@@ -60,8 +58,6 @@ export const aiTestOptionsSchema = z.object({
   concurrency: concurrencySchema.default(defaults.concurrency),
   agent: agentSchema.default(defaults.agent),
   agentConfigPath: z.string().optional(),
-  debug: z.boolean().default(defaults.debug),
-  debugLog: z.boolean().default(defaults.debugLog),
   color: z.boolean().default(defaults.color),
   // Lazy default — evaluated at parse time, not module load time
   cwd: z.string().default(() => process.cwd()),

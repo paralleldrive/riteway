@@ -221,7 +221,7 @@ describe('aggregatePerAssertionResults()', () => {
     ['10 runs, 80% threshold', 10, 80, 8, 8, true],
     ['4 runs, 80% threshold', 4, 80, 4, 4, true],
     ['4 runs, 80% threshold', 4, 80, 3, 3, false],
-  ])('applies threshold correctly: %s with %i passes', (_, runs, threshold, passCount, totalPasses, expectedPass) => {
+  ])('applies threshold correctly: %s with %i passes', (label, runs, threshold, passCount, totalPasses, expectedPass) => {
     const runResults = [
       ...Array(passCount).fill({ passed: true, score: 100 }),
       ...Array(runs - passCount).fill({ passed: false, score: 0 })
@@ -236,7 +236,7 @@ describe('aggregatePerAssertionResults()', () => {
     const averageScore = Math.round((passCount * 100 / runs) * 100) / 100;
 
     assert({
-      given: `${_} with ${passCount} of ${runs} passes`,
+      given: `${label} with ${passCount} of ${runs} passes`,
       should: expectedPass ? 'pass the assertion with correct counts and score' : 'fail the assertion with correct counts and score',
       actual: result,
       expected: {
@@ -262,7 +262,7 @@ describe('aggregatePerAssertionResults()', () => {
     ['threshold above maximum', { runs: 4, threshold: 150 }],
     ['negative threshold', { runs: 4, threshold: -10 }],
     ['NaN threshold', { runs: 4, threshold: NaN }],
-  ])('throws ValidationError for %s', (_, { runs, threshold }) => {
+  ])('throws ValidationError for %s', (label, { runs, threshold }) => {
     const perAssertionResults = [
       { requirement: 'test', runResults: [{ passed: true }] }
     ];
@@ -273,7 +273,7 @@ describe('aggregatePerAssertionResults()', () => {
     handleAIErrors({ ...allNoop, ValidationError: () => invoked.push('ValidationError') })(error);
 
     assert({
-      given: _,
+      given: label,
       should: 'throw an error that routes to the ValidationError handler',
       actual: invoked,
       expected: ['ValidationError']
@@ -282,13 +282,10 @@ describe('aggregatePerAssertionResults()', () => {
 });
 
 describe('normalizeJudgment()', () => {
-  const createMockLogger = () => ({ log: () => {} });
-
   test('passes through complete valid input unchanged', () => {
-    const logger = createMockLogger();
     const judgeResponse = { passed: true, actual: 'Result from agent', expected: 'Expected output', score: 85 };
 
-    const result = normalizeJudgment({ judgeResponse, requirement: 'test assertion', runIndex: 0, logger });
+    const result = normalizeJudgment({ judgeResponse, requirement: 'test assertion', runIndex: 0 });
 
     assert({
       given: 'complete valid judgment',
@@ -304,12 +301,10 @@ describe('normalizeJudgment()', () => {
   });
 
   test('defaults passed to false when missing', () => {
-    const logger = createMockLogger();
     const result = normalizeJudgment({
       judgeResponse: { actual: 'Result', expected: 'Expected', score: 50 },
       requirement: 'test',
-      runIndex: 0,
-      logger
+      runIndex: 0
     });
 
     assert({
@@ -321,12 +316,10 @@ describe('normalizeJudgment()', () => {
   });
 
   test('defaults missing actual and expected', () => {
-    const logger = createMockLogger();
     const result = normalizeJudgment({
       judgeResponse: { passed: true, score: 100 },
       requirement: 'test assertion',
-      runIndex: 2,
-      logger
+      runIndex: 2
     });
 
     assert({
@@ -346,17 +339,15 @@ describe('normalizeJudgment()', () => {
     ['score 150', 150, 100],
     ['score -50', -50, 0],
     ['NaN score', NaN, 0],
-  ])('normalizes %s correctly', (_, score, expected) => {
-    const logger = createMockLogger();
+  ])('normalizes %s correctly', (label, score, expected) => {
     const result = normalizeJudgment({
       judgeResponse: { passed: true, actual: 'Result', expected: 'Expected', score },
       requirement: 'test',
-      runIndex: 0,
-      logger
+      runIndex: 0
     });
 
     assert({
-      given: `judgment with ${_}`,
+      given: `judgment with ${label}`,
       should: `clamp score to ${expected}`,
       actual: result,
       expected: { passed: true, actual: 'Result', expected: 'Expected', score: expected }
@@ -364,12 +355,10 @@ describe('normalizeJudgment()', () => {
   });
 
   test('defaults missing score to 0', () => {
-    const logger = createMockLogger();
     const result = normalizeJudgment({
       judgeResponse: { passed: true, actual: 'Result', expected: 'Expected' },
       requirement: 'test',
-      runIndex: 0,
-      logger
+      runIndex: 0
     });
 
     assert({
@@ -384,15 +373,14 @@ describe('normalizeJudgment()', () => {
     ['null input', null],
     ['string input', 'not an object'],
     ['undefined input', undefined],
-  ])('throws ParseError for %s', (_, input) => {
-    const logger = createMockLogger();
-    const error = Try(normalizeJudgment, { judgeResponse: input, requirement: 'test assertion', runIndex: 1, logger });
+  ])('throws ParseError for %s', (label, input) => {
+    const error = Try(normalizeJudgment, { judgeResponse: input, requirement: 'test assertion', runIndex: 1 });
 
     const invoked = [];
     handleAIErrors({ ...allNoop, ParseError: () => invoked.push('ParseError') })(error);
 
     assert({
-      given: _,
+      given: label,
       should: 'throw an error that routes to the ParseError handler',
       actual: invoked,
       expected: ['ParseError']

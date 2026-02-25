@@ -1,6 +1,5 @@
 import { resolve, relative } from 'path';
 import { createError } from 'error-causes';
-import { createDebugLogger } from './debug-logger.js';
 import { SecurityError } from './ai-errors.js';
 
 /**
@@ -34,35 +33,26 @@ export const validateFilePath = (filePath, baseDir) => {
  * @param {Array<string>} [options.agentConfig.args=[]] - Command arguments
  * @param {Function} options.executeAgent - Function to execute agent commands
  * @param {number} [options.timeout=30000] - Timeout in milliseconds (default: 30 seconds)
- * @param {boolean} [options.debug=false] - Enable debug logging
  * @returns {Promise<Object>} Result object with success boolean and optional error message
  */
-export const verifyAgentAuthentication = async ({ agentConfig, executeAgent, timeout = 30000, debug = false }) => {
-  const logger = createDebugLogger({ debug });
-
-  logger.log('Verifying agent authentication...');
-  logger.command(agentConfig.command, agentConfig.args);
+export const verifyAgentAuthentication = async ({ agentConfig, executeAgent, timeout = 30000 }) => {
+  console.log('Verifying agent authentication...');
 
   try {
-    // Simple smoke test prompt that should work with any agent
-    const testPrompt = 'Respond with valid JSON: {"status": "ok"}';
-
     await executeAgent({
       agentConfig,
-      prompt: testPrompt,
-      timeout,
-      debug: false // Don't clutter output during smoke test
+      prompt: 'Respond with valid JSON: {"status": "ok"}',
+      timeout
     });
 
-    logger.log('Agent authentication verified successfully');
+    console.log('Agent authentication verified successfully');
     return { success: true };
   } catch (err) {
-    logger.log('Agent authentication failed:', err.message);
+    console.log('Agent authentication failed:', err.message);
 
-    // Provide helpful error message with authentication guidance
-    // Since this function's purpose IS auth verification, any failure warrants guidance
-    const errorMessage = `${err.message}\n\n💡 Agent authentication required. Run the appropriate setup command:\n   - Claude:  "claude setup-token" - https://docs.anthropic.com/en/docs/claude-code\n   - Cursor:  "agent login" - https://docs.cursor.com/context/rules-for-ai\n   - OpenCode: See https://opencode.ai/docs/cli/ for authentication setup`;
-
-    return { success: false, error: errorMessage };
+    return {
+      success: false,
+      error: `${err.message}\n\n💡 Agent authentication required. Run the appropriate setup command:\n   - Claude:  "claude setup-token" - https://docs.anthropic.com/en/docs/claude-code\n   - Cursor:  "agent login" - https://docs.cursor.com/context/rules-for-ai\n   - OpenCode: See https://opencode.ai/docs/cli/ for authentication setup`
+    };
   }
 };

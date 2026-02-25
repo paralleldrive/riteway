@@ -42,14 +42,7 @@ describe('limit-concurrency', () => {
 
       assert({
         given: '6 tasks with a limit of 2',
-        should: 'never exceed 2 concurrent executions',
-        actual: maxConcurrent <= 2,
-        expected: true,
-      });
-
-      assert({
-        given: '6 tasks with a limit of 2',
-        should: 'reach the full concurrency limit',
+        should: 'reach but not exceed the concurrency limit',
         actual: maxConcurrent,
         expected: 2,
       });
