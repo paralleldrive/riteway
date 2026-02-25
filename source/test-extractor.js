@@ -77,6 +77,10 @@ Your entire output IS the result.`;
  * This is part of the two-agent pattern where:
  * - Result agent: Execute the user prompt, return plain text
  * - Judge agent (this prompt): Evaluate the result against ONE requirement
+ *
+ * TODO(post-consolidation): add a promptUnderTest guard matching buildResultPrompt —
+ * emit the CONTEXT section only when promptUnderTest is non-empty, to avoid a blank
+ * section if the validator is ever called without a resolved prompt under test.
  */
 export const buildJudgePrompt = ({ userPrompt, promptUnderTest, result, requirement }) =>
   `You are an AI judge. Evaluate whether a given result satisfies a specific requirement.
@@ -146,7 +150,9 @@ export const extractTests = async ({
   const result = await executeAgent({ agentConfig, prompt: extractionPrompt, timeout });
   const extracted = parseExtractionResult(result);
 
-  const promptUnderTest = testFilePath && extracted.importPaths.length > 0
+  // TODO(post-consolidation): validate userPrompt and assertions before resolveImportPaths
+  // so structural errors (MISSING_USER_PROMPT, NO_ASSERTIONS_FOUND) surface before any IO.
+  const promptUnderTest = extracted.importPaths.length > 0
     ? await resolveImportPaths({ importPaths: extracted.importPaths, projectRoot })
     : '';
 

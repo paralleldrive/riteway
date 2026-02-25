@@ -9,8 +9,7 @@ import { getAgentConfig } from './agent-config.js';
 
 export const verifyAgentAuthentication = (options) => verifyAuth({ ...options, executeAgent });
 
-// Enhancement: extract console.log progress calls into an onProgress callback
-// to separate IO from business logic (see javascript.mdc: "One job per function")
+// TODO: extract console.log progress calls into an onProgress callback to decouple IO from logic
 const extractStructuredTests = async ({
   testContent,
   testFilePath,
@@ -35,6 +34,9 @@ const extractStructuredTests = async ({
   return { userPrompt, promptUnderTest, assertions, resultPrompt };
 };
 
+// TODO(post-consolidation): assertionIndex and totalAssertions exist solely for the
+// console.log progress line below. Remove them from this signature once console.log
+// is extracted into an onProgress callback (see the TODO on extractStructuredTests).
 const judgeAssertion = async ({
   assertion,
   result,
@@ -91,8 +93,7 @@ const executeSingleRun = async ({
 
   console.log(`Judging ${assertions.length} assertions...`);
 
-  // Enhancement: inline return to eliminate intermediate variable (see javascript.mdc)
-  const judgments = await Promise.all(
+  return Promise.all(
     assertions.map((assertion, assertionIndex) =>
       judgeAssertion({
         assertion,
@@ -107,8 +108,6 @@ const executeSingleRun = async ({
       })
     )
   );
-
-  return judgments;
 };
 
 const executeRuns = ({
@@ -150,7 +149,7 @@ const aggregateResults = ({ assertions, allRunJudgments, threshold, runs }) => {
  * @param {string} options.filePath - Path to test file
  * @param {number} [options.runs=4] - Number of test runs per assertion
  * @param {number} [options.threshold=75] - Required pass percentage (0-100)
- * @param {Object} options.agentConfig - Agent CLI configuration
+ * @param {Object} [options.agentConfig=getAgentConfig()] - Agent CLI configuration; defaults to the built-in claude config
  * @param {string} options.agentConfig.command - Command to execute
  * @param {Array<string>} [options.agentConfig.args=[]] - Command arguments
  * @param {number} [options.timeout=300000] - Timeout in milliseconds (default: 5 minutes)

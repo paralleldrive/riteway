@@ -83,6 +83,11 @@ const validateAgentConfig = (parsed) => {
 
 /**
  * Load and validate an agent configuration from a JSON file.
+ *
+ * Trust boundary: `configPath` must point to a developer-controlled file.
+ * The `command` field is executed as a subprocess without command whitelist validation.
+ * Never pass a path derived from untrusted user input.
+ *
  * @param {string} configPath - Path to the JSON config file
  * @returns {Promise<Object>} Validated agent config with command and args
  */
