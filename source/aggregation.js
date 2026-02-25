@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { createError } from 'error-causes';
 import { ValidationError, ParseError } from './ai-errors.js';
 import { aggregationParamsSchema } from './constants.js';
@@ -7,7 +8,7 @@ import { aggregationParamsSchema } from './constants.js';
  * structure with safe defaults for missing fields.
  * @throws {Error} If judgeResponse is not an object (null, string, undefined, etc.)
  */
-export const normalizeJudgment = ({ judgeResponse, requirement, runIndex, logger }) => {
+export const normalizeJudgment = ({ judgeResponse, requirement, runIndex }) => {
   if (typeof judgeResponse !== 'object' || judgeResponse === null) {
     throw createError({
       ...ParseError,
@@ -20,7 +21,7 @@ export const normalizeJudgment = ({ judgeResponse, requirement, runIndex, logger
   }
 
   if (judgeResponse.actual === undefined || judgeResponse.expected === undefined) {
-    logger.log(`Warning: Judge response missing fields for "${requirement}" run ${runIndex + 1}`);
+    console.warn(`Warning: Judge response missing fields for "${requirement}" run ${runIndex + 1}`);
   }
 
   return {
@@ -31,30 +32,28 @@ export const normalizeJudgment = ({ judgeResponse, requirement, runIndex, logger
   };
 };
 
+const parseAggregationParams = ({ runs, threshold }) => {
+  const result = aggregationParamsSchema.safeParse({ runs, threshold });
+  if (!result.success) {
+    throw createError({
+      ...ValidationError,
+      message: `Invalid parameters for aggregatePerAssertionResults: ${z.prettifyError(result.error)}`,
+      code: 'INVALID_AGGREGATION_PARAMS',
+      runs,
+      threshold,
+      cause: result.error
+    });
+  }
+  return result.data;
+};
+
 /**
  * Aggregate results from per-assertion test runs.
  * Each assertion is independently evaluated against the threshold.
  * Overall pass requires all assertions to meet the threshold.
  */
 export const aggregatePerAssertionResults = ({ perAssertionResults, threshold, runs }) => {
-  let validated;
-  try {
-    validated = aggregationParamsSchema.parse({ runs, threshold });
-  } catch (zodError) {
-    const issues = zodError.issues || [];
-    const messages = issues.map(issue =>
-      `${issue.path.join('.')}: ${issue.message}`
-    ).join('; ');
-
-    throw createError({
-      ...ValidationError,
-      message: `Invalid parameters for aggregatePerAssertionResults: ${messages}`,
-      code: 'INVALID_AGGREGATION_PARAMS',
-      runs,
-      threshold,
-      cause: zodError
-    });
-  }
+  const validated = parseAggregationParams({ runs, threshold });
 
   const requiredPasses = Math.ceil((validated.runs * validated.threshold) / 100);
 
