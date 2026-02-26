@@ -1,9 +1,11 @@
 import { describe, test } from 'vitest';
 import { assert } from './vitest.js';
 import { Try } from './riteway.js';
+import { handleAIErrors, allNoop } from './ai-errors.js';
 import {
   validateFilePath,
-  verifyAgentAuthentication
+  verifyAgentAuthentication,
+  authGuidance
 } from './validation.js';
 
 describe('validation', () => {
@@ -35,23 +37,19 @@ describe('validation', () => {
 
       const error = Try(validateFilePath, '../../etc/passwd', baseDir);
 
+      const invoked = [];
+      handleAIErrors({ ...allNoop, SecurityError: () => invoked.push('SecurityError') })(error);
+
       assert({
         given: 'a path that escapes the base directory',
-        should: 'throw an error with message',
-        actual: error?.message,
-        expected: 'File path escapes base directory'
+        should: 'throw an error that routes to the SecurityError handler',
+        actual: invoked,
+        expected: ['SecurityError']
       });
 
       assert({
         given: 'a path that escapes the base directory',
-        should: 'have SecurityError name in cause',
-        actual: error?.cause?.name,
-        expected: 'SecurityError'
-      });
-
-      assert({
-        given: 'a path that escapes the base directory',
-        should: 'have PATH_TRAVERSAL code in cause',
+        should: 'identify the violation with PATH_TRAVERSAL code',
         actual: error?.cause?.code,
         expected: 'PATH_TRAVERSAL'
       });
@@ -62,23 +60,19 @@ describe('validation', () => {
 
       const error = Try(validateFilePath, '/etc/passwd', baseDir);
 
+      const invoked = [];
+      handleAIErrors({ ...allNoop, SecurityError: () => invoked.push('SecurityError') })(error);
+
       assert({
         given: 'an absolute path outside the base directory',
-        should: 'throw an error with message',
-        actual: error?.message,
-        expected: 'File path escapes base directory'
+        should: 'throw an error that routes to the SecurityError handler',
+        actual: invoked,
+        expected: ['SecurityError']
       });
 
       assert({
         given: 'an absolute path outside the base directory',
-        should: 'have SecurityError name in cause',
-        actual: error?.cause?.name,
-        expected: 'SecurityError'
-      });
-
-      assert({
-        given: 'an absolute path outside the base directory',
-        should: 'have PATH_TRAVERSAL code in cause',
+        should: 'identify the violation with PATH_TRAVERSAL code',
         actual: error?.cause?.code,
         expected: 'PATH_TRAVERSAL'
       });
@@ -107,9 +101,9 @@ describe('validation', () => {
 
       assert({
         given: 'agent returning valid JSON',
-        should: 'return success true',
-        actual: result.success,
-        expected: true
+        should: 'return success result',
+        actual: result,
+        expected: { success: true }
       });
     });
 
@@ -124,36 +118,12 @@ describe('validation', () => {
 
       assert({
         given: 'agent throwing error',
-        should: 'return success false',
-        actual: result.success,
-        expected: false
-      });
-
-      assert({
-        given: 'agent authentication failure',
-        should: 'include error message',
-        actual: result.error !== undefined,
-        expected: true
-      });
-    });
-
-    test('provides helpful error message for authentication errors', async () => {
-      const executeAgent = createMockExecuteAgent({
-        shouldSucceed: false,
-        errorMessage: 'Process failed'
-      });
-      const agentConfig = {
-        command: 'mock-agent',
-        args: []
-      };
-
-      const result = await verifyAgentAuthentication({ agentConfig, executeAgent, timeout: 1000 });
-
-      assert({
-        given: 'any error during verification',
-        should: 'include helpful guidance',
-        actual: result.error.includes('Agent authentication required'),
-        expected: true
+        should: 'return failure result with authentication guidance',
+        actual: result,
+        expected: {
+          success: false,
+          error: `Process failed\n\n${authGuidance}`
+        }
       });
     });
 
@@ -169,8 +139,8 @@ describe('validation', () => {
       assert({
         given: 'no timeout specified',
         should: 'complete successfully with default timeout',
-        actual: result.success,
-        expected: true
+        actual: result,
+        expected: { success: true }
       });
     });
   });

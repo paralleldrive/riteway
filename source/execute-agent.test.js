@@ -142,16 +142,9 @@ describe('executeAgent()', () => {
 
     assert({
       given: 'agentConfig with parseOutput function',
-      should: 'call parseOutput exactly once',
-      actual: parseOutput.mock.calls.length,
-      expected: 1
-    });
-
-    assert({
-      given: 'agentConfig with parseOutput function',
-      should: 'pass the raw stdout as first argument',
-      actual: parseOutput.mock.calls[0][0],
-      expected: ndjsonOutput
+      should: 'call parseOutput once with the raw stdout',
+      actual: parseOutput.mock.calls,
+      expected: [[ndjsonOutput]]
     });
 
     assert({
@@ -277,16 +270,9 @@ describe('executeAgent()', () => {
 
     assert({
       given: 'valid agentConfig with command and args',
-      should: 'spawn with the command',
-      actual: spawn.mock.calls[0][0],
-      expected: 'claude'
-    });
-
-    assert({
-      given: 'valid agentConfig with command and args',
-      should: 'spawn with args including the prompt at the end',
-      actual: spawn.mock.calls[0][1],
-      expected: ['-p', '--output-format', 'json', '--no-session-persistence', 'my prompt']
+      should: 'spawn process with command and args including prompt appended',
+      actual: spawn.mock.calls[0],
+      expected: ['claude', ['-p', '--output-format', 'json', '--no-session-persistence', 'my prompt']]
     });
   });
 });

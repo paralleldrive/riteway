@@ -1,10 +1,12 @@
 import { spawn } from 'child_process';
 import { createError } from 'error-causes';
 import { ParseError, TimeoutError, AgentProcessError } from './ai-errors.js';
-import { createDebugLogger } from './debug-logger.js';
 import { unwrapEnvelope, unwrapAgentResult } from './agent-parser.js';
 
 const maxOutputPreviewLength = 500;
+
+const truncateOutput = (str) =>
+  str.length > maxOutputPreviewLength ? `${str.slice(0, maxOutputPreviewLength)}...` : str;
 
 const withTimeout = (promise, ms, errorFactory) =>
   Promise.race([
@@ -25,17 +27,9 @@ const collectProcessOutput = (proc) =>
     proc.on('error', reject);
   });
 
-/**
- * Spawn an agent CLI subprocess and collect output.
- * Logger is injected to avoid coupling: it is created once at executeAgent level.
- */
-const spawnProcess = async ({ agentConfig, prompt, logger }) => {
+const spawnProcess = async ({ agentConfig, prompt }) => {
   const { command, args = [] } = agentConfig;
   const allArgs = [...args, prompt];
-
-  logger.log('\nExecuting agent command:');
-  logger.command(command, ...args);
-  logger.log(`Prompt length: ${prompt.length} characters`);
 
   try {
     const proc = spawn(command, allArgs);
@@ -69,14 +63,13 @@ const unwrapRawOutput = (output) => {
  * Process agent stdout: apply optional parseOutput preprocessing, then either
  * return raw unwrapped string (rawOutput=true) or parse full JSON result.
  */
-const processAgentOutput = ({ agentConfig, rawOutput, logger }) => ({ stdout }) => {
+const processAgentOutput = ({ agentConfig, rawOutput }) => ({ stdout }) => {
   const { command, args = [], parseOutput } = agentConfig;
 
   try {
-    const processedOutput = parseOutput ? parseOutput(stdout, logger) : stdout;
+    const processedOutput = parseOutput ? parseOutput(stdout) : stdout;
 
     if (rawOutput) {
-      logger.log('Raw output requested - unwrapping JSON envelope');
       const result = unwrapRawOutput(processedOutput);
 
       if (typeof result !== 'string') {
@@ -87,19 +80,12 @@ const processAgentOutput = ({ agentConfig, rawOutput, logger }) => ({ stdout }) 
         });
       }
 
-      logger.log(`Returning raw output (${result.length} characters)`);
-      logger.flush();
       return result;
     }
 
-    const result = unwrapAgentResult(processedOutput, logger);
-    logger.result(result);
-    logger.flush();
-    return result;
+    return unwrapAgentResult(processedOutput);
   } catch (err) {
-    const truncatedStdout = stdout.length > maxOutputPreviewLength ? `${stdout.slice(0, maxOutputPreviewLength)}...` : stdout;
-    logger.log('JSON parsing failed:', err.message);
-    logger.flush();
+    const truncatedStdout = truncateOutput(stdout);
 
     throw createError({
       ...ParseError,
@@ -113,11 +99,11 @@ const processAgentOutput = ({ agentConfig, rawOutput, logger }) => ({ stdout }) 
   }
 };
 
-const runAgentProcess = async ({ agentConfig, prompt, timeout, logger }) => {
+const runAgentProcess = async ({ agentConfig, prompt, timeout }) => {
   const { command, args = [] } = agentConfig;
 
   const { stdout, stderr, code } = await withTimeout(
-    spawnProcess({ agentConfig, prompt, logger }),
+    spawnProcess({ agentConfig, prompt }),
     timeout,
     () => ({
       ...TimeoutError,
@@ -128,16 +114,9 @@ const runAgentProcess = async ({ agentConfig, prompt, timeout, logger }) => {
     })
   );
 
-  logger.log(`Process exited with code: ${code}`);
-  logger.log(`Stdout length: ${stdout.length} characters`);
-  logger.log(`Stderr length: ${stderr.length} characters`);
-
   if (code !== 0) {
-    const truncatedStdout = stdout.length > maxOutputPreviewLength ? `${stdout.slice(0, maxOutputPreviewLength)}...` : stdout;
-    const truncatedStderr = stderr.length > maxOutputPreviewLength ? `${stderr.slice(0, maxOutputPreviewLength)}...` : stderr;
-
-    logger.log('Process failed with non-zero exit code');
-    logger.flush();
+    const truncatedStdout = truncateOutput(stdout);
+    const truncatedStderr = truncateOutput(stderr);
 
     throw createError({
       ...AgentProcessError,
@@ -162,11 +141,9 @@ const runAgentProcess = async ({ agentConfig, prompt, timeout, logger }) => {
  * @param {Object} options.agentConfig - Agent configuration
  * @param {string} options.agentConfig.command - Command to execute
  * @param {Array<string>} [options.agentConfig.args=[]] - Command arguments
- * @param {Function} [options.agentConfig.parseOutput] - Optional stdout preprocessor
+ * @param {Function} [options.agentConfig.parseOutput] - Optional stdout preprocessor: (stdout: string) => string
  * @param {string} options.prompt - Prompt to send to the agent
  * @param {number} [options.timeout=300000] - Timeout in ms (default: 5 minutes)
- * @param {boolean} [options.debug=false] - Enable debug logging
- * @param {string} [options.logFile] - Optional log file path for debug output
  * @param {boolean} [options.rawOutput=false] - Return raw stdout string without JSON parsing
  * @returns {Promise<Object|string>} Parsed JSON response or raw string if rawOutput=true
  */
@@ -174,11 +151,8 @@ export const executeAgent = async ({
   agentConfig,
   prompt,
   timeout = 300000,
-  debug = false,
-  logFile,
   rawOutput = false
 }) => {
-  const logger = createDebugLogger({ debug, logFile });
-  const processResult = await runAgentProcess({ agentConfig, prompt, timeout, logger });
-  return processAgentOutput({ agentConfig, rawOutput, logger })(processResult);
+  const processResult = await runAgentProcess({ agentConfig, prompt, timeout });
+  return processAgentOutput({ agentConfig, rawOutput })(processResult);
 };

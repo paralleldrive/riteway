@@ -12,17 +12,15 @@ const assertionRequiredFields = ['id', 'requirement'];
  * This allows legitimate cross-project imports (e.g., shared prompt libraries).
  * Test authors are responsible for not importing sensitive files (.env, credentials).
  * See PR #394 remediation epic (Wave 1, Task 2) for design rationale.
+ *
+ * @param {Object} options
+ * @param {string[]} options.importPaths - Paths to resolve relative to projectRoot
+ * @param {string} options.projectRoot - Root directory for resolving relative paths
  */
-export const resolveImportPaths = async (importPaths, projectRoot, debug) => {
-  if (debug) {
-    console.error(`[DEBUG] Found ${importPaths.length} imports to resolve`);
-  }
+export const resolveImportPaths = async ({ importPaths, projectRoot }) => {
   const importedContents = await Promise.all(
     importPaths.map(async importPath => {
       const resolvedPath = resolve(projectRoot, importPath);
-      if (debug) {
-        console.error(`[DEBUG] Reading import: ${importPath} -> ${resolvedPath}`);
-      }
       try {
         return await readFile(resolvedPath, 'utf-8');
       } catch (originalError) {
@@ -37,11 +35,7 @@ export const resolveImportPaths = async (importPaths, projectRoot, debug) => {
       }
     })
   );
-  const result = importedContents.join('\n\n');
-  if (debug) {
-    console.error(`[DEBUG] Imported content length: ${result.length} characters`);
-  }
-  return result;
+  return importedContents.join('\n\n');
 };
 
 /** Extract JSON from markdown code fences if present. */

@@ -124,14 +124,14 @@ describe('parseExtractionResult()', () => {
     ['missing importPaths', { userPrompt: 'test', assertions: [] }],
     ['missing userPrompt', { importPaths: [], assertions: [] }],
     ['missing assertions', { userPrompt: 'test', importPaths: [] }],
-  ])('throws when %s is missing', (_, input) => {
+  ])('throws when %s is missing', (label, input) => {
     const error = Try(parseExtractionResult, JSON.stringify(input));
 
     const invoked = [];
     handleAIErrors({ ...allNoop, ExtractionValidationError: () => invoked.push('ExtractionValidationError') })(error);
 
     assert({
-      given: `extraction result with ${_}`,
+      given: `extraction result with ${label}`,
       should: 'throw an error that routes to the ExtractionValidationError handler',
       actual: invoked,
       expected: ['ExtractionValidationError']
@@ -175,7 +175,7 @@ describe('resolveImportPaths()', () => {
   test('resolves and joins file contents for valid import paths', async () => {
     readFile.mockResolvedValueOnce('content of file A').mockResolvedValueOnce('content of file B');
 
-    const result = await resolveImportPaths(['a.mdc', 'b.mdc'], '/project', false);
+    const result = await resolveImportPaths({ importPaths: ['a.mdc', 'b.mdc'], projectRoot: '/project' });
 
     assert({
       given: 'two readable import paths',
@@ -188,7 +188,7 @@ describe('resolveImportPaths()', () => {
   test('throws ValidationError when a file cannot be read', async () => {
     readFile.mockRejectedValueOnce(new Error('ENOENT: no such file or directory'));
 
-    const error = await Try(resolveImportPaths, ['missing.mdc'], '/project', false);
+    const error = await Try(resolveImportPaths, { importPaths: ['missing.mdc'], projectRoot: '/project' });
 
     const invoked = [];
     handleAIErrors({ ...allNoop, ValidationError: () => invoked.push('ValidationError') })(error);
