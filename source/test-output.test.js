@@ -1,4 +1,4 @@
-import { describe, test, vi, afterEach } from 'vitest';
+import { describe, test, vi, onTestFinished } from 'vitest';
 import { assert } from './vitest.js';
 import {
   formatDate,
@@ -20,10 +20,6 @@ vi.mock('open', () => ({
 const createSlug = init({ length: 5 });
 
 describe('formatDate()', () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   test('formats date as YYYY-MM-DD', () => {
     const date = new Date('2026-01-23T12:34:56.789Z');
 
@@ -48,6 +44,7 @@ describe('formatDate()', () => {
 
   test('uses current date when not provided', () => {
     vi.useFakeTimers();
+    onTestFinished(() => vi.useRealTimers());
     vi.setSystemTime(new Date('2026-01-23T12:00:00.000Z'));
 
     const result = formatDate();
@@ -108,6 +105,22 @@ describe('generateOutputPath()', () => {
 
     assert({
       given: 'test filename with .md extension',
+      should: 'strip extension from filename',
+      actual: path,
+      expected: 'ai-evals/2026-01-23-test-xyz.tap.md'
+    });
+  });
+
+  test('strips .txt extension from test filename', () => {
+    const path = generateOutputPath({
+      testFilename: 'test.txt',
+      date: '2026-01-23',
+      slug: 'xyz',
+      outputDir: 'ai-evals'
+    });
+
+    assert({
+      given: 'test filename with .txt extension',
       should: 'strip extension from filename',
       actual: path,
       expected: 'ai-evals/2026-01-23-test-xyz.tap.md'
@@ -487,12 +500,9 @@ ok 1 - Given UI implementation, should match design specifications
 });
 
 describe('openInBrowser()', () => {
-  afterEach(() => {
-    vi.mocked(open).mockReset();
-  });
-
   test('calls open with file path and wait disabled', async () => {
     vi.mocked(open).mockResolvedValue(undefined);
+    onTestFinished(() => vi.mocked(open).mockReset());
 
     await openInBrowser('/path/to/file.tap.md');
 
@@ -507,6 +517,10 @@ describe('openInBrowser()', () => {
   test('warns to console instead of throwing when open fails', async () => {
     vi.mocked(open).mockRejectedValue(new Error('no browser'));
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    onTestFinished(() => {
+      warnSpy.mockRestore();
+      vi.mocked(open).mockReset();
+    });
 
     await openInBrowser('/path/to/file.tap.md');
 
@@ -516,8 +530,6 @@ describe('openInBrowser()', () => {
       actual: warnSpy.mock.calls[0][0],
       expected: 'Could not open browser: no browser'
     });
-
-    warnSpy.mockRestore();
   });
 });
 
@@ -537,114 +549,101 @@ describe('recordTestOutput()', () => {
 
   test('creates output file with TAP content', async () => {
     const testDir = join(tmpdir(), 'riteway-output-' + createSlug());
+    onTestFinished(() => rmSync(testDir, { recursive: true, force: true }));
+    mkdirSync(testDir, { recursive: true });
 
-    try {
-      mkdirSync(testDir, { recursive: true });
+    const outputPath = await recordTestOutput({
+      results: createTestResults(),
+      testFilename: 'test.sudo',
+      outputDir: testDir,
+      openBrowser: false
+    });
 
-      const outputPath = await recordTestOutput({
-        results: createTestResults(),
-        testFilename: 'test.sudo',
-        outputDir: testDir,
-        openBrowser: false
-      });
+    assert({
+      given: 'test results',
+      should: 'create output file',
+      actual: existsSync(outputPath),
+      expected: true
+    });
 
-      assert({
-        given: 'test results',
-        should: 'create output file',
-        actual: existsSync(outputPath),
-        expected: true
-      });
+    const content = readFileSync(outputPath, 'utf-8');
 
-      const content = readFileSync(outputPath, 'utf-8');
-
-      assert({
-        given: 'output file',
-        should: 'contain TAP content',
-        actual: content.includes('TAP version 13'),
-        expected: true
-      });
-    } finally {
-      rmSync(testDir, { recursive: true, force: true });
-    }
+    assert({
+      given: 'output file',
+      should: 'contain TAP content',
+      actual: content.includes('TAP version 13'),
+      expected: true
+    });
   });
 
   test('creates output directory if missing', async () => {
     const testDir = join(tmpdir(), 'riteway-output-' + createSlug());
     const outputDir = join(testDir, 'ai-evals');
+    onTestFinished(() => rmSync(testDir, { recursive: true, force: true }));
 
-    try {
-      await recordTestOutput({
-        results: createTestResults(),
-        testFilename: 'test.sudo',
-        outputDir,
-        openBrowser: false
-      });
+    await recordTestOutput({
+      results: createTestResults(),
+      testFilename: 'test.sudo',
+      outputDir,
+      openBrowser: false
+    });
 
-      assert({
-        given: 'non-existent output directory',
-        should: 'create the directory',
-        actual: existsSync(outputDir),
-        expected: true
-      });
-    } finally {
-      rmSync(testDir, { recursive: true, force: true });
-    }
+    assert({
+      given: 'non-existent output directory',
+      should: 'create the directory',
+      actual: existsSync(outputDir),
+      expected: true
+    });
   });
 
   test('calls openInBrowser when openBrowser is true', async () => {
     vi.mocked(open).mockResolvedValue(undefined);
     const testDir = join(tmpdir(), 'riteway-output-' + createSlug());
-
-    try {
-      mkdirSync(testDir, { recursive: true });
-
-      await recordTestOutput({
-        results: createTestResults(),
-        testFilename: 'test.sudo',
-        outputDir: testDir,
-        openBrowser: true
-      });
-
-      assert({
-        given: 'openBrowser: true',
-        should: 'call open with the output file path',
-        actual: vi.mocked(open).mock.calls.length > 0,
-        expected: true
-      });
-    } finally {
+    onTestFinished(() => {
       rmSync(testDir, { recursive: true, force: true });
       vi.mocked(open).mockReset();
-    }
+    });
+    mkdirSync(testDir, { recursive: true });
+
+    const outputPath = await recordTestOutput({
+      results: createTestResults(),
+      testFilename: 'test.sudo',
+      outputDir: testDir,
+      openBrowser: true
+    });
+
+    assert({
+      given: 'openBrowser: true',
+      should: 'call open with the output file path and wait: false',
+      actual: vi.mocked(open).mock.calls[0],
+      expected: [outputPath, { wait: false }]
+    });
   });
 
   test('returns path matching the expected naming pattern', async () => {
     const testDir = join(tmpdir(), 'riteway-output-' + createSlug());
+    onTestFinished(() => rmSync(testDir, { recursive: true, force: true }));
+    mkdirSync(testDir, { recursive: true });
 
-    try {
-      mkdirSync(testDir, { recursive: true });
+    const outputPath = await recordTestOutput({
+      results: createTestResults(),
+      testFilename: 'my-prompt.sudo',
+      outputDir: testDir,
+      openBrowser: false
+    });
 
-      const outputPath = await recordTestOutput({
-        results: createTestResults(),
-        testFilename: 'my-prompt.sudo',
-        outputDir: testDir,
-        openBrowser: false
-      });
+    assert({
+      given: 'test results for my-prompt.sudo',
+      should: 'return path matching YYYY-MM-DD-name-slug.tap.md pattern',
+      actual: /\d{4}-\d{2}-\d{2}-my-prompt-\w+\.tap\.md$/.test(outputPath),
+      expected: true
+    });
 
-      assert({
-        given: 'test results for my-prompt.sudo',
-        should: 'return path matching YYYY-MM-DD-name-slug.tap.md pattern',
-        actual: /\d{4}-\d{2}-\d{2}-my-prompt-\w+\.tap\.md$/.test(outputPath),
-        expected: true
-      });
-
-      assert({
-        given: 'test results',
-        should: 'include output directory in path',
-        actual: outputPath.startsWith(testDir),
-        expected: true
-      });
-    } finally {
-      rmSync(testDir, { recursive: true, force: true });
-    }
+    assert({
+      given: 'test results',
+      should: 'include output directory in path',
+      actual: outputPath.startsWith(testDir),
+      expected: true
+    });
   });
 });

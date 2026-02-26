@@ -137,7 +137,7 @@ export const runAICommand = async ({ filePath, runs, threshold, agent, agentConf
       : agent;
 
     console.log(`Running AI tests: ${testFilename}`);
-    console.log(`Configuration: ${runs} runs, ${threshold}% threshold, agent: ${agentLabel}`);
+    console.log(`Configuration: ${runs} runs, ${threshold}% threshold, ${concurrency} concurrent, agent: ${agentLabel}`);
 
     console.log(`\nVerifying ${agentLabel} agent authentication...`);
     const authResult = await verifyAgentAuthentication({
