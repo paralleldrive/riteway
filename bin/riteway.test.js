@@ -274,4 +274,47 @@ describe('riteway --help: includes ai subcommand', async assert => {
       expected: 0
     });
   }
+
+  {
+    // execSync with stdio: 'pipe' captures stdout on success
+    const stdout = execSync('node bin/riteway.js --help', { stdio: 'pipe' }).toString();
+
+    assert({
+      given: '--help flag',
+      should: 'include ai subcommand in help text',
+      actual: stdout.includes('riteway ai'),
+      expected: true
+    });
+
+    assert({
+      given: '--help flag',
+      should: 'include --runs option in help text',
+      actual: stdout.includes('--runs'),
+      expected: true
+    });
+  }
+});
+
+describe('riteway ai subcommand: execution failure (no agent installed)', async assert => {
+  {
+    // Passes validation but fails during agent auth/execution since no real agent is available.
+    // Verifies that any unrecoverable failure exits with code 1 and surfaces an error indicator.
+    const { exitCode, stderr } = testSubprocessExit(
+      'node bin/riteway.js ai nonexistent-file.sudo'
+    );
+
+    assert({
+      given: 'riteway ai with no agent installed',
+      should: 'exit with error code 1',
+      actual: exitCode,
+      expected: 1
+    });
+
+    assert({
+      given: 'riteway ai with no agent installed',
+      should: 'output an error indicator to stderr',
+      actual: stderr.includes('❌') || stderr.toLowerCase().includes('failed') || stderr.toLowerCase().includes('error'),
+      expected: true
+    });
+  }
 });

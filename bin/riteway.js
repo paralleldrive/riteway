@@ -174,6 +174,7 @@ const main = async (argv) => {
 Usage:
   riteway <patterns...> [options]       Run test files
   riteway ai <file> [options]           Run AI prompt tests
+    --runs N --threshold P --agent NAME [--concurrency N] [--color] [--agent-config FILE]
 
 Test Runner Options:
   -r, --require <module>    Require module before running tests

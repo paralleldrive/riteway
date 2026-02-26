@@ -85,7 +85,7 @@ export const parseAIArgs = (argv) => {
   }
 };
 
-const ANSI = {
+const ansi = {
   green: '\x1b[32m',
   red: '\x1b[31m',
   reset: '\x1b[0m'
@@ -103,15 +103,17 @@ const ANSI = {
  */
 export const formatAssertionReport = ({ passed, requirement, passCount, totalRuns, color = false }) => {
   const status = passed ? 'PASS' : 'FAIL';
-  const colorCode = color ? (passed ? ANSI.green : ANSI.red) : '';
-  const resetCode = color ? ANSI.reset : '';
+  const colorCode = color ? (passed ? ansi.green : ansi.red) : '';
+  const resetCode = color ? ansi.reset : '';
   return `  ${colorCode}[${status}]${resetCode} ${requirement} (${passCount}/${totalRuns} runs)`;
 };
 
 /**
- * Run AI tests with specified configuration.
+ * Orchestrate AI test execution: validate file path, verify agent auth, run tests,
+ * record TAP output to ai-evals/, open result in browser, and report results to console.
+ * Throws AITestError when the pass rate falls below threshold.
  * @param {Object} options - Test run options
- * @returns {Promise<string>} Path to output file
+ * @returns {Promise<string>} Path to the recorded TAP output file
  */
 export const runAICommand = async ({ filePath, runs, threshold, agent, agentConfigPath, color, concurrency, cwd }) => {
   if (!filePath) {

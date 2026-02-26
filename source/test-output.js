@@ -25,11 +25,12 @@ const createSlug = init({ length: 5 });
  * @param {string} options.slug - Unique slug
  * @param {string} options.outputDir - Output directory path
  * @param {string} [options.extension='.tap.md'] - File extension
- * @returns {Promise<string>} Output file path
+ * @returns {string} Output file path
  */
-export const generateOutputPath = async ({ testFilename, date, slug, outputDir, extension = '.tap.md' }) => {
+export const generateOutputPath = ({ testFilename, date, slug, outputDir, extension = '.tap.md' }) => {
+  // Strip common test file extensions: .sudo (primary), .md, .txt
   const nameWithoutExt = basename(testFilename, '.sudo')
-    .replace(/\.(md|txt|sudo)$/, '');
+    .replace(/\.(md|txt)$/, '');
 
   const filename = `${date}-${nameWithoutExt}-${slug}${extension}`;
   return join(outputDir, filename);
@@ -186,7 +187,7 @@ export const recordTestOutput = async ({
 
   const date = formatDate();
   const slug = createSlug();
-  const outputPath = await generateOutputPath({
+  const outputPath = generateOutputPath({
     testFilename,
     date,
     slug,

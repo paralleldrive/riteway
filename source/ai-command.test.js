@@ -1,7 +1,22 @@
-import { describe, test } from 'vitest';
+import { describe, test, vi, beforeEach, afterEach } from 'vitest';
 import { assert } from './vitest.js';
 import { Try } from './riteway.js';
 import { parseAIArgs, formatAssertionReport, runAICommand, defaults } from './ai-command.js';
+import { runAITests, verifyAgentAuthentication } from './ai-runner.js';
+import { getAgentConfig } from './agent-config.js';
+import { recordTestOutput } from './test-output.js';
+
+vi.mock('./ai-runner.js', () => ({
+  runAITests: vi.fn(),
+  verifyAgentAuthentication: vi.fn()
+}));
+vi.mock('./agent-config.js', () => ({
+  getAgentConfig: vi.fn(),
+  loadAgentConfig: vi.fn()
+}));
+vi.mock('./test-output.js', () => ({
+  recordTestOutput: vi.fn()
+}));
 
 describe('defaults', () => {
   test('exports centralized default values', () => {
@@ -398,6 +413,141 @@ describe('runAICommand()', () => {
       should: 'have PATH_TRAVERSAL code in cause',
       actual: error?.cause?.code,
       expected: 'PATH_TRAVERSAL'
+    });
+  });
+});
+
+describe('runAICommand() orchestration', () => {
+  const outputPath = '/ai-evals/2026-01-23-test-abc.tap.md';
+  const agentConfig = { command: 'claude', args: ['--print', '--no-color'] };
+  const passedResults = {
+    passed: true,
+    assertions: [{ requirement: 'Given a test, should pass', passed: true, passCount: 4, totalRuns: 4 }]
+  };
+
+  beforeEach(() => {
+    vi.mocked(getAgentConfig).mockReturnValue(agentConfig);
+    vi.mocked(verifyAgentAuthentication).mockResolvedValue({ success: true });
+    vi.mocked(runAITests).mockResolvedValue(passedResults);
+    vi.mocked(recordTestOutput).mockResolvedValue(outputPath);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('returns output path when tests pass', async () => {
+    const result = await runAICommand({
+      filePath: './test.sudo',
+      runs: 4,
+      threshold: 75,
+      agent: 'claude',
+      color: false,
+      concurrency: 4,
+      cwd: process.cwd()
+    });
+
+    assert({
+      given: 'valid test file and authenticated agent with passing results',
+      should: 'return path to TAP output file',
+      actual: result,
+      expected: outputPath
+    });
+  });
+
+  test('passes agentConfig from getAgentConfig to runAITests', async () => {
+    await runAICommand({
+      filePath: './test.sudo',
+      runs: 4,
+      threshold: 75,
+      agent: 'claude',
+      color: false,
+      concurrency: 4,
+      cwd: process.cwd()
+    });
+
+    assert({
+      given: 'agent name "claude"',
+      should: 'look up agent config and pass it to runAITests',
+      actual: vi.mocked(runAITests).mock.calls[0][0].agentConfig,
+      expected: agentConfig
+    });
+  });
+
+  test('throws AITestError when test suite fails', async () => {
+    vi.mocked(runAITests).mockResolvedValue({
+      passed: false,
+      assertions: [{ requirement: 'Given a test, should pass', passed: false, passCount: 1, totalRuns: 4 }]
+    });
+
+    const error = await Try(runAICommand, {
+      filePath: './test.sudo',
+      runs: 4,
+      threshold: 75,
+      agent: 'claude',
+      color: false,
+      concurrency: 4,
+      cwd: process.cwd()
+    });
+
+    assert({
+      given: 'test suite with pass rate below threshold',
+      should: 'throw error with AITestError cause',
+      actual: error?.cause?.name,
+      expected: 'AITestError'
+    });
+  });
+
+  test('throws ValidationError when agent authentication fails', async () => {
+    vi.mocked(verifyAgentAuthentication).mockResolvedValue({
+      success: false,
+      error: 'Not authenticated'
+    });
+
+    const error = await Try(runAICommand, {
+      filePath: './test.sudo',
+      runs: 4,
+      threshold: 75,
+      agent: 'claude',
+      color: false,
+      concurrency: 4,
+      cwd: process.cwd()
+    });
+
+    assert({
+      given: 'agent authentication failure',
+      should: 'throw error with ValidationError cause',
+      actual: error?.cause?.name,
+      expected: 'ValidationError'
+    });
+
+    assert({
+      given: 'agent authentication failure',
+      should: 'include auth failure message',
+      actual: error?.cause?.message?.includes('authentication failed'),
+      expected: true
+    });
+  });
+
+  test('throws OutputError when recordTestOutput fails', async () => {
+    vi.mocked(recordTestOutput).mockRejectedValue(new Error('disk full'));
+
+    const error = await Try(runAICommand, {
+      filePath: './test.sudo',
+      runs: 4,
+      threshold: 75,
+      agent: 'claude',
+      color: false,
+      concurrency: 4,
+      cwd: process.cwd()
+    });
+
+    assert({
+      given: 'output recording failure',
+      should: 'throw error with OutputError cause',
+      actual: error?.cause?.name,
+      expected: 'OutputError'
     });
   });
 });
