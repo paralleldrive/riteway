@@ -1,7 +1,7 @@
 import { describe, test, vi, beforeEach, onTestFinished } from 'vitest';
 import { assert } from './vitest.js';
 import { Try } from './riteway.js';
-import { parseAIArgs, formatAssertionReport, runAICommand, defaults } from './ai-command.js';
+import { parseAIArgs, formatAssertionReport, runAICommand } from './ai-command.js';
 import { runAITests, verifyAgentAuthentication } from './ai-runner.js';
 import { getAgentConfig, loadAgentConfig } from './agent-config.js';
 import { recordTestOutput } from './test-output.js';
@@ -18,38 +18,21 @@ vi.mock('./test-output.js', () => ({
   recordTestOutput: vi.fn()
 }));
 
-describe('defaults', () => {
-  test('exports centralized default values', () => {
-    assert({
-      given: 'defaults export',
-      should: 'contain all default values',
-      actual: defaults,
-      expected: {
-        runs: 4,
-        threshold: 75,
-        concurrency: 4,
-        agent: 'claude',
-        color: false
-      }
-    });
-  });
-});
-
 describe('parseAIArgs()', () => {
   test('parses file path as first argument with defaults', () => {
     const result = parseAIArgs(['test.sudo']);
 
     assert({
       given: 'only a file path argument',
-      should: 'return file path with all defaults',
+      should: 'apply default runs, threshold, agent, color, and concurrency',
       actual: result,
       expected: {
         filePath: 'test.sudo',
-        runs: defaults.runs,
-        threshold: defaults.threshold,
-        agent: defaults.agent,
-        color: defaults.color,
-        concurrency: defaults.concurrency,
+        runs: 4,
+        threshold: 75,
+        agent: 'claude',
+        color: false,
+        concurrency: 4,
         cwd: process.cwd()
       }
     });
@@ -159,7 +142,7 @@ describe('parseAIArgs()', () => {
       given: 'no --color flag',
       should: 'default color to false',
       actual: result.color,
-      expected: defaults.color
+      expected: false
     });
   });
 
