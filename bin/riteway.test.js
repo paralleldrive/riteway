@@ -204,3 +204,74 @@ describe('runTests()', async assert => {
     expected: undefined
   });
 });
+
+describe('riteway ai subcommand: validation', async assert => {
+  {
+    // riteway ai with no file path should exit 1 with validation error
+    const { exitCode, stderr } = testSubprocessExit(
+      'node bin/riteway.js ai'
+    );
+
+    assert({
+      given: 'riteway ai with no file path',
+      should: 'exit with error code 1',
+      actual: exitCode,
+      expected: 1
+    });
+
+    assert({
+      given: 'riteway ai with no file path',
+      should: 'output validation error to stderr',
+      actual: stderr.toLowerCase().includes('validation') || stderr.includes('❌'),
+      expected: true
+    });
+  }
+
+  {
+    // riteway ai with an invalid agent should exit 1
+    const { exitCode } = testSubprocessExit(
+      'node bin/riteway.js ai test.sudo --agent invalid-agent'
+    );
+
+    assert({
+      given: 'riteway ai with unsupported agent name',
+      should: 'exit with error code 1',
+      actual: exitCode,
+      expected: 1
+    });
+  }
+
+  {
+    // riteway ai with both --agent and --agent-config should exit 1
+    const { exitCode, stderr } = testSubprocessExit(
+      'node bin/riteway.js ai test.sudo --agent claude --agent-config ./config.json'
+    );
+
+    assert({
+      given: 'riteway ai with both --agent and --agent-config',
+      should: 'exit with error code 1',
+      actual: exitCode,
+      expected: 1
+    });
+
+    assert({
+      given: 'riteway ai with both --agent and --agent-config',
+      should: 'mention mutual exclusion in error output',
+      actual: stderr.includes('mutually exclusive') || stderr.includes('❌'),
+      expected: true
+    });
+  }
+});
+
+describe('riteway --help: includes ai subcommand', async assert => {
+  {
+    const { exitCode } = testSubprocessExit('node bin/riteway.js --help');
+
+    assert({
+      given: '--help flag',
+      should: 'exit with code 0',
+      actual: exitCode,
+      expected: 0
+    });
+  }
+});
