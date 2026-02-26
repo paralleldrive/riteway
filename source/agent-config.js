@@ -1,20 +1,8 @@
 import { readFile } from 'fs/promises';
 import { z } from 'zod';
 import { createError } from 'error-causes';
-import { ValidationError } from './ai-errors.js';
+import { ValidationError, AgentConfigReadError, AgentConfigParseError, AgentConfigValidationError } from './ai-errors.js';
 import { parseOpenCodeNDJSON } from './agent-parser.js';
-
-/**
- * Format Zod validation errors into a human-readable message.
- * @param {any} zodError - Zod validation error
- * @returns {string} Formatted error message
- */
-export const formatZodError = (zodError) => {
-  const issues = zodError.issues || zodError.errors;
-  return issues
-    ? issues.map(e => `${e.path.join('.')}: ${e.message}`).join('; ')
-    : zodError.message || 'Validation failed';
-};
 
 /**
  * Get agent configuration based on agent name.
@@ -32,7 +20,7 @@ export const getAgentConfig = (agentName = 'claude') => {
     opencode: {
       command: 'opencode',
       args: ['run', '--format', 'json'],
-      parseOutput: (stdout, logger) => parseOpenCodeNDJSON(stdout, logger)
+      parseOutput: parseOpenCodeNDJSON
     },
     cursor: {
       command: 'agent',
@@ -62,9 +50,8 @@ const readAgentConfigFile = async ({ configPath }) => {
     return await readFile(configPath, 'utf-8');
   } catch (err) {
     throw createError({
-      ...ValidationError,
+      ...AgentConfigReadError,
       message: `Failed to read agent config file: ${configPath}`,
-      code: 'AGENT_CONFIG_READ_ERROR',
       cause: err
     });
   }
@@ -75,29 +62,32 @@ const parseJson = ({ configPath, raw }) => {
     return JSON.parse(raw);
   } catch (err) {
     throw createError({
-      ...ValidationError,
+      ...AgentConfigParseError,
       message: `Agent config file is not valid JSON: ${configPath}`,
-      code: 'AGENT_CONFIG_PARSE_ERROR',
       cause: err
     });
   }
 };
 
 const validateAgentConfig = (parsed) => {
-  try {
-    return agentConfigFileSchema.parse(parsed);
-  } catch (zodError) {
+  const result = agentConfigFileSchema.safeParse(parsed);
+  if (!result.success) {
     throw createError({
-      ...ValidationError,
-      message: `Invalid agent config: ${formatZodError(zodError)}`,
-      code: 'AGENT_CONFIG_VALIDATION_ERROR',
-      cause: zodError
+      ...AgentConfigValidationError,
+      message: `Invalid agent config: ${z.prettifyError(result.error)}`,
+      cause: result.error
     });
   }
+  return result.data;
 };
 
 /**
  * Load and validate an agent configuration from a JSON file.
+ *
+ * Trust boundary: `configPath` must point to a developer-controlled file.
+ * The `command` field is executed as a subprocess without command whitelist validation.
+ * Never pass a path derived from untrusted user input.
+ *
  * @param {string} configPath - Path to the JSON config file
  * @returns {Promise<Object>} Validated agent config with command and args
  */
