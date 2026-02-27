@@ -218,8 +218,13 @@ describe.skipIf(!isClaudeAuthenticated)('e2e: missing prompt under test', () => 
     assert({
       given: 'a test file with no import statement',
       should: 'throw a ValidationError with MISSING_PROMPT_UNDER_TEST',
-      actual: { name: error?.cause?.name, code: error?.cause?.code },
-      expected: { name: 'ValidationError', code: 'MISSING_PROMPT_UNDER_TEST' }
+      actual: error?.cause,
+      expected: {
+        name: 'ValidationError',
+        message: 'Test file does not declare a promptUnderTest import. Every test file must import the prompt under test.',
+        code: 'MISSING_PROMPT_UNDER_TEST',
+        testFile: testFilePath
+      }
     });
   });
 });
@@ -233,8 +238,13 @@ describe.skipIf(!isClaudeAuthenticated)('e2e: missing userPrompt', () => {
     assert({
       given: 'a test file with no userPrompt field',
       should: 'throw a ValidationError with MISSING_USER_PROMPT',
-      actual: { name: error?.cause?.name, code: error?.cause?.code },
-      expected: { name: 'ValidationError', code: 'MISSING_USER_PROMPT' }
+      actual: error?.cause,
+      expected: {
+        name: 'ValidationError',
+        message: 'Test file does not define a userPrompt. Every test file must include a user prompt (inline or imported).',
+        code: 'MISSING_USER_PROMPT',
+        testFile: testFilePath
+      }
     });
   });
 });
@@ -248,8 +258,13 @@ describe.skipIf(!isClaudeAuthenticated)('e2e: no assertions', () => {
     assert({
       given: 'a test file with no assertion lines',
       should: 'throw a ValidationError with NO_ASSERTIONS_FOUND',
-      actual: { name: error?.cause?.name, code: error?.cause?.code },
-      expected: { name: 'ValidationError', code: 'NO_ASSERTIONS_FOUND' }
+      actual: error?.cause,
+      expected: {
+        name: 'ValidationError',
+        message: 'Test file does not contain any assertions. Every test file must include at least one assertion (e.g., "Given X, should Y").',
+        code: 'NO_ASSERTIONS_FOUND',
+        testFile: testFilePath
+      }
     });
   });
 });
