@@ -1,6 +1,7 @@
 // @ts-check
 import { describe, test, onTestFinished } from 'vitest';
 import { assert } from 'riteway/vitest';
+import { Try } from './riteway.js';
 import { readFile, rm } from 'fs/promises';
 import { join, dirname, basename } from 'path';
 import { fileURLToPath } from 'url';
@@ -139,6 +140,86 @@ describe.skipIf(!isClaudeAuthenticated)('e2e: full workflow with real agent', ()
       given: 'output filename',
       should: 'include test name and .tap.md extension',
       actual: filename.includes('sum-function-test') && filename.endsWith('.tap.md'),
+      expected: true
+    });
+  });
+});
+
+// Extraction validation tests: each requires one real agent call (extraction only).
+// The error is thrown before result/judge agents are invoked, so these are faster
+// than the full-workflow tests but still require Claude authentication.
+
+describe.skipIf(!isClaudeAuthenticated)('e2e: missing prompt under test', () => {
+  test('throws when test file has no import (no promptUnderTest)', { timeout: E2E_TEST_TIMEOUT_MS }, async () => {
+    const testFilePath = join(__dirname, 'fixtures', 'no-prompt-under-test.sudo');
+
+    // extractTests validates promptUnderTest before invoking result/judge agents.
+    // See test-extractor.js — MISSING_PROMPT_UNDER_TEST resolves plan item #6
+    // (buildJudgePrompt blank CONTEXT guard) as already validated at extraction time.
+    const error = await Try(runAITests, { filePath: testFilePath, runs: 1, timeout: AI_AGENT_TIMEOUT_MS, agentConfig: claudeConfig });
+
+    assert({
+      given: 'a test file with no import statement',
+      should: 'throw a ValidationError with MISSING_PROMPT_UNDER_TEST',
+      actual: { name: error?.cause?.name, code: error?.cause?.code },
+      expected: { name: 'ValidationError', code: 'MISSING_PROMPT_UNDER_TEST' }
+    });
+  });
+});
+
+describe.skipIf(!isClaudeAuthenticated)('e2e: missing userPrompt', () => {
+  test('throws when test file has no userPrompt', { timeout: E2E_TEST_TIMEOUT_MS }, async () => {
+    const testFilePath = join(__dirname, 'fixtures', 'missing-user-prompt.sudo');
+
+    const error = await Try(runAITests, { filePath: testFilePath, runs: 1, timeout: AI_AGENT_TIMEOUT_MS, agentConfig: claudeConfig });
+
+    assert({
+      given: 'a test file with no userPrompt field',
+      should: 'throw a ValidationError with MISSING_USER_PROMPT',
+      actual: { name: error?.cause?.name, code: error?.cause?.code },
+      expected: { name: 'ValidationError', code: 'MISSING_USER_PROMPT' }
+    });
+  });
+});
+
+describe.skipIf(!isClaudeAuthenticated)('e2e: no assertions', () => {
+  test('throws when test file has no assertion lines', { timeout: E2E_TEST_TIMEOUT_MS }, async () => {
+    const testFilePath = join(__dirname, 'fixtures', 'no-assertions.sudo');
+
+    const error = await Try(runAITests, { filePath: testFilePath, runs: 1, timeout: AI_AGENT_TIMEOUT_MS, agentConfig: claudeConfig });
+
+    assert({
+      given: 'a test file with no assertion lines',
+      should: 'throw a ValidationError with NO_ASSERTIONS_FOUND',
+      actual: { name: error?.cause?.name, code: error?.cause?.code },
+      expected: { name: 'ValidationError', code: 'NO_ASSERTIONS_FOUND' }
+    });
+  });
+});
+
+describe.skipIf(!isClaudeAuthenticated)('e2e: SudoLang userPrompt', () => {
+  test('runs AI tests when userPrompt is written in SudoLang', { timeout: E2E_TEST_TIMEOUT_MS }, async () => {
+    const testFilePath = join(__dirname, 'fixtures', 'sudolang-prompt-test.sudo');
+
+    const results = await runAITests({
+      filePath: testFilePath,
+      runs: 2,
+      threshold: 75,
+      timeout: AI_AGENT_TIMEOUT_MS,
+      agentConfig: claudeConfig
+    });
+
+    assert({
+      given: 'a SudoLang userPrompt with 3 assertions',
+      should: 'extract and run all 3 assertions',
+      actual: results.assertions.length,
+      expected: 3
+    });
+
+    assert({
+      given: 'a well-specified SudoLang constraint',
+      should: 'pass the overall test suite',
+      actual: results.passed,
       expected: true
     });
   });

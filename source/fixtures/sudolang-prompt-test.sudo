@@ -1,0 +1,13 @@
+import 'source/fixtures/sum-function-spec.mdc'
+
+userPrompt = """
+implement sum {
+  parameters: a: Number, b: Number
+  returns: Number
+  constraint: result = a + b
+}
+"""
+
+- Given the SudoLang spec, should name the function sum
+- Given the SudoLang spec, should accept two numeric parameters named a and b
+- Given the SudoLang constraint result = a + b, should return the correct sum

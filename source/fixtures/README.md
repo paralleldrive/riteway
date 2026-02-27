@@ -31,12 +31,35 @@ Reference implementation of a `.sudo` test file demonstrating:
 - A `userPrompt` that instructs the agent to implement the spec
 - Three assertions that the judge evaluates against the agent's output
 
+### `sudolang-prompt-test.sudo`
+Verifies the framework handles SudoLang syntax in the `userPrompt` field. The extraction agent,
+result agent, and judge agent all process SudoLang natively. Imports `sum-function-spec.mdc`.
+
 ### `claude-agent-config.json`
 Valid claude agent config in JSON format — used to verify the `--agent-config` file-loading flow.
 
 ---
 
-## Why No Failure Fixture?
+## Validation Error Fixtures
+
+These fixtures trigger specific validation errors in the extraction pipeline.
+Each requires one real agent call (extraction only — no result/judge agents).
+
+### `no-prompt-under-test.sudo`
+Has a `userPrompt` and assertions but no `import` statement. Verifies `extractTests` throws
+`MISSING_PROMPT_UNDER_TEST` when no prompt-under-test import is provided.
+
+### `missing-user-prompt.sudo`
+Has an `import` and assertions but no `userPrompt` field. Verifies `extractTests` throws
+`MISSING_USER_PROMPT` when the test file omits the user prompt.
+
+### `no-assertions.sudo`
+Has an `import` and `userPrompt` but no assertion lines. Verifies `extractTests` throws
+`NO_ASSERTIONS_FOUND` when no requirements are specified.
+
+---
+
+## Why No Deterministic Failure Fixture?
 
 Deterministic failure tests are not viable with capable LLMs as both result and judge agents —
 the result agent will satisfy requirements from first principles regardless of bad prompt context,
