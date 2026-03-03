@@ -23,18 +23,24 @@ import { parseExtractionResult, resolveImportPaths } from './extraction-parser.j
 export const buildExtractionPrompt = (testContent) =>
   `You are a test extraction agent. Analyze the following test file and extract structured information.
 
-For each assertion or requirement in the test file (these may be formatted as
-"Given X, should Y", bullet points, YAML entries, natural language sentences,
-SudoLang expressions, or any other format):
+EXTRACTION RULES (follow strictly):
 
-1. Identify the userPrompt (the prompt to be tested)
-2. Extract the specific requirement from the assertion
-3. Identify any import file paths (e.g., import 'path/to/file.mdc')
+1. "userPrompt": Extract ONLY if explicitly declared in the test file (e.g., \`userPrompt = """..."""\`).
+   Do NOT infer, synthesize, or derive a userPrompt from import file contents, assertion text, or context.
+   If no explicit userPrompt declaration exists, return "".
+
+2. "importPaths": Extract any import file paths declared in the test file (e.g., import 'path/to/file.mdc').
+   If no imports are declared, return [].
+
+3. "assertions": Extract ONLY requirement/assertion lines that appear explicitly in the test file body
+   (e.g., "- Given X, should Y", bullet points, or numbered requirements).
+   Do NOT extract requirements from imported file contents — only from the test file itself.
+   If no assertion lines appear in the test file body, return [].
 
 Return a JSON object with:
-- "userPrompt": the test prompt to execute (string)
-- "importPaths": array of import file paths found in the test file (e.g., ["ai/rules/ui.mdc"])
-- "assertions": array of assertion objects, each with:
+- "userPrompt": the explicitly declared test prompt, or "" if absent
+- "importPaths": array of import file paths (e.g., ["ai/rules/ui.mdc"])
+- "assertions": array of assertion objects found in the test file body, each with:
   - "id": sequential integer starting at 1
   - "requirement": the assertion text (e.g., "Given X, should Y")
 
@@ -121,11 +127,14 @@ end with --- on its own line. No markdown fences, no explanation outside the blo
  * Phase 1.5: Read agent-identified import files → promptUnderTest string
  * Phase 2: Return validated structured data for two-agent execution
  *
+ * The extraction prompt instructs the agent to return "" / [] for missing fields
+ * rather than inferring them — making the validation below reliable end-to-end.
+ *
  * Validation:
  * - Missing userPrompt → ValidationError MISSING_USER_PROMPT
- * - Missing promptUnderTest → ValidationError MISSING_PROMPT_UNDER_TEST
  * - No assertions → ValidationError NO_ASSERTIONS_FOUND
- * - Missing import file → ValidationError PROMPT_READ_FAILED (with cause)
+ * - Missing promptUnderTest import → ValidationError MISSING_PROMPT_UNDER_TEST
+ * - Missing import file on disk → ValidationError PROMPT_READ_FAILED (with cause)
  *
  * @param {Object} options
  * @param {string} options.testContent - Raw contents of the test file
@@ -153,16 +162,16 @@ export const extractTests = async ({
   if (!userPrompt || userPrompt.trim() === '') {
     throw createError({
       ...ValidationError,
-      message: 'Test file does not define a userPrompt. Every test file must include a user prompt (inline or imported).',
+      message: 'Extraction agent returned no userPrompt. Ensure the test file declares a userPrompt (e.g., `userPrompt = """..."""`) in a format the agent can recognize.',
       code: 'MISSING_USER_PROMPT',
       testFile: testFilePath
     });
   }
 
-  if (!assertions || assertions.length === 0) {
+  if (assertions.length === 0) {
     throw createError({
       ...ValidationError,
-      message: 'Test file does not contain any assertions. Every test file must include at least one assertion (e.g., "Given X, should Y").',
+      message: 'Extraction agent returned no assertions. Ensure the test file includes assertion lines (e.g., "- Given X, should Y") that the agent can extract.',
       code: 'NO_ASSERTIONS_FOUND',
       testFile: testFilePath
     });
