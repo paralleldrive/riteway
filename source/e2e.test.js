@@ -241,7 +241,7 @@ describe.skipIf(!isClaudeAuthenticated)('e2e: missing userPrompt', () => {
       actual: error?.cause,
       expected: {
         name: 'ValidationError',
-        message: 'Test file does not define a userPrompt. Every test file must include a user prompt (inline or imported).',
+        message: 'Extraction agent returned no userPrompt. Ensure the test file declares a userPrompt (e.g., `userPrompt = """..."""`) in a format the agent can recognize.',
         code: 'MISSING_USER_PROMPT',
         testFile: testFilePath
       }
@@ -261,7 +261,7 @@ describe.skipIf(!isClaudeAuthenticated)('e2e: no assertions', () => {
       actual: error?.cause,
       expected: {
         name: 'ValidationError',
-        message: 'Test file does not contain any assertions. Every test file must include at least one assertion (e.g., "Given X, should Y").',
+        message: 'Extraction agent returned no assertions. Ensure the test file includes assertion lines (e.g., "- Given X, should Y") that the agent can extract.',
         code: 'NO_ASSERTIONS_FOUND',
         testFile: testFilePath
       }

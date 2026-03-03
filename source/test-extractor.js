@@ -168,10 +168,10 @@ export const extractTests = async ({
     });
   }
 
-  if (!assertions || assertions.length === 0) {
+  if (assertions.length === 0) {
     throw createError({
       ...ValidationError,
-      message: 'Test file does not contain any assertions. Every test file must include at least one assertion (e.g., "Given X, should Y").',
+      message: 'Extraction agent returned no assertions. Ensure the test file includes assertion lines (e.g., "- Given X, should Y") that the agent can extract.',
       code: 'NO_ASSERTIONS_FOUND',
       testFile: testFilePath
     });
