@@ -1,0 +1,5 @@
+{
+  "command": "my-agent",
+  "args": ["--format", "ndjson"],
+  "outputFormat": "ndjson"
+}

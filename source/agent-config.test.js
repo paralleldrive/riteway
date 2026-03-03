@@ -3,7 +3,6 @@ import { assert } from './vitest.js';
 import { Try } from './riteway.js';
 import { handleAIErrors, allNoop } from './ai-errors.js';
 import { getAgentConfig, loadAgentConfig } from './agent-config.js';
-import { parseOpenCodeNDJSON } from './agent-parser.js';
 
 
 describe('getAgentConfig()', () => {
@@ -12,20 +11,20 @@ describe('getAgentConfig()', () => {
 
     assert({
       given: 'agent name "claude"',
-      should: 'return correct agent configuration',
+      should: 'return correct agent configuration with json outputFormat',
       actual: config,
-      expected: { command: 'claude', args: ['-p', '--output-format', 'json', '--no-session-persistence'] }
+      expected: { command: 'claude', args: ['-p', '--output-format', 'json', '--no-session-persistence'], outputFormat: 'json' }
     });
   });
 
-  test('returns opencode configuration with parseOutput function', () => {
+  test('returns opencode configuration with ndjson outputFormat', () => {
     const config = getAgentConfig('opencode');
 
     assert({
       given: 'agent name "opencode"',
-      should: 'return correct agent configuration with NDJSON parser',
+      should: 'return correct agent configuration with ndjson outputFormat',
       actual: config,
-      expected: { command: 'opencode', args: ['run', '--format', 'json'], parseOutput: parseOpenCodeNDJSON }
+      expected: { command: 'opencode', args: ['run', '--format', 'json'], outputFormat: 'ndjson' }
     });
   });
 
@@ -34,9 +33,9 @@ describe('getAgentConfig()', () => {
 
     assert({
       given: 'agent name "cursor"',
-      should: 'return correct agent configuration',
+      should: 'return correct agent configuration with json outputFormat',
       actual: config,
-      expected: { command: 'agent', args: ['--print', '--output-format', 'json', '--trust'] }
+      expected: { command: 'agent', args: ['--print', '--output-format', 'json', '--trust'], outputFormat: 'json' }
     });
   });
 
@@ -45,9 +44,9 @@ describe('getAgentConfig()', () => {
 
     assert({
       given: 'no agent name',
-      should: 'default to claude configuration',
+      should: 'default to claude configuration with json outputFormat',
       actual: config,
-      expected: { command: 'claude', args: ['-p', '--output-format', 'json', '--no-session-persistence'] }
+      expected: { command: 'claude', args: ['-p', '--output-format', 'json', '--no-session-persistence'], outputFormat: 'json' }
     });
   });
 
@@ -56,9 +55,9 @@ describe('getAgentConfig()', () => {
 
     assert({
       given: 'mixed-case "OpenCode"',
-      should: 'return opencode configuration with case normalized',
+      should: 'return opencode configuration with ndjson outputFormat',
       actual: config,
-      expected: { command: 'opencode', args: ['run', '--format', 'json'], parseOutput: parseOpenCodeNDJSON }
+      expected: { command: 'opencode', args: ['run', '--format', 'json'], outputFormat: 'ndjson' }
     });
   });
 
@@ -85,14 +84,25 @@ describe('getAgentConfig()', () => {
 });
 
 describe('loadAgentConfig()', () => {
-  test('loads and parses valid agent config JSON file', async () => {
+  test('loads and parses valid agent config JSON file with default outputFormat', async () => {
     const config = await loadAgentConfig('./source/fixtures/test-agent-config.json');
 
     assert({
-      given: 'valid agent config JSON file',
-      should: 'return parsed agent configuration',
+      given: 'valid agent config JSON file without outputFormat field',
+      should: 'return parsed config with outputFormat defaulting to json',
       actual: config,
-      expected: { command: 'my-agent', args: ['--print', '--format', 'json'] }
+      expected: { command: 'my-agent', args: ['--print', '--format', 'json'], outputFormat: 'json' }
+    });
+  });
+
+  test('loads agent config with explicit ndjson outputFormat', async () => {
+    const config = await loadAgentConfig('./source/fixtures/ndjson-agent-config.json');
+
+    assert({
+      given: 'agent config file with outputFormat: ndjson',
+      should: 'return config preserving the ndjson outputFormat',
+      actual: config,
+      expected: { command: 'my-agent', args: ['--format', 'ndjson'], outputFormat: 'ndjson' }
     });
   });
 

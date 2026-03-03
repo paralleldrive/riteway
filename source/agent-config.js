@@ -2,7 +2,6 @@ import { readFile } from 'fs/promises';
 import { z } from 'zod';
 import { createError } from 'error-causes';
 import { ValidationError, AgentConfigReadError, AgentConfigParseError, AgentConfigValidationError } from './ai-errors.js';
-import { parseOpenCodeNDJSON } from './agent-parser.js';
 
 /**
  * Get agent configuration based on agent name.
@@ -15,16 +14,18 @@ export const getAgentConfig = (agentName = 'claude') => {
   const agentConfigs = {
     claude: {
       command: 'claude',
-      args: ['-p', '--output-format', 'json', '--no-session-persistence']
+      args: ['-p', '--output-format', 'json', '--no-session-persistence'],
+      outputFormat: 'json'
     },
     opencode: {
       command: 'opencode',
       args: ['run', '--format', 'json'],
-      parseOutput: parseOpenCodeNDJSON
+      outputFormat: 'ndjson'
     },
     cursor: {
       command: 'agent',
-      args: ['--print', '--output-format', 'json', '--trust']
+      args: ['--print', '--output-format', 'json', '--trust'],
+      outputFormat: 'json'
     }
   };
 
@@ -39,10 +40,10 @@ export const getAgentConfig = (agentName = 'claude') => {
   return config;
 };
 
-// YAGNI: only command + args — parseOutput is a runtime function, not a serializable config field
 const agentConfigFileSchema = z.object({
   command: z.string().min(1, { error: 'command is required' }),
-  args: z.array(z.string()).default([])
+  args: z.array(z.string()).default([]),
+  outputFormat: z.enum(['json', 'ndjson', 'text']).default('json')
 });
 
 const readAgentConfigFile = async ({ configPath }) => {

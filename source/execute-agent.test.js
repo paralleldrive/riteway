@@ -130,26 +130,18 @@ describe('executeAgent()', () => {
     });
   });
 
-  test('applies parseOutput preprocessor before parsing result', async () => {
-    const ndjsonOutput = '{"type":"text","part":{"text":"{\\"passed\\":true}"}}';
-    const parseOutput = vi.fn(() => '{"passed":true}');
+  test('processes ndjson outputFormat using OpenCode NDJSON parser', async () => {
+    const ndjsonOutput = '{"type":"text","part":{"text":"{\\"passed\\":true}"}}\n{"type":"other"}';
     spawn.mockReturnValue(createMockProcess({ stdout: ndjsonOutput }));
 
     const result = await executeAgent({
-      agentConfig: { ...agentConfig, parseOutput },
+      agentConfig: { ...agentConfig, outputFormat: 'ndjson' },
       prompt: 'test prompt'
     });
 
     assert({
-      given: 'agentConfig with parseOutput function',
-      should: 'call parseOutput once with the raw stdout',
-      actual: parseOutput.mock.calls,
-      expected: [[ndjsonOutput]]
-    });
-
-    assert({
-      given: 'parseOutput returns valid JSON',
-      should: 'return the parsed result',
+      given: 'agentConfig with outputFormat ndjson and valid NDJSON stdout',
+      should: 'parse NDJSON and return the extracted JSON result',
       actual: result,
       expected: { passed: true }
     });
