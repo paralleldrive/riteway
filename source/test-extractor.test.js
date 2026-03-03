@@ -464,7 +464,7 @@ describe('extractTests()', () => {
     });
   });
 
-  test('throws ValidationError when agent returns empty userPrompt', async () => {
+  test('throws ValidationError when userPrompt is empty', async () => {
     const extractedData = {
       userPrompt: '',
       importPaths: [],
@@ -477,7 +477,7 @@ describe('extractTests()', () => {
     };
 
     const error = await Try(extractTests, {
-      testContent: 'userPrompt = """Test."""\n\n- Given test, should pass',
+      testContent: '- Given test, should pass',
       agentConfig: mockAgentConfig,
       timeout: 5000
     });
@@ -486,21 +486,21 @@ describe('extractTests()', () => {
     handleAIErrors({ ...allNoop, ValidationError: () => invoked.push('ValidationError') })(error);
 
     assert({
-      given: 'agent returns empty userPrompt',
+      given: 'empty userPrompt in extraction result',
       should: 'throw an error that routes to the ValidationError handler',
       actual: invoked,
       expected: ['ValidationError']
     });
 
     assert({
-      given: 'agent returns empty userPrompt',
+      given: 'empty userPrompt',
       should: 'include MISSING_USER_PROMPT code in error',
       actual: error?.cause?.code,
       expected: 'MISSING_USER_PROMPT'
     });
   });
 
-  test('throws ValidationError when agent returns no assertions', async () => {
+  test('throws ValidationError when no assertions found', async () => {
     const extractedData = {
       userPrompt: 'test prompt',
       importPaths: [],
@@ -513,7 +513,7 @@ describe('extractTests()', () => {
     };
 
     const error = await Try(extractTests, {
-      testContent: 'userPrompt = """test"""\n\n- Given test, should pass',
+      testContent: 'userPrompt = """test"""',
       agentConfig: mockAgentConfig,
       timeout: 5000
     });
@@ -522,14 +522,14 @@ describe('extractTests()', () => {
     handleAIErrors({ ...allNoop, ValidationError: () => invoked.push('ValidationError') })(error);
 
     assert({
-      given: 'agent returns empty assertions array',
+      given: 'empty assertions array',
       should: 'throw an error that routes to the ValidationError handler',
       actual: invoked,
       expected: ['ValidationError']
     });
 
     assert({
-      given: 'agent returns empty assertions array',
+      given: 'empty assertions array',
       should: 'include NO_ASSERTIONS_FOUND code in error',
       actual: error?.cause?.code,
       expected: 'NO_ASSERTIONS_FOUND'
