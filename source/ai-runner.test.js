@@ -26,12 +26,7 @@ const createTwoAgentMockArgs = ({
     importPaths,
     assertions: extractedTests
   };
-  const tapYAML = `---
-passed: ${judgmentPassed}
-actual: "Mock actual output"
-expected: "Mock expected output"
-score: ${judgmentScore}
----`;
+  const tapYAML = `---\npassed: ${judgmentPassed}\nactual: "Mock actual output"\nexpected: "Mock expected output"\nscore: ${judgmentScore}\n---`;
 
   return [
     '-e',
@@ -39,9 +34,7 @@ score: ${judgmentScore}
     if (prompt.includes('<test-file-contents>')) {
       console.log(JSON.stringify(${JSON.stringify(extractionResult)}));
     } else if (prompt.includes('ACTUAL RESULT TO EVALUATE')) {
-      // TODO(post-consolidation): use JSON.stringify(tapYAML) here for consistency
-      // with extractionResult/resultText and to avoid backtick-in-template fragility.
-      console.log(\`${tapYAML}\`);
+      console.log(${JSON.stringify(tapYAML)});
     } else if (prompt.includes('CONTEXT (Prompt Under Test)')) {
       console.log(${JSON.stringify(resultText)});
     }`

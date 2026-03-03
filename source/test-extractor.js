@@ -77,18 +77,15 @@ Your entire output IS the result.`;
  * This is part of the two-agent pattern where:
  * - Result agent: Execute the user prompt, return plain text
  * - Judge agent (this prompt): Evaluate the result against ONE requirement
- *
- * TODO(post-consolidation): add a promptUnderTest guard matching buildResultPrompt —
- * emit the CONTEXT section only when promptUnderTest is non-empty, to avoid a blank
- * section if the validator is ever called without a resolved prompt under test.
  */
-export const buildJudgePrompt = ({ userPrompt, promptUnderTest, result, requirement }) =>
-  `You are an AI judge. Evaluate whether a given result satisfies a specific requirement.
+export const buildJudgePrompt = ({ userPrompt, promptUnderTest, result, requirement }) => {
+  const contextSection = promptUnderTest
+    ? `CONTEXT (Prompt Under Test):\n${promptUnderTest}\n\n`
+    : '';
 
-CONTEXT (Prompt Under Test):
-${promptUnderTest}
+  return `You are an AI judge. Evaluate whether a given result satisfies a specific requirement.
 
-ORIGINAL USER PROMPT:
+${contextSection}ORIGINAL USER PROMPT:
 ${userPrompt}
 
 ACTUAL RESULT TO EVALUATE:
@@ -113,6 +110,7 @@ score: 85
 
 CRITICAL: Return ONLY the TAP YAML block. Start with --- on its own line,
 end with --- on its own line. No markdown fences, no explanation outside the block.`;
+};
 
 /**
  * Extract individual test assertions from a multi-assertion test file
@@ -150,12 +148,6 @@ export const extractTests = async ({
   const result = await executeAgent({ agentConfig, prompt: extractionPrompt, timeout });
   const extracted = parseExtractionResult(result);
 
-  // TODO(post-consolidation): validate userPrompt and assertions before resolveImportPaths
-  // so structural errors (MISSING_USER_PROMPT, NO_ASSERTIONS_FOUND) surface before any IO.
-  const promptUnderTest = extracted.importPaths.length > 0
-    ? await resolveImportPaths({ importPaths: extracted.importPaths, projectRoot })
-    : '';
-
   const { userPrompt, assertions } = extracted;
 
   if (!userPrompt || userPrompt.trim() === '') {
@@ -167,20 +159,24 @@ export const extractTests = async ({
     });
   }
 
-  if (!promptUnderTest || promptUnderTest.trim() === '') {
-    throw createError({
-      ...ValidationError,
-      message: 'Test file does not declare a promptUnderTest import. Every test file must import the prompt under test.',
-      code: 'MISSING_PROMPT_UNDER_TEST',
-      testFile: testFilePath
-    });
-  }
-
   if (!assertions || assertions.length === 0) {
     throw createError({
       ...ValidationError,
       message: 'Test file does not contain any assertions. Every test file must include at least one assertion (e.g., "Given X, should Y").',
       code: 'NO_ASSERTIONS_FOUND',
+      testFile: testFilePath
+    });
+  }
+
+  const promptUnderTest = extracted.importPaths.length > 0
+    ? await resolveImportPaths({ importPaths: extracted.importPaths, projectRoot })
+    : '';
+
+  if (!promptUnderTest || promptUnderTest.trim() === '') {
+    throw createError({
+      ...ValidationError,
+      message: 'Test file does not declare a promptUnderTest import. Every test file must import the prompt under test.',
+      code: 'MISSING_PROMPT_UNDER_TEST',
       testFile: testFilePath
     });
   }

@@ -168,6 +168,49 @@ end with --- on its own line. No markdown fences, no explanation outside the blo
       expected
     });
   });
+
+  test('omits context section when promptUnderTest is empty', () => {
+    const userPrompt = 'What is 2 + 2?';
+    const result = 'The answer is 4.';
+    const requirement = 'Given simple addition, should return 4';
+
+    const judgePrompt = buildJudgePrompt({ userPrompt, promptUnderTest: '', result, requirement });
+
+    const expected = `You are an AI judge. Evaluate whether a given result satisfies a specific requirement.
+
+ORIGINAL USER PROMPT:
+What is 2 + 2?
+
+ACTUAL RESULT TO EVALUATE:
+The answer is 4.
+
+REQUIREMENT:
+Given simple addition, should return 4
+
+INSTRUCTIONS:
+1. Read the actual result above
+2. Determine whether it satisfies the requirement
+3. Summarize what was actually produced (actual) vs what was expected (expected)
+4. Assign a quality score from 0 (completely fails) to 100 (perfectly satisfies)
+
+Return your judgment as a TAP YAML diagnostic block:
+---
+passed: true
+actual: "summary of what was produced"
+expected: "what was expected"
+score: 85
+---
+
+CRITICAL: Return ONLY the TAP YAML block. Start with --- on its own line,
+end with --- on its own line. No markdown fences, no explanation outside the block.`;
+
+    assert({
+      given: 'empty promptUnderTest',
+      should: 'omit CONTEXT section from judge prompt',
+      actual: judgePrompt,
+      expected
+    });
+  });
 });
 
 describe('extractTests()', () => {
@@ -415,97 +458,75 @@ describe('extractTests()', () => {
   });
 
   test('throws ValidationError when userPrompt is empty', async () => {
-    const testDir = createTempDir();
+    const extractedData = {
+      userPrompt: '',
+      importPaths: [],
+      assertions: [{ id: 1, requirement: 'Given a test, should pass' }]
+    };
 
-    try {
-      mkdirSync(testDir, { recursive: true });
-      writeFileSync(join(testDir, 'context.mdc'), 'Some context content');
+    const mockAgentConfig = {
+      command: 'node',
+      args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
+    };
 
-      const extractedData = {
-        userPrompt: '',
-        importPaths: ['context.mdc'],
-        assertions: [{ id: 1, requirement: 'Given a test, should pass' }]
-      };
+    const error = await Try(extractTests, {
+      testContent: '- Given test, should pass',
+      agentConfig: mockAgentConfig,
+      timeout: 5000
+    });
 
-      const mockAgentConfig = {
-        command: 'node',
-        args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
-      };
+    const invoked = [];
+    handleAIErrors({ ...allNoop, ValidationError: () => invoked.push('ValidationError') })(error);
 
-      const error = await Try(extractTests, {
-        testContent: 'import "context.mdc"\n\n- Given test, should pass',
-        testFilePath: join(testDir, 'test.sudo'),
-        agentConfig: mockAgentConfig,
-        timeout: 5000,
-        projectRoot: testDir
-      });
+    assert({
+      given: 'empty userPrompt in extraction result',
+      should: 'throw an error that routes to the ValidationError handler',
+      actual: invoked,
+      expected: ['ValidationError']
+    });
 
-      const invoked = [];
-      handleAIErrors({ ...allNoop, ValidationError: () => invoked.push('ValidationError') })(error);
-
-      assert({
-        given: 'empty userPrompt in extraction result',
-        should: 'throw an error that routes to the ValidationError handler',
-        actual: invoked,
-        expected: ['ValidationError']
-      });
-
-      assert({
-        given: 'empty userPrompt',
-        should: 'include MISSING_USER_PROMPT code in error',
-        actual: error?.cause?.code,
-        expected: 'MISSING_USER_PROMPT'
-      });
-    } finally {
-      rmSync(testDir, { recursive: true, force: true });
-    }
+    assert({
+      given: 'empty userPrompt',
+      should: 'include MISSING_USER_PROMPT code in error',
+      actual: error?.cause?.code,
+      expected: 'MISSING_USER_PROMPT'
+    });
   });
 
   test('throws ValidationError when no assertions found', async () => {
-    const testDir = createTempDir();
+    const extractedData = {
+      userPrompt: 'test prompt',
+      importPaths: [],
+      assertions: []
+    };
 
-    try {
-      mkdirSync(testDir, { recursive: true });
-      writeFileSync(join(testDir, 'context.mdc'), 'Some context content');
+    const mockAgentConfig = {
+      command: 'node',
+      args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
+    };
 
-      const extractedData = {
-        userPrompt: 'test prompt',
-        importPaths: ['context.mdc'],
-        assertions: []
-      };
+    const error = await Try(extractTests, {
+      testContent: 'userPrompt = """test"""',
+      agentConfig: mockAgentConfig,
+      timeout: 5000
+    });
 
-      const mockAgentConfig = {
-        command: 'node',
-        args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
-      };
+    const invoked = [];
+    handleAIErrors({ ...allNoop, ValidationError: () => invoked.push('ValidationError') })(error);
 
-      const error = await Try(extractTests, {
-        testContent: 'import "context.mdc"\n\nuserPrompt = """test"""',
-        testFilePath: join(testDir, 'test.sudo'),
-        agentConfig: mockAgentConfig,
-        timeout: 5000,
-        projectRoot: testDir
-      });
+    assert({
+      given: 'empty assertions array',
+      should: 'throw an error that routes to the ValidationError handler',
+      actual: invoked,
+      expected: ['ValidationError']
+    });
 
-      const invoked = [];
-      handleAIErrors({ ...allNoop, ValidationError: () => invoked.push('ValidationError') })(error);
-
-      assert({
-        given: 'empty assertions array',
-        should: 'throw an error that routes to the ValidationError handler',
-        actual: invoked,
-        expected: ['ValidationError']
-      });
-
-      assert({
-        given: 'empty assertions array',
-        should: 'include NO_ASSERTIONS_FOUND code in error',
-        actual: error?.cause?.code,
-        expected: 'NO_ASSERTIONS_FOUND'
-      });
-    } finally {
-      rmSync(testDir, { recursive: true, force: true });
-    }
+    assert({
+      given: 'empty assertions array',
+      should: 'include NO_ASSERTIONS_FOUND code in error',
+      actual: error?.cause?.code,
+      expected: 'NO_ASSERTIONS_FOUND'
+    });
   });
 
   test('throws ValidationError with PROMPT_READ_FAILED when import file does not exist', async () => {
