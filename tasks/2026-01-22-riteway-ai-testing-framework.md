@@ -170,6 +170,7 @@ describe(moduleName, {
 - Given ai-evals output, should document output format and location
 - Given package.json, should verify all scripts and files properly configured
 - Given all implementation complete, should have all tests passing
+- Given runAITests returns zero assertions, should report 0% pass rate (not NaN)
 
 **Dependencies**: Task 5
 

@@ -7,13 +7,25 @@ This directory contains test fixtures for the Riteway AI testing framework.
 These fixtures are used by `agent-config.test.js` to exercise config loading:
 
 ### `test-agent-config.json`
-Valid agent config with a custom agent name and args.
+Valid flat agent config with a custom agent name and args. Used to test `loadAgentConfig` and `resolveAgentConfig` with an explicit `--agent-config` path.
+
+### `ndjson-agent-config.json`
+Valid flat agent config with `outputFormat: "ndjson"`. Used to test the schema round-trip for non-default output formats.
 
 ### `no-command-agent-config.json`
-Invalid agent config missing the required `command` field — used to verify schema validation error paths.
+Invalid flat agent config missing the required `command` field — used to verify schema validation error paths.
 
 ### `invalid-agent-config.txt`
 A non-JSON file — used to verify JSON parse error paths.
+
+### `riteway.agent-config.json`
+Valid agent registry (keyed by agent name). Used to test `loadAgentRegistry` and the registry resolution path in `resolveAgentConfig`. Contains a `testAgent` entry with a custom command.
+
+### `invalid-registry/riteway.agent-config.json`
+Registry file containing invalid JSON — used to verify `AgentConfigParseError` is thrown when the registry is malformed.
+
+### `bad-schema-registry/riteway.agent-config.json`
+Registry file with valid JSON but invalid schema (agent values are strings instead of objects) — used to verify `AgentConfigValidationError` is thrown.
 
 ---
 

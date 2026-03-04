@@ -1,0 +1,7 @@
+{
+  "testAgent": {
+    "command": "my-test-agent",
+    "args": ["--json"],
+    "outputFormat": "json"
+  }
+}

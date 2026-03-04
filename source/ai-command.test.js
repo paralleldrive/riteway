@@ -3,7 +3,7 @@ import { assert } from './vitest.js';
 import { Try } from './riteway.js';
 import { parseAIArgs, formatAssertionReport, runAICommand } from './ai-command.js';
 import { runAITests, verifyAgentAuthentication } from './ai-runner.js';
-import { getAgentConfig, loadAgentConfig } from './agent-config.js';
+import { resolveAgentConfig } from './agent-config.js';
 import { recordTestOutput } from './test-output.js';
 
 vi.mock('./ai-runner.js', () => ({
@@ -11,8 +11,7 @@ vi.mock('./ai-runner.js', () => ({
   verifyAgentAuthentication: vi.fn()
 }));
 vi.mock('./agent-config.js', () => ({
-  getAgentConfig: vi.fn(),
-  loadAgentConfig: vi.fn()
+  resolveAgentConfig: vi.fn()
 }));
 vi.mock('./test-output.js', () => ({
   recordTestOutput: vi.fn()
@@ -190,14 +189,14 @@ describe('parseAIArgs()', () => {
     });
   });
 
-  test('throws ValidationError for unsupported agent', () => {
-    const error = Try(parseAIArgs, ['--agent', 'invalid-agent', 'test.sudo']);
+  test('accepts custom agent names for registry-based resolution', () => {
+    const result = parseAIArgs(['--agent', 'custom-tool', 'test.sudo']);
 
     assert({
-      given: 'unsupported agent name',
-      should: 'have ValidationError name in cause',
-      actual: error?.cause?.name,
-      expected: 'ValidationError'
+      given: 'a custom agent name not in the built-in list',
+      should: 'parse successfully — resolution happens at run time via the registry',
+      actual: result.agent,
+      expected: 'custom-tool'
     });
   });
 
@@ -393,7 +392,7 @@ describe('runAICommand() orchestration', () => {
   const args = { filePath: './test.sudo', runs: 4, threshold: 75, agent: 'claude', color: false, concurrency: 4, cwd: process.cwd() };
 
   beforeEach(() => {
-    vi.mocked(getAgentConfig).mockReturnValue(agentConfig);
+    vi.mocked(resolveAgentConfig).mockResolvedValue(agentConfig);
     vi.mocked(verifyAgentAuthentication).mockResolvedValue({ success: true });
     vi.mocked(runAITests).mockResolvedValue(passedResults);
     vi.mocked(recordTestOutput).mockResolvedValue(outputPath);
@@ -413,23 +412,30 @@ describe('runAICommand() orchestration', () => {
     });
   });
 
-  test('passes agentConfig from getAgentConfig to runAITests', async () => {
+  test('resolves agent config and passes it to runAITests', async () => {
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     onTestFinished(() => consoleSpy.mockRestore());
 
     await runAICommand(args);
 
     assert({
-      given: 'agent name "claude"',
-      should: 'look up agent config and pass it to runAITests',
+      given: 'agent name "claude" and no agentConfigPath',
+      should: 'call resolveAgentConfig with agent, agentConfigPath, and cwd',
+      actual: vi.mocked(resolveAgentConfig).mock.lastCall?.[0],
+      expected: { agent: 'claude', agentConfigPath: undefined, cwd: process.cwd() }
+    });
+
+    assert({
+      given: 'resolved agent config',
+      should: 'pass it to runAITests',
       actual: vi.mocked(runAITests).mock.lastCall?.[0].agentConfig,
       expected: agentConfig
     });
   });
 
-  test('loads custom agent config when agentConfigPath is provided', async () => {
-    const customConfig = { command: 'my-agent', args: ['--custom'] };
-    vi.mocked(loadAgentConfig).mockResolvedValue(customConfig);
+  test('passes agentConfigPath to resolveAgentConfig when provided', async () => {
+    const customConfig = { command: 'my-agent', args: ['--custom'], outputFormat: 'json' };
+    vi.mocked(resolveAgentConfig).mockResolvedValue(customConfig);
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     onTestFinished(() => consoleSpy.mockRestore());
 
@@ -437,7 +443,14 @@ describe('runAICommand() orchestration', () => {
 
     assert({
       given: 'agentConfigPath provided',
-      should: 'load custom config and pass it to runAITests',
+      should: 'pass it to resolveAgentConfig',
+      actual: vi.mocked(resolveAgentConfig).mock.lastCall?.[0].agentConfigPath,
+      expected: './my-agent.json'
+    });
+
+    assert({
+      given: 'resolved custom agent config',
+      should: 'pass it to runAITests',
       actual: vi.mocked(runAITests).mock.lastCall?.[0].agentConfig,
       expected: customConfig
     });
@@ -503,6 +516,28 @@ describe('runAICommand() orchestration', () => {
         message: 'Failed to record test output: disk full',
         cause: new Error('disk full')
       }
+    });
+  });
+
+  test('reports 0% pass rate (not NaN) when assertions array is empty', async () => {
+    vi.mocked(runAITests).mockResolvedValue({ passed: false, assertions: [] });
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    onTestFinished(() => consoleSpy.mockRestore());
+
+    const error = await Try(runAICommand, args);
+
+    assert({
+      given: 'runAITests returns zero assertions',
+      should: 'report 0% pass rate in the error message, not NaN',
+      actual: error?.cause?.message?.includes('NaN'),
+      expected: false
+    });
+
+    assert({
+      given: 'runAITests returns zero assertions',
+      should: 'include (0%) in the AITestError message',
+      actual: error?.cause?.message,
+      expected: 'Test suite failed: 0/0 assertions passed (0%)'
     });
   });
 
