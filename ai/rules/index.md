@@ -16,6 +16,10 @@ See [`javascript/index.md`](./javascript/index.md) for contents.
 
 See [`security/index.md`](./security/index.md) for contents.
 
+### 📁 sudolang/
+
+See [`sudolang/index.md`](./sudolang/index.md) for contents.
+
 ## Files
 
 ### Aiden Agent Orchestrator

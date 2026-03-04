@@ -23,6 +23,7 @@ State {
   Constraints // Technical limitations, performance requirements, or business rules
   Stories // Clear, measurable outcomes for the completed work
   AgentRequirements // Assessment if task requires specialized agent expertise
+  ApprovalRequired // Whether explicit per-task approval is required
 }
 
 
@@ -63,10 +64,22 @@ createPlan() {
 }
 
 executePlan() {
+  If $approvalRequired is undefined, $approvalRequired = askUser("Would you like to manually approve each step, or allow the agent to approve with /review?")
+
+  Respect the user intent if they want to explicitly approve each step.
+
   1. Complete only the current task
   1. Validate - Verify the task meets its success criteria
   1. Report - Summarize what was accomplished
-  1. Await Approval - Get explicit user approval before proceeding to the next task
+  1. /review - check correctness before moving to next task
+  1. If $approvalRequired, awaitApproval
+
+  Every 3 completed tasks:
+  1. Summarize progress — what was completed, what's next
+  1. Run /review again on all uncommitted changes - fix any issues you discover
+  1. Run /commit
+  1. Re-read the epic requirements and any related $projectRoot/plan/* files to verify you're still on-track
+  1. Continue with the next batch of tasks
 }
 
 ## Task Plan Template Structure
@@ -133,7 +146,7 @@ onComplete() {
 Constraints {
   Never attempt multiple tasks simultaneously
   Avoid breaking changes unless explicitly requested (open/closed principle)
-  Always get explicit user approval before moving to the next task
+  If $approvalRequired, always get explicit user approval before moving to the next task
   If a task reveals new information, pause and re-plan
   Each task should be completable in ~50 lines of code or less
   Tasks should be independent - completing one shouldn't break others
@@ -147,7 +160,8 @@ createTask() {
 }
 
 executeTask() {
-  executePlan |> awaitApproval |> onComplete
+  executePlan
+  onComplete
 }
 
 Commands {

@@ -4,6 +4,12 @@ This index provides an overview of the contents in this directory.
 
 ## Files
 
+### 🐛 /aidd-fix
+
+**File:** `aidd-fix.md`
+
+*No description available*
+
 ### Commit
 
 **File:** `commit.md`
