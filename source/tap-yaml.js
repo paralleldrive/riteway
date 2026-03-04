@@ -32,5 +32,5 @@ export const parseTAPYAML = (output) => {
     .split('\n')
     .map(line => line.match(/^(\w+):\s*(.+)$/))
     .filter(Boolean)
-    .reduce((acc, [, key, rawValue]) => ({ ...acc, ...parseField(key, rawValue) }), {});
+    .reduce((acc, [, key, rawValue]) => ({ ...acc, ...parseField(key, rawValue) }), /** @type {{ passed: boolean, actual: string, expected: string, score: number }} */({}));
 };
