@@ -294,6 +294,52 @@ countKeys = (Object) => Number
 
 This function can be handy when you're adding new state to an object keyed by ID, and you want to ensure that the correct number of keys were added to the object.
 
+### Try
+
+```js
+Try = (fn, ...args) => Error | Any
+```
+
+Execute a function with the given arguments and return any error thrown, or the function's return value if no error occurs. This utility is designed for testing error cases in your assertions.
+
+`Try` handles both synchronous errors (via try/catch) and asynchronous errors (via promise rejection), making it ideal for testing functions that throw exceptions or return rejected promises.
+
+#### Example: Testing Synchronous Errors
+
+```js
+const sum = (...args) => {
+  if (args.some(v => Number.isNaN(v))) throw new TypeError('NaN');
+  return args.reduce((acc, n) => acc + n, 0);
+};
+
+describe('sum()', async assert => {
+  assert({
+    given: 'NaN',
+    should: 'throw TypeError',
+    actual: Try(sum, 1, NaN),
+    expected: new TypeError('NaN')
+  });
+});
+```
+
+#### Example: Testing Asynchronous Errors
+
+```js
+const fetchUser = async (id) => {
+  if (!id) throw new Error('ID required');
+  return await fetch(`/api/users/${id}`);
+};
+
+describe('fetchUser()', async assert => {
+  assert({
+    given: 'no ID',
+    should: 'throw an error',
+    actual: await Try(fetchUser),
+    expected: new Error('ID required')
+  });
+});
+```
+
 
 ## Render Component
 
