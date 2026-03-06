@@ -50,38 +50,22 @@ describe.skipIf(!isClaudeAuthenticated)('e2e: full workflow with real agent', ()
     });
 
     assert({
-      given: 'sum-function fixture with 3 assertions',
-      should: 'extract and run all 3 assertions',
-      actual: results.assertions.length,
-      expected: 3
-    });
-
-    assert({
-      given: 'a fixture with a clear, well-specified prompt under test',
-      should: 'pass the overall test suite',
-      actual: results.passed,
-      expected: true
-    });
-
-    assert({
-      given: 'runs set to 2',
-      should: 'run each assertion exactly 2 times',
-      actual: results.assertions[0].totalRuns,
-      expected: 2
-    });
-
-    assert({
-      given: 'first assertion with 2 runs',
-      should: 'collect 2 run results',
-      actual: results.assertions[0].runResults.length,
-      expected: 2
-    });
-
-    assert({
-      given: 'assertion average score',
-      should: 'be between 0 and 100',
-      actual: results.assertions[0].averageScore >= 0 && results.assertions[0].averageScore <= 100,
-      expected: true
+      given: 'a well-specified prompt under test run twice',
+      should: 'extract all assertions, run each the specified number of times, and pass the suite',
+      actual: {
+        assertionCount: results.assertions.length,
+        passed: results.passed,
+        totalRuns: results.assertions[0].totalRuns,
+        runResultsCount: results.assertions[0].runResults.length,
+        scoreInRange: results.assertions[0].averageScore >= 0 && results.assertions[0].averageScore <= 100
+      },
+      expected: {
+        assertionCount: 3,
+        passed: true,
+        totalRuns: 2,
+        runResultsCount: 2,
+        scoreInRange: true
+      }
     });
 
     const outputPath = await recordTestOutput({
@@ -95,52 +79,37 @@ describe.skipIf(!isClaudeAuthenticated)('e2e: full workflow with real agent', ()
     const filename = basename(outputPath);
 
     assert({
-      given: 'TAP output with 3 assertions',
-      should: 'include correct test plan',
-      actual: fileContent.includes('1..3'),
-      expected: true
+      given: 'a completed test run recorded to disk',
+      should: 'produce a TAP file with version header, test plan, assertion text, pass rate, and summary',
+      actual: {
+        hasVersion: fileContent.includes('TAP version 13'),
+        hasPlan: fileContent.includes('1..3'),
+        hasAssertionText: fileContent.includes('Given the spec, should name the function sum'),
+        hasPassRate: fileContent.includes('# pass rate:'),
+        hasSummary: fileContent.includes('# tests 3')
+      },
+      expected: {
+        hasVersion: true,
+        hasPlan: true,
+        hasAssertionText: true,
+        hasPassRate: true,
+        hasSummary: true
+      }
     });
 
     assert({
-      given: 'TAP output',
-      should: 'include TAP version header',
-      actual: fileContent.includes('TAP version 13'),
-      expected: true
-    });
-
-    assert({
-      given: 'TAP output',
-      should: 'include assertion requirement text',
-      actual: fileContent.includes('Given the spec, should name the function sum'),
-      expected: true
-    });
-
-    assert({
-      given: 'TAP output',
-      should: 'include pass rate diagnostics',
-      actual: fileContent.includes('# pass rate:'),
-      expected: true
-    });
-
-    assert({
-      given: 'TAP output',
-      should: 'include test summary',
-      actual: fileContent.includes('# tests 3'),
-      expected: true
-    });
-
-    assert({
-      given: 'output filename',
-      should: 'include date in YYYY-MM-DD format',
-      actual: /^\d{4}-\d{2}-\d{2}/.test(filename),
-      expected: true
-    });
-
-    assert({
-      given: 'output filename',
-      should: 'include test name and .tap.md extension',
-      actual: filename.includes('sum-function-test') && filename.endsWith('.tap.md'),
-      expected: true
+      given: 'a recorded TAP output file',
+      should: 'use a filename that encodes the date, test name, and format',
+      actual: {
+        hasDatePrefix: /^\d{4}-\d{2}-\d{2}/.test(filename),
+        hasTestName: filename.includes('sum-function-test'),
+        hasExtension: filename.endsWith('.tap.md')
+      },
+      expected: {
+        hasDatePrefix: true,
+        hasTestName: true,
+        hasExtension: true
+      }
     });
   });
 });
@@ -225,17 +194,10 @@ describe.skipIf(!isClaudeAuthenticated)('e2e: SudoLang userPrompt', () => {
     });
 
     assert({
-      given: 'a SudoLang userPrompt with 3 assertions',
-      should: 'extract and run all 3 assertions',
-      actual: results.assertions.length,
-      expected: 3
-    });
-
-    assert({
-      given: 'a well-specified SudoLang constraint',
-      should: 'pass the overall test suite',
-      actual: results.passed,
-      expected: true
+      given: 'a test file whose userPrompt is written in SudoLang',
+      should: 'extract all assertions and pass the suite',
+      actual: { assertionCount: results.assertions.length, passed: results.passed },
+      expected: { assertionCount: 3, passed: true }
     });
   });
 });
