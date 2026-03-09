@@ -166,7 +166,7 @@ const handleAIError = handleAIErrors({
   },
   AgentConfigValidationError: ({ message }) => {
     console.error(`❌ Agent config validation failed: ${message}`);
-    console.error('💡 Each agent entry must have "command" (string), optional "args" (string[]), and optional "outputFormat" ("json"|"ndjson"|"text", default "json").');
+    console.error('💡 Each agent entry must have "command" (string), optional "args" (string[]), and optional "outputFormat" ("json"|"ndjson", default "json").');
     process.exit(1);
   }
 });
