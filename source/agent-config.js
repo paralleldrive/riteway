@@ -47,7 +47,7 @@ export const getAgentConfig = (agentName = 'claude') => {
 const agentConfigFileSchema = z.object({
   command: z.string().min(1, { error: 'command is required' }),
   args: z.array(z.string()).default([]),
-  outputFormat: z.enum(['json', 'ndjson', 'text']).default('json')
+  outputFormat: z.enum(['json', 'ndjson']).default('json')
 });
 
 // Throws AgentConfigReadError on any read failure, including ENOENT.

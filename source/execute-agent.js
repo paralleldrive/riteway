@@ -5,8 +5,7 @@ import { unwrapEnvelope, unwrapAgentResult, parseOpenCodeNDJSON } from './agent-
 
 const outputFormatParsers = {
   json: (stdout) => stdout,
-  ndjson: parseOpenCodeNDJSON,
-  text: (stdout) => stdout
+  ndjson: parseOpenCodeNDJSON
 };
 
 const maxOutputPreviewLength = 500;
@@ -144,7 +143,7 @@ const runAgentProcess = async ({ agentConfig, prompt, timeout }) => {
  * @param {Object} options.agentConfig - Agent configuration
  * @param {string} options.agentConfig.command - Command to execute
  * @param {Array<string>} [options.agentConfig.args=[]] - Command arguments
- * @param {'json'|'ndjson'|'text'} [options.agentConfig.outputFormat='json'] - Output format for parsing
+ * @param {'json'|'ndjson'} [options.agentConfig.outputFormat='json'] - Output format for parsing
  * @param {string} options.prompt - Prompt to send to the agent
  * @param {number} [options.timeout=300000] - Timeout in ms (default: 5 minutes)
  * @param {boolean} [options.rawOutput=false] - Return raw stdout string without JSON parsing
