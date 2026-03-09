@@ -38,8 +38,6 @@ export const validateFilePath = (filePath, baseDir) => {
  * @returns {Promise<Object>} Result object with success boolean and optional error message
  */
 export const verifyAgentAuthentication = async ({ agentConfig, executeAgent, timeout = 30000 }) => {
-  console.log('Verifying agent authentication...');
-
   try {
     // Generic smoke-test prompt accepted by any agent CLI
     await executeAgent({
@@ -48,7 +46,6 @@ export const verifyAgentAuthentication = async ({ agentConfig, executeAgent, tim
       timeout
     });
 
-    console.log('Agent authentication verified successfully');
     return { success: true };
   } catch (err) {
     console.warn('Agent authentication failed:', err.message);
