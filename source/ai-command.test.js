@@ -262,6 +262,21 @@ describe('parseAIArgs()', () => {
       expected: undefined
     });
   });
+
+  test('throws ValidationError for unrecognized flags', () => {
+    const error = Try(parseAIArgs, ['--agentConfig', './my-agent.json', 'test.sudo']);
+
+    assert({
+      given: 'an unrecognized camelCase flag instead of --agent-config',
+      should: 'throw a ValidationError naming the unknown flag',
+      actual: error?.cause,
+      expected: {
+        name: 'ValidationError',
+        code: 'INVALID_AI_ARGS',
+        message: 'Unknown flag(s): --agentConfig'
+      }
+    });
+  });
 });
 
 describe('formatAssertionReport()', () => {

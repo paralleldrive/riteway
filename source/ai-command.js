@@ -39,6 +39,7 @@ export const parseAIArgs = (argv) => {
     });
   }
 
+  const unknownFlags = [];
   const opts = minimist(argv, {
     string: ['runs', 'threshold', 'timeout', 'agent', 'concurrency', 'agent-config'],
     boolean: ['color'],
@@ -48,8 +49,20 @@ export const parseAIArgs = (argv) => {
       timeout: defaults.timeoutMs,
       agent: defaults.agent,
       color: defaults.color
+    },
+    unknown: (arg) => {
+      if (arg.startsWith('--')) unknownFlags.push(arg);
+      return !arg.startsWith('--');
     }
   });
+
+  if (unknownFlags.length > 0) {
+    throw createError({
+      ...ValidationError,
+      code: 'INVALID_AI_ARGS',
+      message: `Unknown flag(s): ${unknownFlags.join(', ')}`
+    });
+  }
 
   const concurrency = opts.concurrency ? Number(opts.concurrency) : defaults.concurrency;
   const agentConfigPath = opts['agent-config'] ? opts['agent-config'] : undefined;
