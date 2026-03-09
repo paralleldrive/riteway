@@ -35,18 +35,24 @@ userPrompt = """
 
     const expected = `You are a test extraction agent. Analyze the following test file and extract structured information.
 
-For each assertion or requirement in the test file (these may be formatted as
-"Given X, should Y", bullet points, YAML entries, natural language sentences,
-SudoLang expressions, or any other format):
+EXTRACTION RULES (follow strictly):
 
-1. Identify the userPrompt (the prompt to be tested)
-2. Extract the specific requirement from the assertion
-3. Identify any import file paths (e.g., import 'path/to/file.mdc')
+1. "userPrompt": Extract ONLY if explicitly declared in the test file (e.g., \`userPrompt = """..."""\`).
+   Do NOT infer, synthesize, or derive a userPrompt from import file contents, assertion text, or context.
+   If no explicit userPrompt declaration exists, return "".
+
+2. "importPaths": Extract any import file paths declared in the test file (e.g., import 'path/to/file.mdc').
+   If no imports are declared, return [].
+
+3. "assertions": Extract ONLY requirement/assertion lines that appear explicitly in the test file body
+   (e.g., "- Given X, should Y", bullet points, or numbered requirements).
+   Do NOT extract requirements from imported file contents — only from the test file itself.
+   If no assertion lines appear in the test file body, return [].
 
 Return a JSON object with:
-- "userPrompt": the test prompt to execute (string)
-- "importPaths": array of import file paths found in the test file (e.g., ["ai/rules/ui.mdc"])
-- "assertions": array of assertion objects, each with:
+- "userPrompt": the explicitly declared test prompt, or "" if absent
+- "importPaths": array of import file paths (e.g., ["ai/rules/ui.mdc"])
+- "assertions": array of assertion objects found in the test file body, each with:
   - "id": sequential integer starting at 1
   - "requirement": the assertion text (e.g., "Given X, should Y")
 
@@ -168,6 +174,49 @@ end with --- on its own line. No markdown fences, no explanation outside the blo
       expected
     });
   });
+
+  test('omits context section when promptUnderTest is empty', () => {
+    const userPrompt = 'What is 2 + 2?';
+    const result = 'The answer is 4.';
+    const requirement = 'Given simple addition, should return 4';
+
+    const judgePrompt = buildJudgePrompt({ userPrompt, promptUnderTest: '', result, requirement });
+
+    const expected = `You are an AI judge. Evaluate whether a given result satisfies a specific requirement.
+
+ORIGINAL USER PROMPT:
+What is 2 + 2?
+
+ACTUAL RESULT TO EVALUATE:
+The answer is 4.
+
+REQUIREMENT:
+Given simple addition, should return 4
+
+INSTRUCTIONS:
+1. Read the actual result above
+2. Determine whether it satisfies the requirement
+3. Summarize what was actually produced (actual) vs what was expected (expected)
+4. Assign a quality score from 0 (completely fails) to 100 (perfectly satisfies)
+
+Return your judgment as a TAP YAML diagnostic block:
+---
+passed: true
+actual: "summary of what was produced"
+expected: "what was expected"
+score: 85
+---
+
+CRITICAL: Return ONLY the TAP YAML block. Start with --- on its own line,
+end with --- on its own line. No markdown fences, no explanation outside the block.`;
+
+    assert({
+      given: 'empty promptUnderTest',
+      should: 'omit CONTEXT section from judge prompt',
+      actual: judgePrompt,
+      expected
+    });
+  });
 });
 
 describe('extractTests()', () => {
@@ -180,8 +229,9 @@ describe('extractTests()', () => {
       const promptFile = join(testDir, 'prompt.mdc');
       writeFileSync(promptFile, 'You are a math helper.');
 
+      const testContent = 'import "prompt.mdc"\n\nuserPrompt = """What is 2+2?"""\n\n- Given addition, should add correctly';
       const testFile = join(testDir, 'test.sudo');
-      writeFileSync(testFile, 'import "prompt.mdc"\n\n- Given addition, should add correctly');
+      writeFileSync(testFile, testContent);
 
       const extractedData = {
         userPrompt: 'What is 2+2?',
@@ -197,7 +247,7 @@ describe('extractTests()', () => {
       };
 
       const result = await extractTests({
-        testContent: 'import "prompt.mdc"\n\n- Given addition, should add correctly',
+        testContent,
         testFilePath: testFile,
         agentConfig: mockAgentConfig,
         timeout: 5000,
@@ -240,7 +290,7 @@ describe('extractTests()', () => {
       };
 
       const result = await extractTests({
-        testContent: 'import "rules1.mdc"\nimport "rules2.mdc"\n\n- Given rules, should follow',
+        testContent: 'import "rules1.mdc"\nimport "rules2.mdc"\n\nuserPrompt = """Test."""\n\n- Given rules, should follow',
         testFilePath: join(testDir, 'test.sudo'),
         agentConfig: mockAgentConfig,
         timeout: 5000,
@@ -280,7 +330,7 @@ describe('extractTests()', () => {
       };
 
       const result = await extractTests({
-        testContent: 'import "root-prompt.mdc"\n\n- Given test, should pass',
+        testContent: 'import "root-prompt.mdc"\n\nuserPrompt = """Test."""\n\n- Given test, should pass',
         testFilePath: join(nestedDir, 'test.sudo'),
         agentConfig: mockAgentConfig,
         timeout: 5000,
@@ -323,7 +373,7 @@ describe('extractTests()', () => {
       };
 
       const result = await extractTests({
-        testContent: 'import "../external/shared-prompt.mdc"\n\n- Given test, should pass',
+        testContent: 'import "../external/shared-prompt.mdc"\n\nuserPrompt = """Test."""\n\n- Given test, should pass',
         testFilePath: join(projectDir, 'test.sudo'),
         agentConfig: mockAgentConfig,
         timeout: 5000,
@@ -360,7 +410,7 @@ describe('extractTests()', () => {
       };
 
       const result = await extractTests({
-        testContent: 'import "prompt.mdc"\n\n- Given a math question, should answer correctly',
+        testContent: 'import "prompt.mdc"\n\nuserPrompt = """What is 2+2?"""\n\n- Given a math question, should answer correctly',
         agentConfig: mockAgentConfig,
         timeout: 5000,
         projectRoot: testDir
@@ -390,7 +440,7 @@ describe('extractTests()', () => {
     };
 
     const error = await Try(extractTests, {
-      testContent: '- Given test, should pass',
+      testContent: 'userPrompt = """What is 2+2?"""\n\n- Given test, should pass',
       testFilePath: '/test/test.sudo',
       agentConfig: mockAgentConfig,
       timeout: 5000
@@ -414,98 +464,76 @@ describe('extractTests()', () => {
     });
   });
 
-  test('throws ValidationError when userPrompt is empty', async () => {
-    const testDir = createTempDir();
+  test('throws ValidationError when agent returns empty userPrompt', async () => {
+    const extractedData = {
+      userPrompt: '',
+      importPaths: [],
+      assertions: [{ id: 1, requirement: 'Given a test, should pass' }]
+    };
 
-    try {
-      mkdirSync(testDir, { recursive: true });
-      writeFileSync(join(testDir, 'context.mdc'), 'Some context content');
+    const mockAgentConfig = {
+      command: 'node',
+      args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
+    };
 
-      const extractedData = {
-        userPrompt: '',
-        importPaths: ['context.mdc'],
-        assertions: [{ id: 1, requirement: 'Given a test, should pass' }]
-      };
+    const error = await Try(extractTests, {
+      testContent: 'userPrompt = """Test."""\n\n- Given test, should pass',
+      agentConfig: mockAgentConfig,
+      timeout: 5000
+    });
 
-      const mockAgentConfig = {
-        command: 'node',
-        args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
-      };
+    const invoked = [];
+    handleAIErrors({ ...allNoop, ValidationError: () => invoked.push('ValidationError') })(error);
 
-      const error = await Try(extractTests, {
-        testContent: 'import "context.mdc"\n\n- Given test, should pass',
-        testFilePath: join(testDir, 'test.sudo'),
-        agentConfig: mockAgentConfig,
-        timeout: 5000,
-        projectRoot: testDir
-      });
+    assert({
+      given: 'agent returns empty userPrompt',
+      should: 'throw an error that routes to the ValidationError handler',
+      actual: invoked,
+      expected: ['ValidationError']
+    });
 
-      const invoked = [];
-      handleAIErrors({ ...allNoop, ValidationError: () => invoked.push('ValidationError') })(error);
-
-      assert({
-        given: 'empty userPrompt in extraction result',
-        should: 'throw an error that routes to the ValidationError handler',
-        actual: invoked,
-        expected: ['ValidationError']
-      });
-
-      assert({
-        given: 'empty userPrompt',
-        should: 'include MISSING_USER_PROMPT code in error',
-        actual: error?.cause?.code,
-        expected: 'MISSING_USER_PROMPT'
-      });
-    } finally {
-      rmSync(testDir, { recursive: true, force: true });
-    }
+    assert({
+      given: 'agent returns empty userPrompt',
+      should: 'include MISSING_USER_PROMPT code in error',
+      actual: error?.cause?.code,
+      expected: 'MISSING_USER_PROMPT'
+    });
   });
 
-  test('throws ValidationError when no assertions found', async () => {
-    const testDir = createTempDir();
+  test('throws ValidationError when agent returns no assertions', async () => {
+    const extractedData = {
+      userPrompt: 'test prompt',
+      importPaths: [],
+      assertions: []
+    };
 
-    try {
-      mkdirSync(testDir, { recursive: true });
-      writeFileSync(join(testDir, 'context.mdc'), 'Some context content');
+    const mockAgentConfig = {
+      command: 'node',
+      args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
+    };
 
-      const extractedData = {
-        userPrompt: 'test prompt',
-        importPaths: ['context.mdc'],
-        assertions: []
-      };
+    const error = await Try(extractTests, {
+      testContent: 'userPrompt = """test"""\n\n- Given test, should pass',
+      agentConfig: mockAgentConfig,
+      timeout: 5000
+    });
 
-      const mockAgentConfig = {
-        command: 'node',
-        args: ['-e', `console.log(JSON.stringify(${JSON.stringify(extractedData)}))`]
-      };
+    const invoked = [];
+    handleAIErrors({ ...allNoop, ValidationError: () => invoked.push('ValidationError') })(error);
 
-      const error = await Try(extractTests, {
-        testContent: 'import "context.mdc"\n\nuserPrompt = """test"""',
-        testFilePath: join(testDir, 'test.sudo'),
-        agentConfig: mockAgentConfig,
-        timeout: 5000,
-        projectRoot: testDir
-      });
+    assert({
+      given: 'agent returns empty assertions array',
+      should: 'throw an error that routes to the ValidationError handler',
+      actual: invoked,
+      expected: ['ValidationError']
+    });
 
-      const invoked = [];
-      handleAIErrors({ ...allNoop, ValidationError: () => invoked.push('ValidationError') })(error);
-
-      assert({
-        given: 'empty assertions array',
-        should: 'throw an error that routes to the ValidationError handler',
-        actual: invoked,
-        expected: ['ValidationError']
-      });
-
-      assert({
-        given: 'empty assertions array',
-        should: 'include NO_ASSERTIONS_FOUND code in error',
-        actual: error?.cause?.code,
-        expected: 'NO_ASSERTIONS_FOUND'
-      });
-    } finally {
-      rmSync(testDir, { recursive: true, force: true });
-    }
+    assert({
+      given: 'agent returns empty assertions array',
+      should: 'include NO_ASSERTIONS_FOUND code in error',
+      actual: error?.cause?.code,
+      expected: 'NO_ASSERTIONS_FOUND'
+    });
   });
 
   test('throws ValidationError with PROMPT_READ_FAILED when import file does not exist', async () => {
@@ -526,7 +554,7 @@ describe('extractTests()', () => {
       };
 
       const error = await Try(extractTests, {
-        testContent: 'import "nonexistent.mdc"\n\n- Given test, should pass',
+        testContent: 'import "nonexistent.mdc"\n\nuserPrompt = """Test."""\n\n- Given test, should pass',
         testFilePath: join(testDir, 'test.sudo'),
         agentConfig: mockAgentConfig,
         timeout: 5000,

@@ -1,0 +1,5 @@
+import 'source/fixtures/sum-function-spec.mdc'
+
+userPrompt = """
+Implement the sum function as described.
+"""

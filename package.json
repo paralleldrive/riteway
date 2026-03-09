@@ -74,6 +74,7 @@
     "typecheck": "npx -p typescript tsc --esModuleInterop --rootDir . source/test.js --allowJs --checkJs --noEmit --lib es6 --jsx react --skipLibCheck && npx -p typescript tsc index.d.ts --noEmit --skipLibCheck && echo 'TypeScript check complete.'",
     "ts": "npm run -s typecheck",
     "test": "node source/test.js && vitest run",
+    "test:e2e": "vitest run --config vitest.config.e2e.js",
     "esm": "cp source/*.js esm/ && cp source/*.jsx esm/ && cp esm/riteway.js esm/index.js && echo 'esm complete.'",
     "watch": "watch 'clear && npm run -s test | tap-nirvana && npm run -s lint && npm run -s typecheck && npm run -s esm' source",
     "precommit": "npm run -s test && npm run -s lint-fix && npm run -s typecheck",

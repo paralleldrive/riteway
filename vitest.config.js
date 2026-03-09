@@ -12,7 +12,7 @@ export default defineConfig({
       '**/bin/riteway.test.js',
       // Exclude bun.test.js as it uses bun:test instead of Vitest
       '**/bun.test.js',
-      // Exclude source/e2e.test.js as it uses Riteway/Tape for E2E testing
+      // Exclude source/e2e.test.js — runs via `npm run test:e2e` (requires real agent auth)
       '**/source/e2e.test.js'
     ]
   }
