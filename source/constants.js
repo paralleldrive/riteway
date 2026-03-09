@@ -9,7 +9,7 @@ export const defaults = {
   color: false
 };
 
-export const constraints = {
+const constraints = {
   thresholdMin: 0,
   thresholdMax: 100,
   runsMin: 1,

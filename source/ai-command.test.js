@@ -23,17 +23,40 @@ describe('parseAIArgs()', () => {
 
     assert({
       given: 'only a file path argument',
-      should: 'apply default runs, threshold, agent, color, and concurrency',
+      should: 'apply default runs, threshold, timeout, agent, color, and concurrency',
       actual: result,
       expected: {
         filePath: 'test.sudo',
         runs: 4,
         threshold: 75,
+        timeout: 300000,
         agent: 'claude',
         color: false,
         concurrency: 4,
         cwd: process.cwd()
       }
+    });
+  });
+
+  test('parses custom timeout value', () => {
+    const result = parseAIArgs(['--timeout', '60000', 'test.sudo']);
+
+    assert({
+      given: '--timeout flag with value 60000',
+      should: 'parse timeout as 60000',
+      actual: result.timeout,
+      expected: 60000
+    });
+  });
+
+  test('throws ValidationError for timeout below minimum', () => {
+    const error = Try(parseAIArgs, ['--timeout', '500', 'test.sudo']);
+
+    assert({
+      given: 'timeout below 1000ms minimum',
+      should: 'have ValidationError name in cause',
+      actual: error?.cause?.name,
+      expected: 'ValidationError'
     });
   });
 
@@ -389,7 +412,7 @@ describe('runAICommand() orchestration', () => {
     passed: true,
     assertions: [{ requirement: 'Given a test, should pass', passed: true, passCount: 4, totalRuns: 4 }]
   };
-  const args = { filePath: './test.sudo', runs: 4, threshold: 75, agent: 'claude', color: false, concurrency: 4, cwd: process.cwd() };
+  const args = { filePath: './test.sudo', runs: 4, threshold: 75, timeout: 300000, agent: 'claude', color: false, concurrency: 4, cwd: process.cwd() };
 
   beforeEach(() => {
     vi.mocked(resolveAgentConfig).mockResolvedValue(agentConfig);

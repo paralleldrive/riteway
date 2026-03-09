@@ -7,15 +7,14 @@ import { resolveAgentConfig } from './agent-config.js';
 import { runAITests, verifyAgentAuthentication } from './ai-runner.js';
 import { validateFilePath } from './validation.js';
 import { recordTestOutput } from './test-output.js';
-import { defaults, runsSchema, thresholdSchema, concurrencySchema } from './constants.js';
-
-export { defaults };
+import { defaults, runsSchema, thresholdSchema, concurrencySchema, timeoutSchema } from './constants.js';
 
 // agent accepts any string here — custom registry agents are resolved at run time
 const aiArgsSchema = z.object({
   filePath: z.string({ error: 'Test file path is required' }),
   runs: runsSchema,
   threshold: thresholdSchema,
+  timeout: timeoutSchema,
   agent: z.string().min(1, { error: 'agent must be a non-empty string' }),
   agentConfigPath: z.string().optional(),
   concurrency: concurrencySchema,
@@ -41,11 +40,12 @@ export const parseAIArgs = (argv) => {
   }
 
   const opts = minimist(argv, {
-    string: ['runs', 'threshold', 'agent', 'concurrency', 'agent-config'],
+    string: ['runs', 'threshold', 'timeout', 'agent', 'concurrency', 'agent-config'],
     boolean: ['color'],
     default: {
       runs: defaults.runs,
       threshold: defaults.threshold,
+      timeout: defaults.timeoutMs,
       agent: defaults.agent,
       color: defaults.color
     }
@@ -58,6 +58,7 @@ export const parseAIArgs = (argv) => {
     filePath: opts._[0],
     runs: Number(opts.runs),
     threshold: Number(opts.threshold),
+    timeout: Number(opts.timeout),
     agent: opts.agent,
     ...(agentConfigPath ? { agentConfigPath } : {}),
     color: opts.color,
@@ -112,7 +113,7 @@ export const formatAssertionReport = ({ passed, requirement, passCount, totalRun
  * @param {Object} options - Test run options
  * @returns {Promise<string>} Path to the recorded TAP output file
  */
-export const runAICommand = async ({ filePath, runs, threshold, agent, agentConfigPath, color, concurrency, cwd }) => {
+export const runAICommand = async ({ filePath, runs, threshold, timeout, agent, agentConfigPath, color, concurrency, cwd }) => {
   if (!filePath) {
     throw createError({
       ...ValidationError,
@@ -130,7 +131,7 @@ export const runAICommand = async ({ filePath, runs, threshold, agent, agentConf
       : agent;
 
     console.log(`Running AI tests: ${testFilename}`);
-    console.log(`Configuration: ${runs} runs, ${threshold}% threshold, ${concurrency} concurrent, agent: ${agentLabel}`);
+    console.log(`Configuration: ${runs} runs, ${threshold}% threshold, ${concurrency} concurrent, ${timeout}ms timeout, agent: ${agentLabel}`);
 
     console.log(`\nVerifying ${agentLabel} agent authentication...`);
     const authResult = await verifyAgentAuthentication({
@@ -150,6 +151,7 @@ export const runAICommand = async ({ filePath, runs, threshold, agent, agentConf
       filePath: fullPath,
       runs,
       threshold,
+      timeout,
       agentConfig,
       concurrency
     });

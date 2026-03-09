@@ -87,6 +87,7 @@ const handleAIError = handleAIErrors({
     console.error('\nUsage: riteway ai <file> [--runs N] [--threshold P] [--agent NAME | --agent-config FILE] [--color]');
     console.error(`  --runs N               Number of test runs per assertion (default: ${defaults.runs})`);
     console.error(`  --threshold P          Required pass percentage 0-100 (default: ${defaults.threshold})`);
+    console.error(`  --timeout MS           Per-agent-call timeout in milliseconds (default: ${defaults.timeoutMs})`);
     console.error(`  --agent NAME           Agent: claude, opencode, cursor, or custom from ${registryFileName} (default: ${defaults.agent})`);
     console.error(`  --agent-config FILE    Path to a flat single-agent config JSON (mutually exclusive with --agent)`);
     console.error(`  --color                Enable ANSI color codes in terminal output (default: ${defaults.color ? 'enabled' : 'disabled'})`);
@@ -186,6 +187,7 @@ Test Runner Options:
 AI Test Options:
   --runs N                  Number of test runs per assertion (default: ${defaults.runs})
   --threshold P             Required pass percentage 0-100 (default: ${defaults.threshold})
+  --timeout MS              Per-agent-call timeout in milliseconds (default: ${defaults.timeoutMs})
   --agent NAME              Agent: claude, opencode, cursor, or custom from ${registryFileName} (default: ${defaults.agent})
   --agent-config FILE       Path to a flat single-agent config JSON {"command","args","outputFormat"} (mutually exclusive with --agent)
   --concurrency N           Max concurrent test executions (default: ${defaults.concurrency})
