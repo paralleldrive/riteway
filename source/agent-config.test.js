@@ -253,6 +253,13 @@ describe('resolveAgentConfig()', () => {
       actual: invoked,
       expected: ['ValidationError']
     });
+
+    assert({
+      given: 'registry file present but requested agent key missing',
+      should: 'include AGENT_NOT_IN_REGISTRY code in error',
+      actual: error?.cause?.code,
+      expected: 'AGENT_NOT_IN_REGISTRY'
+    });
   });
 
   test('falls back to built-in config when no registry present', async () => {

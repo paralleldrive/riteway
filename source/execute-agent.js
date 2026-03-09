@@ -66,10 +66,10 @@ const unwrapRawOutput = (output) => {
 };
 
 const processAgentOutput = ({ agentConfig, rawOutput }) => ({ stdout }) => {
-  const { command, args = [], outputFormat } = agentConfig;
+  const { command, args = [], outputFormat = 'json' } = agentConfig;
 
   try {
-    const parse = outputFormatParsers[outputFormat || 'json'];
+    const parse = outputFormatParsers[outputFormat];
     const processedOutput = parse(stdout);
 
     if (rawOutput) {

@@ -167,7 +167,7 @@ export const resolveAgentConfig = async ({ agent, agentConfigPath, cwd }) => {
       throw createError({
         ...ValidationError,
         code: 'AGENT_NOT_IN_REGISTRY',
-        message: `Agent "${agent}" not found in riteway.agent-config.json. Add it to the registry or use --agent-config.`
+        message: `Agent "${agent}" not found in riteway.agent-config.json. Add it to the registry, use --agent-config for a custom file, or remove the file to use built-in defaults.`
       });
     }
     return config;
