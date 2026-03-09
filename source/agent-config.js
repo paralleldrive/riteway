@@ -20,7 +20,7 @@ const agentConfigs = {
   },
   cursor: {
     command: 'agent',
-    args: ['--print', '--output-format', 'json', '--trust'],
+    args: ['--print', '--output-format', 'json'],
     outputFormat: 'json'
   }
 };
