@@ -266,11 +266,154 @@ riteway ai --agent opencode greet.test.sudo
 
 ---
 
+## `riteway ai init`
+
+---
+
+### Step 11: Init — write registry to working directory
+
+**Goal**: Verify `riteway ai init` creates `riteway.agent-config.json` with all built-in agents
+
+**Do**:
+```sh
+riteway ai init
+```
+
+**Think aloud**: Was the success message clear? Did it tell you where the file was written?
+
+**Success**:
+- `riteway.agent-config.json` is created in the current directory
+- Success message includes the full path to the written file
+- Exit code `0`
+
+Inspect the file:
+```sh
+cat riteway.agent-config.json
+```
+
+**Success**:
+- File contains exactly three top-level keys: `claude`, `opencode`, `cursor`
+- Each entry has `command`, `args`, and `outputFormat` fields
+- `claude` has `outputFormat: "json"`
+- `opencode` has `outputFormat: "ndjson"`
+- `cursor` has `command: "agent"` and `outputFormat: "json"`
+- JSON is pretty-printed (2-space indentation, trailing newline)
+
+---
+
+### Step 12: Use the generated registry as-is
+
+**Goal**: Verify the generated registry is immediately usable with `--agent`
+
+**Do**:
+```sh
+riteway ai --agent claude greet.test.sudo
+```
+
+**Think aloud**: Does it use the registry file that was just created? Can you tell from the output whether it's pulling from the registry or the built-in defaults? (Behaviour should be identical since the registry mirrors the defaults.)
+
+**Success**:
+- Tests run normally
+- Configuration line shows `agent: claude`
+
+---
+
+### Step 13: Customize the registry and use a custom entry
+
+**Goal**: Verify the registry can be edited to add a custom agent and that `riteway ai` picks it up
+
+**Do**:
+1. Open `riteway.agent-config.json` and add a custom entry:
+   ```json
+   {
+     "claude": { ... },
+     "opencode": { ... },
+     "cursor": { ... },
+     "my-claude": {
+       "command": "claude",
+       "args": ["-p", "--output-format", "json", "--no-session-persistence"],
+       "outputFormat": "json"
+     }
+   }
+   ```
+2. Run with the custom entry:
+   ```sh
+   riteway ai --agent my-claude greet.test.sudo
+   ```
+
+**Think aloud**: Did the CLI pick up `my-claude` from the registry without needing `--agent-config`?
+
+**Success**:
+- Tests run normally using `my-claude`
+- Configuration line shows `agent: my-claude`
+
+3. Restore the original registry before continuing:
+   ```sh
+   riteway ai init --force
+   ```
+
+---
+
+### Step 14: Init with `--force` overwrites existing registry
+
+**Goal**: Verify `--force` replaces an existing `riteway.agent-config.json` without error
+
+**Do**:
+```sh
+# Dirty the existing file
+echo '{}' > riteway.agent-config.json
+
+# Overwrite with --force
+riteway ai init --force
+```
+
+**Think aloud**: Did it overwrite silently? Is the file back to the full three-agent registry?
+
+**Success**:
+- No error is shown
+- `riteway.agent-config.json` is restored with all three built-in agents
+- Exit code `0`
+
+3. Clean up before continuing:
+   ```sh
+   rm riteway.agent-config.json
+   ```
+
+---
+
+### Step 15: Init without `--force` fails when registry already exists
+
+**Goal**: Verify a clear error when the registry file already exists and `--force` is not used
+
+**Do**:
+```sh
+# Create the registry
+riteway ai init
+
+# Attempt to create again without --force
+riteway ai init
+```
+
+**Think aloud**: Is the error message actionable? Does it tell you exactly what to do to fix it?
+
+**Success**:
+- Error message names the file (`riteway.agent-config.json`)
+- Error message mentions `--force` as the resolution
+- Exit code is non-zero
+- The existing file is **not** modified
+
+4. Clean up before continuing:
+   ```sh
+   rm riteway.agent-config.json
+   ```
+
+---
+
 ## Validation Errors
 
 ---
 
-### Step 11: Missing file path argument
+### Step 16: Missing file path argument
 
 **Goal**: Verify helpful error when no test file is provided
 
@@ -296,7 +439,7 @@ riteway ai --help
 
 ---
 
-### Step 12: Nonexistent test file
+### Step 17: Nonexistent test file
 
 **Goal**: Verify clear error when file is not found
 
@@ -313,7 +456,7 @@ riteway ai nonexistent.sudo
 
 ---
 
-### Step 13: Path traversal attempt
+### Step 18: Path traversal attempt
 
 **Goal**: Verify the CLI rejects paths that escape the working directory
 
@@ -331,7 +474,7 @@ riteway ai ../../../etc/passwd
 
 ---
 
-### Step 14: `--runs 0` (below minimum)
+### Step 19: `--runs 0` (below minimum)
 
 **Goal**: Verify runs minimum constraint is enforced
 
@@ -344,7 +487,7 @@ riteway ai --runs 0 greet.test.sudo
 
 ---
 
-### Step 15: `--threshold 150` (above maximum)
+### Step 20: `--threshold 150` (above maximum)
 
 **Goal**: Verify threshold maximum constraint is enforced
 
@@ -357,7 +500,7 @@ riteway ai --threshold 150 greet.test.sudo
 
 ---
 
-### Step 16: `--threshold -10` (below minimum)
+### Step 21: `--threshold -10` (below minimum)
 
 **Do**:
 ```sh
@@ -368,7 +511,7 @@ riteway ai --threshold -10 greet.test.sudo
 
 ---
 
-### Step 17: `--timeout 500` (below 1000ms minimum)
+### Step 22: `--timeout 500` (below 1000ms minimum)
 
 **Do**:
 ```sh
@@ -379,7 +522,7 @@ riteway ai --timeout 500 greet.test.sudo
 
 ---
 
-### Step 18: `--concurrency -5` (below minimum)
+### Step 23: `--concurrency -5` (below minimum)
 
 **Do**:
 ```sh
@@ -390,7 +533,7 @@ riteway ai --concurrency -5 greet.test.sudo
 
 ---
 
-### Step 19: `--agent` and `--agent-config` used together
+### Step 24: `--agent` and `--agent-config` used together
 
 **Goal**: Verify the mutual exclusion constraint
 
@@ -408,7 +551,7 @@ riteway ai --agent opencode --agent-config ./my-agent.json greet.test.sudo
 
 ---
 
-### Step 20: Unknown `--agent` name (no registry present)
+### Step 25: Unknown `--agent` name (no registry present)
 
 **Goal**: Verify unknown agent names are caught at resolution time
 
@@ -427,7 +570,7 @@ riteway ai --agent does-not-exist greet.test.sudo
 
 ---
 
-### Step 21: `--agent-config` pointing to a nonexistent file
+### Step 26: `--agent-config` pointing to a nonexistent file
 
 **Goal**: Verify clear error when the config file doesn't exist
 
@@ -442,7 +585,7 @@ riteway ai --agent-config ./no-such-file.json greet.test.sudo
 
 ---
 
-### Step 22: `--agent-config` with invalid JSON
+### Step 27: `--agent-config` with invalid JSON
 
 **Goal**: Verify parse errors in agent config files are surfaced clearly
 
@@ -460,7 +603,7 @@ riteway ai --agent-config ./bad-agent.json greet.test.sudo
 
 ---
 
-### Step 23: `--agent-config` with valid JSON but invalid schema
+### Step 28: `--agent-config` with valid JSON but invalid schema
 
 **Goal**: Verify schema validation rejects malformed agent configs
 
@@ -478,7 +621,7 @@ riteway ai --agent-config ./invalid-schema-agent.json greet.test.sudo
 
 ---
 
-### Step 24: `--agentConfig` (camelCase — wrong flag name)
+### Step 29: `--agentConfig` (camelCase — wrong flag name)
 
 **Goal**: Verify a typo in flag casing is caught, not silently ignored
 
@@ -497,7 +640,7 @@ riteway ai --agentConfig ./my-agent.json greet.test.sudo
 
 ---
 
-### Step 25: Agent in registry not found for given `--agent` name
+### Step 30: Agent in registry not found for given `--agent` name
 
 **Goal**: Verify a clear error when a registry exists but the requested agent isn't in it
 
