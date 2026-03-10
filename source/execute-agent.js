@@ -1,7 +1,12 @@
 import { spawn } from 'child_process';
 import { createError } from 'error-causes';
 import { ParseError, TimeoutError, AgentProcessError } from './ai-errors.js';
-import { unwrapEnvelope, unwrapAgentResult } from './agent-parser.js';
+import { unwrapEnvelope, unwrapAgentResult, parseOpenCodeNDJSON } from './agent-parser.js';
+
+const outputFormatParsers = {
+  json: (stdout) => stdout,
+  ndjson: parseOpenCodeNDJSON
+};
 
 const maxOutputPreviewLength = 500;
 
@@ -59,15 +64,12 @@ const unwrapRawOutput = (output) => {
   }
 };
 
-/**
- * Process agent stdout: apply optional parseOutput preprocessing, then either
- * return raw unwrapped string (rawOutput=true) or parse full JSON result.
- */
 const processAgentOutput = ({ agentConfig, rawOutput }) => ({ stdout }) => {
-  const { command, args = [], parseOutput } = agentConfig;
+  const { command, args = [], outputFormat = 'json' } = agentConfig;
 
   try {
-    const processedOutput = parseOutput ? parseOutput(stdout) : stdout;
+    const parse = outputFormatParsers[outputFormat];
+    const processedOutput = parse(stdout);
 
     if (rawOutput) {
       const result = unwrapRawOutput(processedOutput);
@@ -141,7 +143,7 @@ const runAgentProcess = async ({ agentConfig, prompt, timeout }) => {
  * @param {Object} options.agentConfig - Agent configuration
  * @param {string} options.agentConfig.command - Command to execute
  * @param {Array<string>} [options.agentConfig.args=[]] - Command arguments
- * @param {Function} [options.agentConfig.parseOutput] - Optional stdout preprocessor: (stdout: string) => string
+ * @param {'json'|'ndjson'} [options.agentConfig.outputFormat='json'] - Output format for parsing
  * @param {string} options.prompt - Prompt to send to the agent
  * @param {number} [options.timeout=300000] - Timeout in ms (default: 5 minutes)
  * @param {boolean} [options.rawOutput=false] - Return raw stdout string without JSON parsing

@@ -9,7 +9,7 @@ export const defaults = {
   color: false
 };
 
-export const constraints = {
+const constraints = {
   thresholdMin: 0,
   thresholdMax: 100,
   runsMin: 1,
@@ -17,8 +17,7 @@ export const constraints = {
   concurrencyMin: 1,
   concurrencyMax: 50,
   timeoutMinMs: 1000,
-  timeoutMaxMs: 3_600_000,
-  supportedAgents: ['claude', 'opencode', 'cursor']
+  timeoutMaxMs: 3_600_000
 };
 
 export const runsSchema = z.number()
@@ -41,25 +40,7 @@ export const timeoutSchema = z.number()
   .min(constraints.timeoutMinMs, { message: `timeout must be at least ${constraints.timeoutMinMs}ms` })
   .max(constraints.timeoutMaxMs, { message: `timeout must be at most ${constraints.timeoutMaxMs}ms` });
 
-export const agentSchema = z.enum(constraints.supportedAgents, {
-  message: `agent must be one of: ${constraints.supportedAgents.join(', ')}`
-});
-
 export const aggregationParamsSchema = z.object({
   runs: runsSchema,
   threshold: thresholdSchema
-});
-
-export const aiTestOptionsSchema = z.object({
-  filePath: z.string().min(1, { message: 'Test file path is required' }),
-  runs: runsSchema.default(defaults.runs),
-  threshold: thresholdSchema.default(defaults.threshold),
-  timeout: timeoutSchema.default(defaults.timeoutMs),
-  concurrency: concurrencySchema.default(defaults.concurrency),
-  agent: agentSchema.default(defaults.agent),
-  agentConfigPath: z.string().optional(),
-  color: z.boolean().default(defaults.color),
-  // Lazy default — evaluated at parse time, not module load time
-  cwd: z.string().default(() => process.cwd()),
-  projectRoot: z.string().optional()
 });

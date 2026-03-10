@@ -202,6 +202,101 @@ describe.skipIf(!isClaudeAuthenticated)('e2e: SudoLang userPrompt', () => {
   });
 });
 
+// Extraction validation tests: each requires one real agent call (extraction only).
+// The error is thrown before result/judge agents are invoked, so these are faster
+// than the full-workflow tests but still require Claude authentication.
+
+describe.skipIf(!isClaudeAuthenticated)('e2e: missing prompt under test', () => {
+  test('throws when test file has no import (no promptUnderTest)', { timeout: E2E_TEST_TIMEOUT_MS }, async () => {
+    const testFilePath = join(__dirname, 'fixtures', 'no-prompt-under-test.sudo');
+
+    // extractTests validates promptUnderTest before invoking result/judge agents.
+    // See test-extractor.js — MISSING_PROMPT_UNDER_TEST resolves plan item #6
+    // (buildJudgePrompt blank CONTEXT guard) as already validated at extraction time.
+    const error = await Try(runAITests, { filePath: testFilePath, runs: 1, timeout: AI_AGENT_TIMEOUT_MS, agentConfig: claudeConfig });
+
+    assert({
+      given: 'a test file with no import statement',
+      should: 'throw a ValidationError with MISSING_PROMPT_UNDER_TEST',
+      actual: error?.cause,
+      expected: {
+        name: 'ValidationError',
+        message: 'Test file does not declare a promptUnderTest import. Every test file must import the prompt under test.',
+        code: 'MISSING_PROMPT_UNDER_TEST',
+        testFile: testFilePath
+      }
+    });
+  });
+});
+
+describe.skipIf(!isClaudeAuthenticated)('e2e: missing userPrompt', () => {
+  test('throws when test file has no userPrompt', { timeout: E2E_TEST_TIMEOUT_MS }, async () => {
+    const testFilePath = join(__dirname, 'fixtures', 'missing-user-prompt.sudo');
+
+    const error = await Try(runAITests, { filePath: testFilePath, runs: 1, timeout: AI_AGENT_TIMEOUT_MS, agentConfig: claudeConfig });
+
+    assert({
+      given: 'a test file with no userPrompt field',
+      should: 'throw a ValidationError with MISSING_USER_PROMPT',
+      actual: error?.cause,
+      expected: {
+        name: 'ValidationError',
+        message: 'Extraction agent returned no userPrompt. Ensure the test file declares a userPrompt (e.g., `userPrompt = """..."""`) in a format the agent can recognize.',
+        code: 'MISSING_USER_PROMPT',
+        testFile: testFilePath
+      }
+    });
+  });
+});
+
+describe.skipIf(!isClaudeAuthenticated)('e2e: no assertions', () => {
+  test('throws when test file has no assertion lines', { timeout: E2E_TEST_TIMEOUT_MS }, async () => {
+    const testFilePath = join(__dirname, 'fixtures', 'no-assertions.sudo');
+
+    const error = await Try(runAITests, { filePath: testFilePath, runs: 1, timeout: AI_AGENT_TIMEOUT_MS, agentConfig: claudeConfig });
+
+    assert({
+      given: 'a test file with no assertion lines',
+      should: 'throw a ValidationError with NO_ASSERTIONS_FOUND',
+      actual: error?.cause,
+      expected: {
+        name: 'ValidationError',
+        message: 'Extraction agent returned no assertions. Ensure the test file includes assertion lines (e.g., "- Given X, should Y") that the agent can extract.',
+        code: 'NO_ASSERTIONS_FOUND',
+        testFile: testFilePath
+      }
+    });
+  });
+});
+
+describe.skipIf(!isClaudeAuthenticated)('e2e: SudoLang userPrompt', () => {
+  test('runs AI tests when userPrompt is written in SudoLang', { timeout: E2E_TEST_TIMEOUT_MS }, async () => {
+    const testFilePath = join(__dirname, 'fixtures', 'sudolang-prompt-test.sudo');
+
+    const results = await runAITests({
+      filePath: testFilePath,
+      runs: 2,
+      threshold: 75,
+      timeout: AI_AGENT_TIMEOUT_MS,
+      agentConfig: claudeConfig
+    });
+
+    assert({
+      given: 'a SudoLang userPrompt with 3 assertions',
+      should: 'extract and run all 3 assertions',
+      actual: results.assertions.length,
+      expected: 3
+    });
+
+    assert({
+      given: 'a well-specified SudoLang constraint',
+      should: 'pass the overall test suite',
+      actual: results.passed,
+      expected: true
+    });
+  });
+});
+
 describe.skipIf(!isClaudeAuthenticated)('e2e: --agent-config JSON file flow', () => {
   test('loads config from file and runs AI tests', { timeout: E2E_TEST_TIMEOUT_MS }, async () => {
     const configPath = join(__dirname, 'fixtures', 'claude-agent-config.json');

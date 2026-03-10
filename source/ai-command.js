@@ -3,30 +3,21 @@ import minimist from 'minimist';
 import { z } from 'zod';
 import { createError } from 'error-causes';
 import { ValidationError, AITestError, OutputError } from './ai-errors.js';
-import { getAgentConfig, loadAgentConfig } from './agent-config.js';
+import { resolveAgentConfig } from './agent-config.js';
 import { runAITests, verifyAgentAuthentication } from './ai-runner.js';
 import { validateFilePath } from './validation.js';
 import { recordTestOutput } from './test-output.js';
+import { defaults, runsSchema, thresholdSchema, concurrencySchema, timeoutSchema } from './constants.js';
 
-/**
- * Centralized default values for the AI test CLI.
- * Source of truth for bin/riteway.js help text and parseAIArgs defaults.
- */
-export const defaults = {
-  runs: 4,
-  threshold: 75,
-  concurrency: 4,
-  agent: 'claude',
-  color: false
-};
-
+// agent accepts any string here — custom registry agents are resolved at run time
 const aiArgsSchema = z.object({
   filePath: z.string({ error: 'Test file path is required' }),
-  runs: z.number().int().positive({ error: 'runs must be a positive integer' }),
-  threshold: z.number().min(0).max(100, { error: 'threshold must be between 0 and 100' }),
-  agent: z.enum(['claude', 'opencode', 'cursor'], { error: 'agent must be one of: claude, opencode, cursor' }),
+  runs: runsSchema,
+  threshold: thresholdSchema,
+  timeout: timeoutSchema,
+  agent: z.string().min(1, { error: 'agent must be a non-empty string' }),
   agentConfigPath: z.string().optional(),
-  concurrency: z.number().int().positive({ error: 'concurrency must be a positive integer' }),
+  concurrency: concurrencySchema,
   color: z.boolean(),
   cwd: z.string()
 });
@@ -48,24 +39,39 @@ export const parseAIArgs = (argv) => {
     });
   }
 
+  const unknownFlags = [];
   const opts = minimist(argv, {
-    string: ['runs', 'threshold', 'agent', 'concurrency', 'agent-config'],
+    string: ['runs', 'threshold', 'timeout', 'agent', 'concurrency', 'agent-config'],
     boolean: ['color'],
     default: {
       runs: defaults.runs,
       threshold: defaults.threshold,
+      timeout: defaults.timeoutMs,
       agent: defaults.agent,
       color: defaults.color
+    },
+    unknown: (arg) => {
+      if (arg.startsWith('--')) unknownFlags.push(arg);
+      return !arg.startsWith('--');
     }
   });
 
+  if (unknownFlags.length > 0) {
+    throw createError({
+      ...ValidationError,
+      code: 'INVALID_AI_ARGS',
+      message: `Unknown flag(s): ${unknownFlags.join(', ')}`
+    });
+  }
+
   const concurrency = opts.concurrency ? Number(opts.concurrency) : defaults.concurrency;
-  const agentConfigPath = opts['agent-config'] || undefined;
+  const agentConfigPath = opts['agent-config'] ? opts['agent-config'] : undefined;
 
   const parsed = {
     filePath: opts._[0],
     runs: Number(opts.runs),
     threshold: Number(opts.threshold),
+    timeout: Number(opts.timeout),
     agent: opts.agent,
     ...(agentConfigPath ? { agentConfigPath } : {}),
     color: opts.color,
@@ -110,12 +116,17 @@ export const formatAssertionReport = ({ passed, requirement, passCount, totalRun
 
 /**
  * Orchestrate AI test execution: validate file path, verify agent auth, run tests,
- * record TAP output to ai-evals/, open result in browser, and report results to console.
+ * record TAP output to ai-evals/, and report results to console.
  * Throws AITestError when the pass rate falls below threshold.
+ *
+ * TODO (follow-up): console.log calls are mixed with orchestration here. A future
+ * refactor could return a structured result and let the CLI layer own all output,
+ * aligning with the saga pattern's IO-separation principle. Not critical for this PR.
+ *
  * @param {Object} options - Test run options
  * @returns {Promise<string>} Path to the recorded TAP output file
  */
-export const runAICommand = async ({ filePath, runs, threshold, agent, agentConfigPath, color, concurrency, cwd }) => {
+export const runAICommand = async ({ filePath, runs, threshold, timeout, agent, agentConfigPath, color, concurrency, cwd }) => {
   if (!filePath) {
     throw createError({
       ...ValidationError,
@@ -126,18 +137,14 @@ export const runAICommand = async ({ filePath, runs, threshold, agent, agentConf
   try {
     const fullPath = validateFilePath(filePath, cwd);
     const testFilename = basename(filePath);
-    // agentConfigPath is not restricted by validateFilePath — unlike test file paths,
-    // config files are explicitly user-supplied and may live outside the project directory.
-    const agentConfig = agentConfigPath
-      ? await loadAgentConfig(agentConfigPath)
-      : getAgentConfig(agent);
+    const agentConfig = await resolveAgentConfig({ agent, agentConfigPath, cwd });
 
     const agentLabel = agentConfigPath
       ? `custom (${agentConfigPath})`
       : agent;
 
     console.log(`Running AI tests: ${testFilename}`);
-    console.log(`Configuration: ${runs} runs, ${threshold}% threshold, ${concurrency} concurrent, agent: ${agentLabel}`);
+    console.log(`Configuration: ${runs} runs, ${threshold}% threshold, ${concurrency} concurrent, ${timeout}ms timeout, agent: ${agentLabel}`);
 
     console.log(`\nVerifying ${agentLabel} agent authentication...`);
     const authResult = await verifyAgentAuthentication({
@@ -157,6 +164,7 @@ export const runAICommand = async ({ filePath, runs, threshold, agent, agentConf
       filePath: fullPath,
       runs,
       threshold,
+      timeout,
       agentConfig,
       concurrency
     });
@@ -184,7 +192,7 @@ export const runAICommand = async ({ filePath, runs, threshold, agent, agentConf
     console.log(assertions.map(a => formatAssertionReport({ ...a, color })).join('\n'));
 
     if (!results.passed) {
-      const passRate = Math.round(passedAssertions / totalAssertions * 100);
+      const passRate = totalAssertions > 0 ? Math.round(passedAssertions / totalAssertions * 100) : 0;
       throw createError({
         ...AITestError,
         message: `Test suite failed: ${passedAssertions}/${totalAssertions} assertions passed (${passRate}%)`,
@@ -196,7 +204,9 @@ export const runAICommand = async ({ filePath, runs, threshold, agent, agentConf
     console.log('Test suite passed!');
     return outputPath;
   } catch (error) {
-    // error-causes stores the structured error type in error.cause.name — re-throw known types
+    // error-causes wraps structured errors as { cause: { name, code, ... } }.
+    // Presence of cause.name is the stable public contract of the library — only
+    // changes if error-causes itself changes its API. Re-throw to avoid double-wrapping.
     if (error.cause?.name) {
       throw error;
     }

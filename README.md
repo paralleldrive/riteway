@@ -69,6 +69,101 @@ In this case, we're using [nyc](https://www.npmjs.com/package/nyc), which genera
 Riteway requires Node.js 16+ and uses native ES modules. Add `"type": "module"` to your package.json to enable ESM support. For JSX component testing, you'll need a build tool that can transpile JSX (see [JSX Setup](#jsx-setup) below).
 
 
+## `riteway ai` — AI Prompt Evaluations
+
+The `riteway ai` CLI runs your AI agent prompt evaluations against a configurable pass-rate threshold. Write a `.sudo` test file, run it through any supported AI agent, and get a TAP-formatted report with per-assertion pass rates across multiple runs.
+
+### Authentication
+
+All agents use OAuth authentication — no API keys needed. Authenticate once before running evals:
+
+| Agent | Command | Docs |
+|-------|---------|------|
+| Claude | `claude setup-token` | [Claude Code docs](https://docs.anthropic.com/en/docs/claude-code) |
+| Cursor | `agent login` | [Cursor docs](https://docs.cursor.com/context/rules-for-ai) |
+| OpenCode | See docs | [opencode.ai/docs/cli](https://opencode.ai/docs/cli/) |
+
+### Writing a test file
+
+AI evals are written in `.sudo` files using [SudoLang](https://github.com/paralleldrive/sudolang) syntax:
+
+```
+# my-feature-test.sudo
+
+import 'path/to/spec.mdc'
+
+userPrompt = """
+Implement the sum function as described.
+"""
+
+- Given the spec, should name the function sum
+- Given the spec, should accept two parameters named a and b
+- Given the spec, should return the correct sum of the two parameters
+```
+
+Each `- Given ..., should ...` line becomes an independently judged assertion. The agent is asked to respond to the `userPrompt` (with any imported spec as context), and a judge agent scores each assertion across all runs.
+
+### Running an eval
+
+```shell
+riteway ai path/to/my-feature-test.sudo
+```
+
+By default this runs **4 passes**, requires **75% pass rate**, uses the **claude** agent, runs up to **4 tests concurrently**, and allows **300 seconds** per agent call.
+
+```shell
+# Specify runs, threshold, and agent
+riteway ai path/to/test.sudo --runs 10 --threshold 80 --agent opencode
+
+# Use a Cursor agent with color output
+riteway ai path/to/test.sudo --agent cursor --color
+
+# Use a custom agent config file (mutually exclusive with --agent)
+riteway ai path/to/test.sudo --agent-config ./my-agent.json
+```
+
+### Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--runs N` | `4` | Number of passes per assertion |
+| `--threshold P` | `75` | Required pass percentage (0–100) |
+| `--timeout MS` | `300000` | Per-agent-call timeout in milliseconds |
+| `--agent NAME` | `claude` | Agent: `claude`, `opencode`, `cursor`, or a custom name from `riteway.agent-config.json` |
+| `--agent-config FILE` | — | Path to a flat single-agent JSON config `{"command","args","outputFormat"}` — mutually exclusive with `--agent` |
+| `--concurrency N` | `4` | Max concurrent test executions |
+| `--color` | off | Enable ANSI color output |
+
+Results are written as a TAP markdown file under `ai-evals/` in the project root.
+
+### Custom agent configuration
+
+`riteway ai init` writes all built-in agent configs to `riteway.agent-config.json` in your project root, so you can add custom agents or tweak existing flags:
+
+```shell
+riteway ai init           # create riteway.agent-config.json
+riteway ai init --force   # overwrite existing file
+```
+
+The generated file is a keyed registry. Add a custom agent entry and use it with `--agent`:
+
+```json
+{
+  "claude":   { "command": "claude",   "args": ["-p", "--output-format", "json", "--no-session-persistence"], "outputFormat": "json"  },
+  "opencode": { "command": "opencode", "args": ["run", "--format", "json"],                                   "outputFormat": "ndjson" },
+  "cursor":   { "command": "agent",    "args": ["--print", "--output-format", "json"],                        "outputFormat": "json"  },
+  "my-agent": { "command": "my-tool",  "args": ["--json"],                                                    "outputFormat": "json"  }
+}
+```
+
+```shell
+riteway ai path/to/test.sudo --agent my-agent
+```
+
+Once `riteway.agent-config.json` exists, any agent key defined in it supersedes the library's built-in defaults for that agent.
+
+---
+
 ## Example Usage
 
 ```js
