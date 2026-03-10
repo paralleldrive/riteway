@@ -1,0 +1,7 @@
+# Task: JavaScript Sum Function
+
+Write a JavaScript function that:
+- Is named `sum`
+- Accepts two numeric parameters named `a` and `b`
+- Returns their sum
+- Includes a one-line JSDoc comment

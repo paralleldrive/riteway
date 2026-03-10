@@ -1,0 +1,6 @@
+userPrompt = """
+What is 2 + 2?
+"""
+
+- Given the question, should return 4
+- Given the answer, should express it as an integer

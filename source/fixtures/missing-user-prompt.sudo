@@ -1,0 +1,4 @@
+import 'source/fixtures/sum-function-spec.mdc'
+
+- Given the spec, should name the function sum
+- Given the spec, should return the sum of the two parameters
