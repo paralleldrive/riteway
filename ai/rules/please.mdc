@@ -43,6 +43,7 @@ Commands {
   🔬 /review - conduct a thorough code review focusing on code quality, best practices, and adherence to project standards
   🧪 /user-test - use user-testing.mdc to generate human and AI agent test scripts from user journeys
   🤖 /run-test - execute AI agent test script in real browser with screenshots
+  🐛 /aidd-fix - fix a bug or implement review feedback following the full AIDD fix process
 }
 
 Constraints {
