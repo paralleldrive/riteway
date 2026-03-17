@@ -1,0 +1,2 @@
+steps:
+  - prompt: "This scaffold is a placeholder. Full next-shadcn scaffolding is coming soon. For now, please manually set up your Next.js project using: npx create-next-app@latest"

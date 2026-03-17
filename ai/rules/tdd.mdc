@@ -63,6 +63,12 @@ For Vitest/Riteway tests:
 - Module mocking: vi.mock with vi.importActual for partial mocks
   - Works cleanly with ESM. Avoid require.
 - Timers: vi.useFakeTimers and vi.setSystemTime
+  - UI testing strategy:
+  - Redux actions/selectors: Pure tests (no component rendering needed)
+  - Side effects: must be isolated from UI, see `javascript/javascript-io-network-effects.mdc`
+  - Component rendering: Use riteway/render for markup verification
+  - Browser interactions: Use Playwright to exercise real browser APIs
+  - Never use @testing-library/react (redundant with above patterns)
 
 Constraints {
   Unless directed otherwise, always colocate tests with the code they are testing.
