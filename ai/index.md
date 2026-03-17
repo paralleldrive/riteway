@@ -12,6 +12,10 @@ See [`commands/index.md`](./commands/index.md) for contents.
 
 See [`rules/index.md`](./rules/index.md) for contents.
 
+### 📁 scaffolds/
+
+See [`scaffolds/index.md`](./scaffolds/index.md) for contents.
+
 ### 📁 skills/
 
 See [`skills/index.md`](./skills/index.md) for contents.

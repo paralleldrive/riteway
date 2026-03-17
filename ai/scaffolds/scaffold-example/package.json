@@ -1,0 +1,18 @@
+{
+  "description": "Minimal AIDD scaffold — npm project with Vitest and Riteway",
+  "devDependencies": {
+    "release-it": "latest"
+  },
+  "files": [
+    "SCAFFOLD-MANIFEST.yml",
+    "README.md",
+    "bin/**/*"
+  ],
+  "license": "MIT",
+  "name": "aidd-scaffold-example",
+  "scripts": {
+    "release": "release-it"
+  },
+  "type": "module",
+  "version": "1.0.0"
+}

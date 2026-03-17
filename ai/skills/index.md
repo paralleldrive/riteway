@@ -4,6 +4,10 @@ This index provides an overview of the contents in this directory.
 
 ## Subdirectories
 
+### 📁 aidd-churn/
+
+See [`aidd-churn/index.md`](./aidd-churn/index.md) for contents.
+
 ### 📁 aidd-ecs/
 
 See [`aidd-ecs/index.md`](./aidd-ecs/index.md) for contents.

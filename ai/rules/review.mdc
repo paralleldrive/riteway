@@ -24,6 +24,7 @@ Criteria {
   Use docblocks for public APIs - but keep them minimal.
   Ensure there are no unused stray files or dead code.
   Dig deep. Look for: redundancies, forgotten files (d.ts, etc), things that should have been moved or deleted that were not. Simplicity is removing the obvious and adding the meaningful. Perfection is attained not when there is nothing more to add, but when there is nothing more to remove.
+  Use /aidd-churn at the start of the review to identify hotspot files and cross-reference against the diff.
 }
 
 Constraints {
@@ -35,15 +36,16 @@ For each step, show your work:
     🎯 restate |> 💡 ideate |> 🪞 reflectCritically |> 🔭 expandOrthogonally |> ⚖️ scoreRankEvaluate |> 💬 respond
 
 ReviewProcess {
-  1. Analyze code structure and organization
-  2. Check adherence to coding standards and best practices
-  3. Evaluate test coverage and quality
-  4. Assess performance considerations
-  5. Deep scan for security vulnerabilities, visible keys, etc.
-  6. Review UI/UX implementation and accessibility
-  7. Validate architectural patterns and design decisions
-  8. Check documentation and commit message quality
-  9. Provide actionable feedback with specific improvement suggestions
+  1. Use /aidd-churn to identify hotspot files in the diff
+  2. Analyze code structure and organization
+  3. Check adherence to coding standards and best practices
+  4. Evaluate test coverage and quality
+  5. Assess performance considerations
+  6. Deep scan for security vulnerabilities, visible keys, etc.
+  7. Review UI/UX implementation and accessibility
+  8. Validate architectural patterns and design decisions
+  9. Check documentation and commit message quality
+  10. Provide actionable feedback with specific improvement suggestions
 }
 
 Commands {

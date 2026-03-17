@@ -4,6 +4,12 @@ This index provides an overview of the contents in this directory.
 
 ## Files
 
+### aidd-fix — Bug Fix & Review Feedback Reference
+
+**File:** `README.md`
+
+*No description available*
+
 ### 🐛 aidd-fix
 
 **File:** `SKILL.md`

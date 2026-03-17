@@ -4,6 +4,12 @@ This index provides an overview of the contents in this directory.
 
 ## Files
 
+### 📊 /aidd-churn
+
+**File:** `aidd-churn.md`
+
+Rank files by hotspot score to identify prime candidates for refactoring before PR review
+
 ### 🐛 /aidd-fix
 
 **File:** `aidd-fix.md`

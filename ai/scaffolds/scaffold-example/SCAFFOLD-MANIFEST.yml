@@ -1,0 +1,5 @@
+steps:
+  - run: npm init -y
+  - run: npm pkg set scripts.test="vitest run"
+  - run: npm pkg set scripts.release="release-it"
+  - run: npm install --save-dev riteway@latest vitest@latest @playwright/test@latest error-causes@latest @paralleldrive/cuid2@latest release-it@latest
