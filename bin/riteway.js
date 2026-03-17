@@ -84,13 +84,14 @@ const mainAIRunner = asyncPipe(
 const handleAIError = handleAIErrors({
   ValidationError: ({ message }) => {
     console.error(`❌ Validation failed: ${message}`);
-    console.error('\nUsage: riteway ai <file> [--runs N] [--threshold P] [--agent NAME | --agent-config FILE] [--color]');
+    console.error('\nUsage: riteway ai <file> [--runs N] [--threshold P] [--agent NAME | --agent-config FILE] [--color] [--save-responses]');
     console.error(`  --runs N               Number of test runs per assertion (default: ${defaults.runs})`);
     console.error(`  --threshold P          Required pass percentage 0-100 (default: ${defaults.threshold})`);
     console.error(`  --timeout MS           Per-agent-call timeout in milliseconds (default: ${defaults.timeoutMs})`);
     console.error(`  --agent NAME           Agent: claude, opencode, cursor, or custom from ${registryFileName} (default: ${defaults.agent})`);
     console.error(`  --agent-config FILE    Path to a flat single-agent config JSON (mutually exclusive with --agent)`);
     console.error(`  --color                Enable ANSI color codes in terminal output (default: ${defaults.color ? 'enabled' : 'disabled'})`);
+    console.error(`  --save-responses       Save raw agent responses to a companion .responses.md file (default: ${defaults.saveResponses})`);
     console.error('\nAuthentication: Run agent-specific OAuth setup:');
     console.error("  Claude:  'claude setup-token'");
     console.error("  Cursor:  'agent login'");
@@ -192,6 +193,7 @@ AI Test Options:
   --agent-config FILE       Path to a flat single-agent config JSON {"command","args","outputFormat"} (mutually exclusive with --agent)
   --concurrency N           Max concurrent test executions (default: ${defaults.concurrency})
   --color                   Enable ANSI color codes in terminal output
+  --save-responses          Save raw agent responses and judge details to a companion .responses.md file
 
 AI Init Options:
   --force                   Overwrite existing ${registryFileName}
@@ -208,6 +210,7 @@ Examples:
   riteway ai prompts/test.sudo --agent cursor --runs 5
   riteway ai prompts/test.sudo --agent opencode --runs 5
   riteway ai prompts/test.sudo --color
+  riteway ai prompts/test.sudo --save-responses
   riteway ai prompts/test.sudo --agent-config ./my-agent.json
   riteway ai init
   riteway ai init --force

@@ -133,8 +133,38 @@ riteway ai path/to/test.sudo --agent-config ./my-agent.json
 | `--agent-config FILE` | — | Path to a flat single-agent JSON config `{"command","args","outputFormat"}` — mutually exclusive with `--agent` |
 | `--concurrency N` | `4` | Max concurrent test executions |
 | `--color` | off | Enable ANSI color output |
+| `--save-responses` | off | Save raw agent responses and judge details to a companion `.responses.md` file |
 
 Results are written as a TAP markdown file under `ai-evals/` in the project root.
+
+### Saving raw responses for debugging
+
+When `--save-responses` is passed, a companion `.responses.md` file is written alongside the `.tap.md` output. It contains the raw result agent response and per-run judge details (passed, actual, expected, score) for every assertion — useful for debugging failures without adding console noise.
+
+```shell
+riteway ai path/to/test.sudo --save-responses
+```
+
+Each test file produces its own uniquely-named pair of files (e.g. `2026-03-17-test-abc12.tap.md` and `2026-03-17-test-abc12.responses.md`), so multiple test files never conflict.
+
+#### Capturing responses as CI artifacts
+
+In GitHub Actions, use `--save-responses` and upload the `ai-evals/` directory as an artifact:
+
+```yaml
+- name: Run AI prompt evaluations
+  run: npx riteway ai path/to/test.sudo --save-responses
+
+- name: Upload AI eval responses
+  if: always()
+  uses: actions/upload-artifact@v4
+  with:
+    name: ai-eval-responses
+    path: ai-evals/*.responses.md
+    retention-days: 14
+```
+
+The `if: always()` ensures responses are uploaded even when assertions fail, so you can inspect exactly what the agent produced.
 
 ### Custom agent configuration
 

@@ -4,10 +4,11 @@ import {
   formatDate,
   generateOutputPath,
   formatTAP,
+  formatResponses,
   openInBrowser,
   recordTestOutput
 } from './test-output.js';
-import { mkdirSync, rmSync, existsSync, readFileSync } from 'fs';
+import { mkdirSync, rmSync, existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { init } from '@paralleldrive/cuid2';
@@ -644,6 +645,204 @@ describe('recordTestOutput()', () => {
       should: 'include output directory in path',
       actual: outputPath.startsWith(testDir),
       expected: true
+    });
+  });
+
+  test('does not create responses file when saveResponses is true but responses is undefined', async () => {
+    const testDir = join(tmpdir(), 'riteway-output-' + createSlug());
+    onTestFinished(() => rmSync(testDir, { recursive: true, force: true }));
+    mkdirSync(testDir, { recursive: true });
+
+    await recordTestOutput({
+      results: createTestResults(),
+      testFilename: 'test.sudo',
+      outputDir: testDir,
+      openBrowser: false,
+      saveResponses: true
+    });
+
+    const files = readdirSync(testDir);
+    const responsesFiles = files.filter(f => f.includes('.responses.md'));
+
+    assert({
+      given: 'saveResponses: true but results.responses is undefined',
+      should: 'not create a responses file',
+      actual: responsesFiles.length,
+      expected: 0
+    });
+  });
+
+  test('does not create responses file when saveResponses is false', async () => {
+    const testDir = join(tmpdir(), 'riteway-output-' + createSlug());
+    onTestFinished(() => rmSync(testDir, { recursive: true, force: true }));
+    mkdirSync(testDir, { recursive: true });
+
+    const results = {
+      ...createTestResults(),
+      responses: ['Response from run 1', 'Response from run 2']
+    };
+
+    await recordTestOutput({
+      results,
+      testFilename: 'test.sudo',
+      outputDir: testDir,
+      openBrowser: false,
+      saveResponses: false
+    });
+
+    const files = readdirSync(testDir);
+    const responsesFiles = files.filter(f => f.includes('.responses.md'));
+
+    assert({
+      given: 'saveResponses: false',
+      should: 'not create a responses file',
+      actual: responsesFiles.length,
+      expected: 0
+    });
+  });
+
+  test('creates companion responses file when saveResponses is true', async () => {
+    const testDir = join(tmpdir(), 'riteway-output-' + createSlug());
+    onTestFinished(() => rmSync(testDir, { recursive: true, force: true }));
+    mkdirSync(testDir, { recursive: true });
+
+    const results = {
+      passed: true,
+      assertions: [
+        {
+          requirement: 'Given a test, should pass',
+          passed: true,
+          passCount: 2,
+          totalRuns: 2,
+          runResults: [
+            { passed: true, actual: 'Looks good', expected: 'Pass', score: 90 },
+            { passed: true, actual: 'All good', expected: 'Pass', score: 85 }
+          ]
+        }
+      ],
+      responses: ['Full agent response run 1', 'Full agent response run 2']
+    };
+
+    await recordTestOutput({
+      results,
+      testFilename: 'test.sudo',
+      outputDir: testDir,
+      openBrowser: false,
+      saveResponses: true
+    });
+
+    const files = readdirSync(testDir);
+    const responsesFile = files.find(f => f.endsWith('.responses.md'));
+    const responsesPath = join(testDir, responsesFile);
+
+    assert({
+      given: 'saveResponses: true',
+      should: 'write companion responses file with full formatted content',
+      actual: readFileSync(responsesPath, 'utf-8'),
+      expected: '# Agent Responses\n\n' +
+        '## Run 1\n\n### Result Agent Response\n\nFull agent response run 1\n\n### Judge Results\n\n' +
+        '**Given a test, should pass**\n- passed: true\n- actual: Looks good\n- expected: Pass\n- score: 90\n\n' +
+        '## Run 2\n\n### Result Agent Response\n\nFull agent response run 2\n\n### Judge Results\n\n' +
+        '**Given a test, should pass**\n- passed: true\n- actual: All good\n- expected: Pass\n- score: 85\n\n'
+    });
+  });
+});
+
+describe('formatResponses()', () => {
+  test('formats responses with run headers and agent output', () => {
+    assert({
+      given: 'two responses with no assertions',
+      should: 'format with run headers and response content',
+      actual: formatResponses({
+        responses: ['Response 1', 'Response 2'],
+        assertions: []
+      }),
+      expected: '# Agent Responses\n\n' +
+        '## Run 1\n\n### Result Agent Response\n\nResponse 1\n\n### Judge Results\n\n' +
+        '## Run 2\n\n### Result Agent Response\n\nResponse 2\n\n### Judge Results\n\n'
+    });
+  });
+
+  test('includes judge results per assertion per run', () => {
+    assert({
+      given: 'one response with one assertion and full judge results',
+      should: 'format with requirement heading, passed, actual, expected, and score',
+      actual: formatResponses({
+        responses: ['Agent output'],
+        assertions: [
+          {
+            requirement: 'should work',
+            runResults: [
+              { passed: true, actual: 'It works', expected: 'Works', score: 95 }
+            ]
+          }
+        ]
+      }),
+      expected: '# Agent Responses\n\n' +
+        '## Run 1\n\n### Result Agent Response\n\nAgent output\n\n### Judge Results\n\n' +
+        '**should work**\n- passed: true\n- actual: It works\n- expected: Works\n- score: 95\n\n'
+    });
+  });
+
+  test('handles empty responses array', () => {
+    assert({
+      given: 'empty responses',
+      should: 'return header only',
+      actual: formatResponses({ responses: [], assertions: [] }),
+      expected: '# Agent Responses\n\n'
+    });
+  });
+
+  test('omits actual and expected when undefined in run results', () => {
+    assert({
+      given: 'run result with only passed field',
+      should: 'omit actual, expected, and score lines',
+      actual: formatResponses({
+        responses: ['Agent output'],
+        assertions: [
+          {
+            requirement: 'should work',
+            runResults: [{ passed: true }]
+          }
+        ]
+      }),
+      expected: '# Agent Responses\n\n' +
+        '## Run 1\n\n### Result Agent Response\n\nAgent output\n\n### Judge Results\n\n' +
+        '**should work**\n- passed: true\n\n'
+    });
+  });
+
+  test('handles more responses than runResults gracefully', () => {
+    assert({
+      given: '3 responses but only 1 runResult',
+      should: 'include all runs, skipping judge details for missing runResults',
+      actual: formatResponses({
+        responses: ['Response 1', 'Response 2', 'Response 3'],
+        assertions: [
+          {
+            requirement: 'should work',
+            runResults: [{ passed: true, actual: 'ok', expected: 'ok' }]
+          }
+        ]
+      }),
+      expected: '# Agent Responses\n\n' +
+        '## Run 1\n\n### Result Agent Response\n\nResponse 1\n\n### Judge Results\n\n' +
+        '**should work**\n- passed: true\n- actual: ok\n- expected: ok\n\n' +
+        '## Run 2\n\n### Result Agent Response\n\nResponse 2\n\n### Judge Results\n\n' +
+        '## Run 3\n\n### Result Agent Response\n\nResponse 3\n\n### Judge Results\n\n'
+    });
+  });
+
+  test('trims trailing newlines from agent responses', () => {
+    assert({
+      given: 'response with trailing newlines',
+      should: 'trim trailing whitespace before adding consistent spacing',
+      actual: formatResponses({
+        responses: ['Response with trailing newlines\n\n\n'],
+        assertions: []
+      }),
+      expected: '# Agent Responses\n\n' +
+        '## Run 1\n\n### Result Agent Response\n\nResponse with trailing newlines\n\n### Judge Results\n\n'
     });
   });
 });

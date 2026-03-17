@@ -93,7 +93,7 @@ const executeSingleRun = async ({
 
   console.log(`Judging ${assertions.length} assertions...`);
 
-  return Promise.all(
+  const judgments = await Promise.all(
     assertions.map((assertion, assertionIndex) =>
       judgeAssertion({
         assertion,
@@ -108,6 +108,8 @@ const executeSingleRun = async ({
       })
     )
   );
+
+  return { judgments, response: result };
 };
 
 const executeRuns = ({
@@ -132,10 +134,10 @@ const executeRuns = ({
   return limitConcurrency(runTasks, concurrency);
 };
 
-const aggregateResults = ({ assertions, allRunJudgments, threshold, runs }) => {
+const aggregateResults = ({ assertions, allRunResults, threshold, runs }) => {
   const perAssertionResults = assertions.map(({ requirement }, assertionIndex) => ({
     requirement,
-    runResults: allRunJudgments.map(runJudgments => runJudgments[assertionIndex])
+    runResults: allRunResults.map(({ judgments }) => judgments[assertionIndex])
   }));
 
   return aggregatePerAssertionResults({ perAssertionResults, threshold, runs });
@@ -155,7 +157,7 @@ const aggregateResults = ({ assertions, allRunJudgments, threshold, runs }) => {
  * @param {number} [options.timeout=300000] - Timeout in milliseconds (default: 5 minutes)
  * @param {number} [options.concurrency=4] - Maximum concurrent runs
  * @param {string} [options.projectRoot=process.cwd()] - Project root directory for resolving import paths
- * @returns {Promise<Object>} Aggregated per-assertion test results
+ * @returns {Promise<{passed: boolean, assertions: Array<Object>, responses: string[]}>} Aggregated per-assertion test results with raw agent responses
  */
 export const runAITests = async ({
   filePath,
@@ -178,7 +180,7 @@ export const runAITests = async ({
 
   const { resultPrompt, assertions } = extracted;
 
-  const allRunJudgments = await executeRuns({
+  const allRunResults = await executeRuns({
     extracted,
     resultPrompt,
     runs,
@@ -187,5 +189,8 @@ export const runAITests = async ({
     timeout
   });
 
-  return aggregateResults({ assertions, allRunJudgments, threshold, runs });
+  const aggregated = aggregateResults({ assertions, allRunResults, threshold, runs });
+  const responses = allRunResults.map(({ response }) => response);
+
+  return { ...aggregated, responses };
 };

@@ -169,19 +169,52 @@ export const openInBrowser = async (filePath) => {
 };
 
 /**
+ * Format raw agent responses as markdown for debugging.
+ * @param {Object} options
+ * @param {string[]} options.responses - Raw result agent responses per run
+ * @param {Array<Object>} options.assertions - Aggregated assertion results
+ * @returns {string} Markdown formatted responses
+ */
+export const formatResponses = ({ responses = [], assertions = [] }) => {
+  const lines = ['# Agent Responses\n\n'];
+
+  responses.forEach((response, index) => {
+    lines.push(`## Run ${index + 1}\n\n`);
+    lines.push('### Result Agent Response\n\n');
+    lines.push(String(response ?? '').trimEnd() + '\n\n');
+
+    lines.push('### Judge Results\n\n');
+    assertions.forEach(({ requirement, runResults }) => {
+      const run = runResults?.[index];
+      if (!run) return;
+      lines.push(`**${requirement}**\n`);
+      lines.push(`- passed: ${run.passed}\n`);
+      if (run.actual !== undefined) lines.push(`- actual: ${run.actual}\n`);
+      if (run.expected !== undefined) lines.push(`- expected: ${run.expected}\n`);
+      if (run.score !== undefined) lines.push(`- score: ${run.score}\n`);
+      lines.push('\n');
+    });
+  });
+
+  return lines.join('');
+};
+
+/**
  * Record test output to file.
  * @param {Object} options
  * @param {Object} options.results - Test results
  * @param {string} options.testFilename - Test file name
  * @param {string} [options.outputDir='ai-evals'] - Output directory
  * @param {boolean} [options.openBrowser=true] - Whether to open in browser
+ * @param {boolean} [options.saveResponses=false] - Whether to save raw responses to companion file
  * @returns {Promise<string>} Path to output file
  */
 export const recordTestOutput = async ({
   results,
   testFilename,
   outputDir = 'ai-evals',
-  openBrowser = true
+  openBrowser = true,
+  saveResponses = false
 }) => {
   await mkdir(outputDir, { recursive: true });
 
@@ -196,6 +229,21 @@ export const recordTestOutput = async ({
 
   const tap = formatTAP(results);
   await writeFile(outputPath, tap, 'utf-8');
+
+  if (saveResponses && results.responses) {
+    const responsesPath = generateOutputPath({
+      testFilename,
+      date,
+      slug,
+      outputDir,
+      extension: '.responses.md'
+    });
+    const responsesContent = formatResponses({
+      responses: results.responses,
+      assertions: results.assertions
+    });
+    await writeFile(responsesPath, responsesContent, 'utf-8');
+  }
 
   if (openBrowser) {
     await openInBrowser(outputPath);

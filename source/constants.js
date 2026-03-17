@@ -6,7 +6,8 @@ export const defaults = {
   concurrency: 4,
   agent: 'claude',
   timeoutMs: 300_000,
-  color: false
+  color: false,
+  saveResponses: false
 };
 
 const constraints = {
