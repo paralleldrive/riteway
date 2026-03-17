@@ -19,6 +19,7 @@ const aiArgsSchema = z.object({
   agentConfigPath: z.string().optional(),
   concurrency: concurrencySchema,
   color: z.boolean(),
+  saveResponses: z.boolean(),
   cwd: z.string()
 });
 
@@ -42,13 +43,14 @@ export const parseAIArgs = (argv) => {
   const unknownFlags = [];
   const opts = minimist(argv, {
     string: ['runs', 'threshold', 'timeout', 'agent', 'concurrency', 'agent-config'],
-    boolean: ['color'],
+    boolean: ['color', 'save-responses'],
     default: {
       runs: defaults.runs,
       threshold: defaults.threshold,
       timeout: defaults.timeoutMs,
       agent: defaults.agent,
-      color: defaults.color
+      color: defaults.color,
+      'save-responses': defaults.saveResponses
     },
     unknown: (arg) => {
       if (arg.startsWith('--')) unknownFlags.push(arg);
@@ -75,6 +77,7 @@ export const parseAIArgs = (argv) => {
     agent: opts.agent,
     ...(agentConfigPath ? { agentConfigPath } : {}),
     color: opts.color,
+    saveResponses: opts['save-responses'],
     concurrency,
     cwd: process.cwd()
   };
@@ -126,7 +129,7 @@ export const formatAssertionReport = ({ passed, requirement, passCount, totalRun
  * @param {Object} options - Test run options
  * @returns {Promise<string>} Path to the recorded TAP output file
  */
-export const runAICommand = async ({ filePath, runs, threshold, timeout, agent, agentConfigPath, color, concurrency, cwd }) => {
+export const runAICommand = async ({ filePath, runs, threshold, timeout, agent, agentConfigPath, color, saveResponses, concurrency, cwd }) => {
   if (!filePath) {
     throw createError({
       ...ValidationError,
@@ -144,7 +147,7 @@ export const runAICommand = async ({ filePath, runs, threshold, timeout, agent, 
       : agent;
 
     console.log(`Running AI tests: ${testFilename}`);
-    console.log(`Configuration: ${runs} runs, ${threshold}% threshold, ${concurrency} concurrent, ${timeout}ms timeout, agent: ${agentLabel}`);
+    console.log(`Configuration: ${runs} runs, ${threshold}% threshold, ${concurrency} concurrent, ${timeout}ms timeout, agent: ${agentLabel}, responses: ${saveResponses ? 'saving' : 'off'}`);
 
     console.log(`\nVerifying ${agentLabel} agent authentication...`);
     const authResult = await verifyAgentAuthentication({
@@ -173,7 +176,8 @@ export const runAICommand = async ({ filePath, runs, threshold, timeout, agent, 
     try {
       outputPath = await recordTestOutput({
         results,
-        testFilename
+        testFilename,
+        saveResponses
       });
     } catch (error) {
       throw createError({

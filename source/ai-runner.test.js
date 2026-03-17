@@ -69,7 +69,7 @@ describe('runAITests()', () => {
 
       assert({
         given: 'multi-assertion test file with all runs passing at 50% threshold',
-        should: 'return aggregated result with all assertions passing',
+        should: 'return aggregated result with all assertions passing and raw responses',
         actual: result,
         expected: {
           passed: true,
@@ -96,6 +96,10 @@ describe('runAITests()', () => {
                 { passed: true, actual: 'Mock actual output', expected: 'Mock expected output', score: 85 }
               ]
             }
+          ],
+          responses: [
+            'Mock result from agent\n',
+            'Mock result from agent\n'
           ]
         }
       });
@@ -145,6 +149,11 @@ describe('runAITests()', () => {
                 { passed: true, actual: 'Mock actual output', expected: 'Mock expected output', score: 85 }
               ]
             }
+          ],
+          responses: [
+            'Mock result from agent\n',
+            'Mock result from agent\n',
+            'Mock result from agent\n'
           ]
         }
       });
@@ -197,6 +206,10 @@ describe('runAITests()', () => {
                 { passed: false, actual: 'Mock actual output', expected: 'Mock expected output', score: 25 }
               ]
             }
+          ],
+          responses: [
+            'Mock result from agent\n',
+            'Mock result from agent\n'
           ]
         }
       });
@@ -245,8 +258,49 @@ describe('runAITests()', () => {
                 { passed: true, actual: 'Mock actual output', expected: 'Mock expected output', score: 85 }
               ]
             }
+          ],
+          responses: [
+            'Mock result from agent\n',
+            'Mock result from agent\n'
           ]
         }
+      });
+    } finally {
+      rmSync(testDir, { recursive: true, force: true });
+    }
+  });
+
+  test('captures raw result agent responses for each run', async () => {
+    const testDir = join(tmpdir(), 'riteway-test-' + createSlug());
+
+    try {
+      mkdirSync(testDir, { recursive: true });
+      writeFileSync(join(testDir, 'prompt.mdc'), 'Test prompt context');
+      const testFile = join(testDir, 'test.sudo');
+      writeFileSync(testFile, '- Given a test, should pass');
+
+      const extractedTests = [{ id: 1, requirement: 'Given a test, should pass' }];
+      const customResponse = 'Custom agent response for debugging';
+
+      const result = await runAITests({
+        filePath: testFile,
+        runs: 2,
+        threshold: 50,
+        projectRoot: testDir,
+        agentConfig: {
+          command: 'node',
+          args: createTwoAgentMockArgs({ extractedTests, resultText: customResponse })
+        }
+      });
+
+      assert({
+        given: '2 runs with a custom result agent response',
+        should: 'capture the raw response from each run',
+        actual: result.responses,
+        expected: [
+          customResponse + '\n',
+          customResponse + '\n'
+        ]
       });
     } finally {
       rmSync(testDir, { recursive: true, force: true });

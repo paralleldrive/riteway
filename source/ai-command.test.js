@@ -32,6 +32,7 @@ describe('parseAIArgs()', () => {
         timeout: 300000,
         agent: 'claude',
         color: false,
+        saveResponses: false,
         concurrency: 4,
         cwd: process.cwd()
       }
@@ -260,6 +261,28 @@ describe('parseAIArgs()', () => {
       should: 'not include agentConfigPath',
       actual: result.agentConfigPath,
       expected: undefined
+    });
+  });
+
+  test('parses --save-responses flag as true', () => {
+    const result = parseAIArgs(['--save-responses', 'test.sudo']);
+
+    assert({
+      given: '--save-responses flag',
+      should: 'set saveResponses to true',
+      actual: result.saveResponses,
+      expected: true
+    });
+  });
+
+  test('defaults saveResponses to false when no flag specified', () => {
+    const result = parseAIArgs(['test.sudo']);
+
+    assert({
+      given: 'no --save-responses flag',
+      should: 'default saveResponses to false',
+      actual: result.saveResponses,
+      expected: false
     });
   });
 
@@ -576,6 +599,20 @@ describe('runAICommand() orchestration', () => {
       should: 'include (0%) in the AITestError message',
       actual: error?.cause?.message,
       expected: 'Test suite failed: 0/0 assertions passed (0%)'
+    });
+  });
+
+  test('passes saveResponses to recordTestOutput', async () => {
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    onTestFinished(() => consoleSpy.mockRestore());
+
+    await runAICommand({ ...args, saveResponses: true });
+
+    assert({
+      given: 'saveResponses: true',
+      should: 'forward saveResponses to recordTestOutput',
+      actual: vi.mocked(recordTestOutput).mock.lastCall?.[0].saveResponses,
+      expected: true
     });
   });
 
