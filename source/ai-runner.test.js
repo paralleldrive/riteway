@@ -307,6 +307,152 @@ describe('runAITests()', () => {
     }
   });
 
+  test('attaches partialResults to error when a run times out after others complete', async () => {
+    const testDir = join(tmpdir(), 'riteway-test-' + createSlug());
+
+    try {
+      mkdirSync(testDir, { recursive: true });
+      writeFileSync(join(testDir, 'prompt.mdc'), 'Test prompt context');
+      const testFile = join(testDir, 'test.sudo');
+      writeFileSync(testFile, '- Given a test, should pass');
+
+      const extractedTests = [{ id: 1, requirement: 'Given a test, should pass' }];
+      const counterFile = join(testDir, 'call-count.txt');
+      writeFileSync(counterFile, '0');
+
+      // Mock agent that succeeds on first result call, hangs on second.
+      // Extraction and judge calls respond immediately.
+      const extractionResult = {
+        userPrompt: 'What is 2+2?',
+        importPaths: ['prompt.mdc'],
+        assertions: extractedTests
+      };
+      const tapYAML = '---\npassed: true\nactual: "ok"\nexpected: "ok"\nscore: 85\n---';
+
+      const mockScript = `
+        const fs = require('fs');
+        const prompt = process.argv[process.argv.length - 1];
+        if (prompt.includes('<test-file-contents>')) {
+          console.log(JSON.stringify(${JSON.stringify(extractionResult)}));
+        } else if (prompt.includes('ACTUAL RESULT TO EVALUATE')) {
+          console.log(${JSON.stringify(tapYAML)});
+        } else if (prompt.includes('CONTEXT (Prompt Under Test)')) {
+          const count = parseInt(fs.readFileSync(${JSON.stringify(counterFile)}, 'utf-8'));
+          fs.writeFileSync(${JSON.stringify(counterFile)}, String(count + 1));
+          if (count === 0) {
+            console.log('First run response');
+          } else {
+            process.stdout.write('Partial output from run 2 before timeout');
+            setTimeout(() => {}, 60000);
+          }
+        }
+      `;
+
+      const error = await Try(runAITests, {
+        filePath: testFile,
+        runs: 2,
+        threshold: 50,
+        concurrency: 1,
+        timeout: 2000,
+        projectRoot: testDir,
+        agentConfig: {
+          command: 'node',
+          args: ['-e', mockScript]
+        }
+      });
+
+      assert({
+        given: 'run 1 completes but run 2 times out',
+        should: 'throw an error with partialResults attached',
+        actual: error?.cause?.partialResults !== undefined,
+        expected: true
+      });
+
+      const responses = error?.cause?.partialResults?.responses;
+
+      assert({
+        given: 'run 1 completed successfully',
+        should: 'include the completed response as first entry',
+        actual: responses?.[0],
+        expected: 'First run response\n'
+      });
+
+      assert({
+        given: 'run 2 timed out with partial output',
+        should: 'include a second response with timeout marker',
+        actual: responses?.[1]?.includes('[RITEWAY TIMEOUT]'),
+        expected: true
+      });
+
+      assert({
+        given: 'partial results from 1 completed run',
+        should: 'include aggregated assertions',
+        actual: error?.cause?.partialResults?.assertions?.length,
+        expected: 1
+      });
+    } finally {
+      rmSync(testDir, { recursive: true, force: true });
+    }
+  });
+
+  test('includes partial stdout and timeout marker when all runs time out', async () => {
+    const testDir = join(tmpdir(), 'riteway-test-' + createSlug());
+
+    try {
+      mkdirSync(testDir, { recursive: true });
+      writeFileSync(join(testDir, 'prompt.mdc'), 'Test prompt context');
+      const testFile = join(testDir, 'test.sudo');
+      writeFileSync(testFile, '- Given a test, should pass');
+
+      const extractedTests = [{ id: 1, requirement: 'Given a test, should pass' }];
+      const extractionResult = {
+        userPrompt: 'What is 2+2?',
+        importPaths: ['prompt.mdc'],
+        assertions: extractedTests
+      };
+
+      // Mock agent that writes partial output then hangs
+      const mockScript = `
+        const prompt = process.argv[process.argv.length - 1];
+        if (prompt.includes('<test-file-contents>')) {
+          console.log(JSON.stringify(${JSON.stringify(extractionResult)}));
+        } else if (prompt.includes('CONTEXT (Prompt Under Test)')) {
+          process.stdout.write('Partial agent thoughts before timeout');
+          setTimeout(() => {}, 60000);
+        }
+      `;
+
+      const error = await Try(runAITests, {
+        filePath: testFile,
+        runs: 1,
+        threshold: 50,
+        concurrency: 1,
+        timeout: 2000,
+        projectRoot: testDir,
+        agentConfig: {
+          command: 'node',
+          args: ['-e', mockScript]
+        }
+      });
+
+      assert({
+        given: 'all runs time out but produce partial output',
+        should: 'include partialResults with the partial stdout',
+        actual: error?.cause?.partialResults?.responses?.[0]?.includes('Partial agent thoughts before timeout'),
+        expected: true
+      });
+
+      assert({
+        given: 'timed out run',
+        should: 'include timeout marker in the response',
+        actual: error?.cause?.partialResults?.responses?.[0]?.includes('[RITEWAY TIMEOUT]'),
+        expected: true
+      });
+    } finally {
+      rmSync(testDir, { recursive: true, force: true });
+    }
+  });
+
   test('throws when test file does not exist', async () => {
     const error = await Try(runAITests, {
       filePath: '/nonexistent/path/to/test.sudo',

@@ -166,6 +166,10 @@ In GitHub Actions, use `--save-responses` and upload the `ai-evals/` directory a
 
 The `if: always()` ensures responses are uploaded even when assertions fail, so you can inspect exactly what the agent produced.
 
+#### Partial results on timeout
+
+If some runs complete before another times out, the completed runs' responses are still written to the responses file. The timed-out run's partial agent output is also captured, followed by a `[RITEWAY TIMEOUT]` marker showing when and where the timeout occurred. This lets you debug why a run took too long and potentially optimize the prompt to run faster.
+
 ### Custom agent configuration
 
 `riteway ai init` writes all built-in agent configs to `riteway.agent-config.json` in your project root, so you can add custom agents or tweak existing flags:

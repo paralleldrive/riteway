@@ -137,9 +137,10 @@ export const runAICommand = async ({ filePath, runs, threshold, timeout, agent, 
     });
   }
 
+  const testFilename = basename(filePath);
+
   try {
     const fullPath = validateFilePath(filePath, cwd);
-    const testFilename = basename(filePath);
     const agentConfig = await resolveAgentConfig({ agent, agentConfigPath, cwd });
 
     const agentLabel = agentConfigPath
@@ -208,6 +209,22 @@ export const runAICommand = async ({ filePath, runs, threshold, timeout, agent, 
     console.log('Test suite passed!');
     return outputPath;
   } catch (error) {
+    // If the error carries partial results (e.g. some runs completed before a timeout),
+    // write them to disk before re-throwing so CI artifacts capture what we have.
+    const partialResults = error.cause?.partialResults;
+    if (partialResults) {
+      try {
+        const outputPath = await recordTestOutput({
+          results: partialResults,
+          testFilename,
+          saveResponses
+        });
+        console.log(`\nPartial results recorded: ${outputPath}`);
+      } catch {
+        // Best-effort — don't mask the original error
+      }
+    }
+
     // error-causes wraps structured errors as { cause: { name, code, ... } }.
     // Presence of cause.name is the stable public contract of the library — only
     // changes if error-causes itself changes its API. Re-throw to avoid double-wrapping.
