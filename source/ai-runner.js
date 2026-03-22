@@ -1,4 +1,5 @@
 import { readFile } from 'fs/promises';
+import { createError } from 'error-causes';
 import { executeAgent } from './execute-agent.js';
 import { extractTests, buildResultPrompt, buildJudgePrompt } from './test-extractor.js';
 import { limitConcurrency } from './limit-concurrency.js';
@@ -120,18 +121,35 @@ const executeRuns = ({
   agentConfig,
   timeout
 }) => {
-  const runTasks = Array.from({ length: runs }, (_, runIndex) => async () =>
-    executeSingleRun({
-      runIndex,
-      extracted,
-      resultPrompt,
-      runs,
-      agentConfig,
-      timeout
-    })
-  );
+  const completedRuns = [];
+  let timedOutPartialStdout;
 
-  return limitConcurrency(runTasks, concurrency);
+  const runTasks = Array.from({ length: runs }, (_, runIndex) => async () => {
+    try {
+      const result = await executeSingleRun({
+        runIndex,
+        extracted,
+        resultPrompt,
+        runs,
+        agentConfig,
+        timeout
+      });
+      completedRuns.push(result);
+      return result;
+    } catch (error) {
+      const partialStdout = error.cause?.partialStdout;
+      if (partialStdout !== undefined) {
+        timedOutPartialStdout = partialStdout;
+      }
+      throw error;
+    }
+  });
+
+  return {
+    promise: limitConcurrency(runTasks, concurrency),
+    completedRuns,
+    getTimedOutPartialStdout: () => timedOutPartialStdout
+  };
 };
 
 const aggregateResults = ({ assertions, allRunResults, threshold, runs }) => {
@@ -180,7 +198,7 @@ export const runAITests = async ({
 
   const { resultPrompt, assertions } = extracted;
 
-  const allRunResults = await executeRuns({
+  const { promise: runsPromise, completedRuns, getTimedOutPartialStdout } = executeRuns({
     extracted,
     resultPrompt,
     runs,
@@ -189,8 +207,44 @@ export const runAITests = async ({
     timeout
   });
 
-  const aggregated = aggregateResults({ assertions, allRunResults, threshold, runs });
-  const responses = allRunResults.map(({ response }) => response);
+  try {
+    const allRunResults = await runsPromise;
+    const aggregated = aggregateResults({ assertions, allRunResults, threshold, runs });
+    const responses = allRunResults.map(({ response }) => response);
+    return { ...aggregated, responses };
+  } catch (error) {
+    const timedOutPartialStdout = getTimedOutPartialStdout();
+    const hasPartialData = completedRuns.length > 0 || timedOutPartialStdout !== undefined;
 
-  return { ...aggregated, responses };
+    if (hasPartialData) {
+      const responses = completedRuns.map(({ response }) => response);
+
+      if (timedOutPartialStdout !== undefined) {
+        const timeoutMs = error.cause?.timeout ?? timeout;
+        responses.push(
+          timedOutPartialStdout +
+          `\n\n---\n[RITEWAY TIMEOUT] Agent was terminated after ${timeoutMs}ms. Output above is partial.\n---\n`
+        );
+      }
+
+      const aggregated = completedRuns.length > 0
+        ? aggregateResults({
+          assertions,
+          allRunResults: completedRuns,
+          threshold,
+          runs: completedRuns.length
+        })
+        : { passed: false, assertions: [] };
+
+      throw createError({
+        name: error.cause?.name ?? error.name,
+        code: error.cause?.code ?? error.code,
+        message: error.cause?.message ?? error.message,
+        partialResults: { ...aggregated, responses },
+        cause: error
+      });
+    }
+
+    throw error;
+  }
 };
