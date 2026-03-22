@@ -616,6 +616,64 @@ describe('runAICommand() orchestration', () => {
     });
   });
 
+  test('writes partial results when error carries partialResults', async () => {
+    const partialResults = {
+      passed: false,
+      assertions: [{ requirement: 'Given a test, should pass', passed: true, passCount: 1, totalRuns: 1 }],
+      responses: ['Partial response from run 1']
+    };
+    const errorWithPartials = new Error('outer');
+    errorWithPartials.cause = {
+      name: 'TimeoutError',
+      code: 'AGENT_TIMEOUT',
+      message: 'Agent timed out after 300000ms',
+      partialResults
+    };
+    vi.mocked(runAITests).mockRejectedValue(errorWithPartials);
+    vi.mocked(recordTestOutput).mockClear();
+    vi.mocked(recordTestOutput).mockResolvedValue('/ai-evals/partial.tap.md');
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    onTestFinished(() => consoleSpy.mockRestore());
+
+    await Try(runAICommand, { ...args, saveResponses: true });
+
+    assert({
+      given: 'error with partialResults from a timeout',
+      should: 'call recordTestOutput with the partial results',
+      actual: vi.mocked(recordTestOutput).mock.lastCall?.[0].results,
+      expected: partialResults
+    });
+
+    assert({
+      given: 'error with partialResults and saveResponses: true',
+      should: 'forward saveResponses to recordTestOutput',
+      actual: vi.mocked(recordTestOutput).mock.lastCall?.[0].saveResponses,
+      expected: true
+    });
+  });
+
+  test('does not write partial results when error has no partialResults', async () => {
+    const plainError = new Error('outer');
+    plainError.cause = {
+      name: 'TimeoutError',
+      code: 'AGENT_TIMEOUT',
+      message: 'Agent timed out'
+    };
+    vi.mocked(runAITests).mockRejectedValue(plainError);
+    vi.mocked(recordTestOutput).mockClear();
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    onTestFinished(() => consoleSpy.mockRestore());
+
+    await Try(runAICommand, args);
+
+    assert({
+      given: 'error without partialResults',
+      should: 'not call recordTestOutput',
+      actual: vi.mocked(recordTestOutput).mock.calls.length,
+      expected: 0
+    });
+  });
+
   test('wraps unexpected errors in AITestError', async () => {
     vi.mocked(runAITests).mockRejectedValue(new Error('connection refused'));
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
