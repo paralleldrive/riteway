@@ -1,4 +1,5 @@
 import { readFile } from 'fs/promises';
+import { createError } from 'error-causes';
 import { executeAgent } from './execute-agent.js';
 import { extractTests, buildResultPrompt, buildJudgePrompt } from './test-extractor.js';
 import { limitConcurrency } from './limit-concurrency.js';
@@ -120,18 +121,42 @@ const executeRuns = ({
   agentConfig,
   timeout
 }) => {
-  const runTasks = Array.from({ length: runs }, (_, runIndex) => async () =>
-    executeSingleRun({
+  const completedRuns = [];
+  const inFlightPromises = [];
+  let lastTimedOutStdout;
+
+  const runTasks = Array.from({ length: runs }, (_, runIndex) => async () => {
+    const runPromise = executeSingleRun({
       runIndex,
       extracted,
       resultPrompt,
       runs,
       agentConfig,
       timeout
-    })
-  );
+    });
+    inFlightPromises.push(runPromise);
 
-  return limitConcurrency(runTasks, concurrency);
+    try {
+      const result = await runPromise;
+      completedRuns.push(result);
+      return result;
+    } catch (error) {
+      const partialStdout = error.cause?.partialStdout;
+      if (partialStdout !== undefined) {
+        lastTimedOutStdout = partialStdout;
+      }
+      throw error;
+    }
+  });
+
+  return {
+    promise: limitConcurrency(runTasks, concurrency),
+    // Wait for all in-flight runs to settle before reading completedRuns,
+    // since Promise.all rejects immediately and other runs may still be running.
+    waitForSettled: () => Promise.allSettled(inFlightPromises),
+    completedRuns,
+    getTimedOutPartialStdout: () => lastTimedOutStdout
+  };
 };
 
 const aggregateResults = ({ assertions, allRunResults, threshold, runs }) => {
@@ -180,7 +205,7 @@ export const runAITests = async ({
 
   const { resultPrompt, assertions } = extracted;
 
-  const allRunResults = await executeRuns({
+  const { promise: runsPromise, waitForSettled, completedRuns, getTimedOutPartialStdout } = executeRuns({
     extracted,
     resultPrompt,
     runs,
@@ -189,8 +214,45 @@ export const runAITests = async ({
     timeout
   });
 
-  const aggregated = aggregateResults({ assertions, allRunResults, threshold, runs });
-  const responses = allRunResults.map(({ response }) => response);
+  try {
+    const allRunResults = await runsPromise;
+    const aggregated = aggregateResults({ assertions, allRunResults, threshold, runs });
+    const responses = allRunResults.map(({ response }) => response);
+    return { ...aggregated, responses };
+  } catch (error) {
+    await waitForSettled();
+    const lastTimedOutStdout = getTimedOutPartialStdout();
+    const hasPartialData = completedRuns.length > 0 || lastTimedOutStdout !== undefined;
 
-  return { ...aggregated, responses };
+    if (hasPartialData) {
+      const responses = completedRuns.map(({ response }) => response);
+
+      if (lastTimedOutStdout !== undefined) {
+        const timeoutMs = error.cause?.timeout ?? timeout;
+        responses.push(
+          lastTimedOutStdout +
+          `\n\n---\n[RITEWAY TIMEOUT] Agent was terminated after ${timeoutMs}ms. Output above is partial.\n---\n`
+        );
+      }
+
+      const aggregated = completedRuns.length > 0
+        ? aggregateResults({
+          assertions,
+          allRunResults: completedRuns,
+          threshold,
+          runs: completedRuns.length
+        })
+        : { passed: false, assertions: [] };
+
+      throw createError({
+        name: error.cause?.name ?? error.name,
+        code: error.cause?.code ?? error.code,
+        message: error.cause?.message ?? error.message,
+        partialResults: { ...aggregated, responses },
+        cause: error
+      });
+    }
+
+    throw error;
+  }
 };

@@ -21,25 +21,31 @@ const withTimeout = (promise, ms, errorFactory) =>
     )
   ]);
 
-const collectProcessOutput = (proc) =>
+const collectProcessOutput = (proc, partialOutput) =>
   new Promise((resolve, reject) => {
-    let stdout = '';
     let stderr = '';
 
-    proc.stdout.on('data', (data) => { stdout += data.toString(); });
+    proc.stdout.on('data', (data) => { partialOutput.stdout += data.toString(); });
     proc.stderr.on('data', (data) => { stderr += data.toString(); });
-    proc.on('close', (code) => { resolve({ stdout, stderr, code }); });
+    proc.on('close', (code) => { resolve({ stdout: partialOutput.stdout, stderr, code }); });
     proc.on('error', reject);
   });
 
-const spawnProcess = async ({ agentConfig, prompt }) => {
+const spawnProcess = ({ agentConfig, prompt }) => {
   const { command, args = [] } = agentConfig;
   const allArgs = [...args, prompt];
+
+  const partialOutput = { stdout: '' };
 
   try {
     const proc = spawn(command, allArgs);
     proc.stdin.end();
-    return await collectProcessOutput(proc);
+
+    return {
+      promise: collectProcessOutput(proc, partialOutput),
+      partialOutput,
+      proc
+    };
   } catch (err) {
     throw createError({
       ...AgentProcessError,
@@ -104,17 +110,28 @@ const processAgentOutput = ({ agentConfig, rawOutput }) => ({ stdout }) => {
 const runAgentProcess = async ({ agentConfig, prompt, timeout }) => {
   const { command, args = [] } = agentConfig;
 
-  const { stdout, stderr, code } = await withTimeout(
-    spawnProcess({ agentConfig, prompt }),
-    timeout,
-    () => ({
-      ...TimeoutError,
-      message: `Agent process timed out after ${timeout}ms. Command: ${command} ${args.join(' ')}`,
-      command,
-      args: args.join(' '),
-      timeout
-    })
-  );
+  const { promise, partialOutput, proc } = spawnProcess({ agentConfig, prompt });
+
+  let result;
+  try {
+    result = await withTimeout(
+      promise,
+      timeout,
+      () => ({
+        ...TimeoutError,
+        message: `Agent process timed out after ${timeout}ms. Command: ${command} ${args.join(' ')}`,
+        command,
+        args: args.join(' '),
+        timeout,
+        partialStdout: partialOutput.stdout
+      })
+    );
+  } catch (error) {
+    try { proc.kill(); } catch { /* best-effort */ }
+    throw error;
+  }
+
+  const { stdout, stderr, code } = result;
 
   if (code !== 0) {
     const truncatedStdout = truncateOutput(stdout);
