@@ -176,4 +176,4 @@ Then run your evals using the `opencode` agent:
 riteway ai path/to/test.sudo --agent opencode
 ```
 
-This gives you precise control over both the model and sampling temperature used during evaluations, which is useful for experiments that require deterministic or creative outputs.
+This gives you precise control over both the model and sampling temperature used during evaluations. Temperature shapes the next-token probability distribution — lower values skew toward more probable tokens (less creative, more repetitive), and higher values spread probability more evenly (more creative, less predictable). Note that no current LLM guarantees deterministic outputs even at temperature 0; results will still vary across runs.
