@@ -84,7 +84,7 @@ const mainAIRunner = asyncPipe(
 const handleAIError = handleAIErrors({
   ValidationError: ({ message }) => {
     console.error(`❌ Validation failed: ${message}`);
-    console.error('\nUsage: riteway ai <file> [--runs N] [--threshold P] [--agent NAME | --agent-config FILE] [--color] [--save-responses]');
+    console.error('\nUsage: riteway ai <patterns...> [--runs N] [--threshold P] [--agent NAME | --agent-config FILE] [--color] [--save-responses]');
     console.error(`  --runs N               Number of test runs per assertion (default: ${defaults.runs})`);
     console.error(`  --threshold P          Required pass percentage 0-100 (default: ${defaults.threshold})`);
     console.error(`  --timeout MS           Per-agent-call timeout in milliseconds (default: ${defaults.timeoutMs})`);
@@ -178,7 +178,7 @@ const main = async (argv) => {
     console.log(`
 Usage:
   riteway <patterns...> [options]       Run test files
-  riteway ai <file> [options]           Run AI prompt evaluations
+  riteway ai <patterns...> [options]     Run AI prompt evaluations
   riteway ai init [--force]             Write agent config registry to ${registryFileName}
 
 Test Runner Options:
@@ -206,6 +206,7 @@ Authentication:
 
 Examples:
   riteway 'test/**/*.js'
+  riteway ai 'prompts/**/*.sudo' --runs 1 --threshold 75
   riteway ai prompts/test.sudo --runs 10 --threshold 80
   riteway ai prompts/test.sudo --agent cursor --runs 5
   riteway ai prompts/test.sudo --agent opencode --runs 5
