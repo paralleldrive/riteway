@@ -1,11 +1,14 @@
 import { describe, test, vi, beforeEach, onTestFinished } from 'vitest';
 import { assert } from './vitest.js';
 import { Try } from './riteway.js';
-import { parseAIArgs, formatAssertionReport, runAICommand } from './ai-command.js';
+import { parseAIArgs, formatAssertionReport, runAICommand, resolveAITestFiles } from './ai-command.js';
 import { runAITests, verifyAgentAuthentication } from './ai-runner.js';
 import { resolveAgentConfig } from './agent-config.js';
 import { recordTestOutput } from './test-output.js';
 
+vi.mock('glob', () => ({
+  globSync: vi.fn((pattern) => [pattern])
+}));
 vi.mock('./ai-runner.js', () => ({
   runAITests: vi.fn(),
   verifyAgentAuthentication: vi.fn()
@@ -26,7 +29,7 @@ describe('parseAIArgs()', () => {
       should: 'apply default runs, threshold, timeout, agent, color, and concurrency',
       actual: result,
       expected: {
-        filePath: 'test.sudo',
+        patterns: ['test.sudo'],
         runs: 4,
         threshold: 75,
         timeout: 300000,
@@ -101,17 +104,28 @@ describe('parseAIArgs()', () => {
       given: 'multiple custom flags',
       should: 'parse all custom values correctly',
       actual: {
-        filePath: result.filePath,
+        patterns: result.patterns,
         runs: result.runs,
         threshold: result.threshold,
         agent: result.agent
       },
       expected: {
-        filePath: 'test.sudo',
+        patterns: ['test.sudo'],
         runs: 5,
         threshold: 60,
         agent: 'cursor'
       }
+    });
+  });
+
+  test('parses multiple file patterns as positional arguments', () => {
+    const result = parseAIArgs(['tests/*.sudo', 'evals/**/*.sudo']);
+
+    assert({
+      given: 'multiple positional arguments',
+      should: 'collect all patterns',
+      actual: result.patterns,
+      expected: ['tests/*.sudo', 'evals/**/*.sudo']
     });
   });
 
@@ -142,7 +156,7 @@ describe('parseAIArgs()', () => {
     assert({
       given: 'no file path argument',
       should: 'mention file path in error message',
-      actual: /filepath|file path/i.test(error?.cause?.message),
+      actual: /file path|pattern/i.test(error?.cause?.message),
       expected: true
     });
   });
@@ -403,11 +417,11 @@ describe('formatAssertionReport()', () => {
 });
 
 describe('runAICommand()', () => {
-  test('throws ValidationError when filePath is undefined', async () => {
-    const error = await Try(runAICommand, { filePath: undefined, runs: 4, threshold: 75, cwd: process.cwd() });
+  test('throws ValidationError when patterns is empty', async () => {
+    const error = await Try(runAICommand, { patterns: [], runs: 4, threshold: 75, cwd: process.cwd() });
 
     assert({
-      given: 'undefined filePath',
+      given: 'empty patterns array',
       should: 'throw ValidationError with missing file path message',
       actual: error?.cause,
       expected: {
@@ -418,27 +432,74 @@ describe('runAICommand()', () => {
     });
   });
 
-  test('throws SecurityError for path traversal attempt', async () => {
+  test('throws AITestError wrapping SecurityError for path traversal attempt', async () => {
+    vi.mocked(resolveAgentConfig).mockResolvedValue({ command: 'claude', args: [] });
+    vi.mocked(verifyAgentAuthentication).mockResolvedValue({ success: true });
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    onTestFinished(() => consoleSpy.mockRestore());
+
     const cwd = process.cwd();
     const error = await Try(runAICommand, {
-      filePath: '../../../etc/passwd',
+      patterns: ['../../../etc/passwd'],
       runs: 4,
       threshold: 75,
+      timeout: 300000,
       agent: 'claude',
+      concurrency: 4,
+      color: false,
+      saveResponses: false,
       cwd
     });
 
     assert({
       given: 'path traversal attempt',
-      should: 'throw SecurityError with path traversal details',
-      actual: error?.cause,
-      expected: {
-        name: 'SecurityError',
-        code: 'PATH_TRAVERSAL',
-        message: 'File path escapes base directory',
-        filePath: '../../../etc/passwd',
-        baseDir: cwd
-      }
+      should: 'throw AITestError with aggregate message containing security detail',
+      actual: error?.cause?.name,
+      expected: 'AITestError'
+    });
+
+    assert({
+      given: 'path traversal attempt',
+      should: 'include path traversal message in aggregate',
+      actual: error?.cause?.message?.includes('File path escapes base directory'),
+      expected: true
+    });
+  });
+});
+
+describe('resolveAITestFiles()', () => {
+  test('throws ValidationError when no files match', async () => {
+    const { globSync } = await import('glob');
+    vi.mocked(globSync).mockReturnValueOnce([]);
+
+    const error = Try(resolveAITestFiles, ['nonexistent/**/*.sudo']);
+
+    assert({
+      given: 'a pattern matching no files',
+      should: 'throw ValidationError',
+      actual: error?.cause?.name,
+      expected: 'ValidationError'
+    });
+
+    assert({
+      given: 'a pattern matching no files',
+      should: 'include the pattern in the error message',
+      actual: error?.cause?.message,
+      expected: 'No test files found matching: nonexistent/**/*.sudo'
+    });
+  });
+
+  test('returns expanded file paths from glob patterns', async () => {
+    const { globSync } = await import('glob');
+    vi.mocked(globSync).mockReturnValueOnce(['tests/a.sudo', 'tests/b.sudo']);
+
+    const result = resolveAITestFiles(['tests/*.sudo']);
+
+    assert({
+      given: 'a glob pattern matching two files',
+      should: 'return both file paths',
+      actual: result,
+      expected: ['tests/a.sudo', 'tests/b.sudo']
     });
   });
 });
@@ -450,7 +511,7 @@ describe('runAICommand() orchestration', () => {
     passed: true,
     assertions: [{ requirement: 'Given a test, should pass', passed: true, passCount: 4, totalRuns: 4 }]
   };
-  const args = { filePath: './test.sudo', runs: 4, threshold: 75, timeout: 300000, agent: 'claude', color: false, concurrency: 4, cwd: process.cwd() };
+  const args = { patterns: ['./test.sudo'], runs: 4, threshold: 75, timeout: 300000, agent: 'claude', color: false, concurrency: 4, cwd: process.cwd() };
 
   beforeEach(() => {
     vi.mocked(resolveAgentConfig).mockResolvedValue(agentConfig);
@@ -459,7 +520,7 @@ describe('runAICommand() orchestration', () => {
     vi.mocked(recordTestOutput).mockResolvedValue(outputPath);
   });
 
-  test('returns output path when tests pass', async () => {
+  test('returns output paths when tests pass', async () => {
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     onTestFinished(() => consoleSpy.mockRestore());
 
@@ -467,9 +528,9 @@ describe('runAICommand() orchestration', () => {
 
     assert({
       given: 'valid test file and authenticated agent with passing results',
-      should: 'return path to TAP output file',
+      should: 'return array of paths to TAP output files',
       actual: result,
-      expected: outputPath
+      expected: [outputPath]
     });
   });
 
@@ -529,15 +590,16 @@ describe('runAICommand() orchestration', () => {
 
     assert({
       given: 'test suite with pass rate below threshold',
-      should: 'throw AITestError with suite failure message',
-      actual: error?.cause,
-      expected: {
-        name: 'AITestError',
-        code: 'AI_TEST_ERROR',
-        message: 'Test suite failed: 0/1 assertions passed (0%)',
-        passRate: 0,
-        threshold: 75
-      }
+      should: 'throw AITestError with aggregate failure message',
+      actual: error?.cause?.name,
+      expected: 'AITestError'
+    });
+
+    assert({
+      given: 'test suite with pass rate below threshold',
+      should: 'report 1/1 file(s) failed',
+      actual: error?.cause?.message?.includes('1/1 test file(s) failed'),
+      expected: true
     });
   });
 
@@ -560,7 +622,7 @@ describe('runAICommand() orchestration', () => {
     });
   });
 
-  test('throws OutputError when recordTestOutput fails', async () => {
+  test('throws AITestError wrapping OutputError when recordTestOutput fails', async () => {
     vi.mocked(recordTestOutput).mockRejectedValue(new Error('disk full'));
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     onTestFinished(() => consoleSpy.mockRestore());
@@ -569,14 +631,16 @@ describe('runAICommand() orchestration', () => {
 
     assert({
       given: 'output recording failure',
-      should: 'throw OutputError wrapping the disk error',
-      actual: error?.cause,
-      expected: {
-        name: 'OutputError',
-        code: 'OUTPUT_ERROR',
-        message: 'Failed to record test output: disk full',
-        cause: new Error('disk full')
-      }
+      should: 'throw AITestError with aggregate message',
+      actual: error?.cause?.name,
+      expected: 'AITestError'
+    });
+
+    assert({
+      given: 'output recording failure',
+      should: 'include disk error message in aggregate',
+      actual: error?.cause?.message?.includes('Failed to record test output: disk full'),
+      expected: true
     });
   });
 
@@ -596,9 +660,9 @@ describe('runAICommand() orchestration', () => {
 
     assert({
       given: 'runAITests returns zero assertions',
-      should: 'include (0%) in the AITestError message',
-      actual: error?.cause?.message,
-      expected: 'Test suite failed: 0/0 assertions passed (0%)'
+      should: 'include (0%) in the per-file error detail',
+      actual: error?.cause?.message?.includes('(0%)'),
+      expected: true
     });
   });
 
@@ -683,14 +747,110 @@ describe('runAICommand() orchestration', () => {
 
     assert({
       given: 'unexpected error without a structured cause',
-      should: 'wrap in AITestError preserving the original error',
-      actual: error?.cause,
-      expected: {
-        name: 'AITestError',
-        code: 'AI_TEST_ERROR',
-        message: 'Failed to run AI tests: connection refused',
-        cause: new Error('connection refused')
-      }
+      should: 'wrap in AITestError with aggregate failure message',
+      actual: error?.cause?.name,
+      expected: 'AITestError'
+    });
+
+    assert({
+      given: 'unexpected error without a structured cause',
+      should: 'include the original error message in the aggregate',
+      actual: error?.cause?.message?.includes('connection refused'),
+      expected: true
+    });
+  });
+
+  test('runs all files and returns all output paths when multiple files pass', async () => {
+    const { globSync } = await import('glob');
+    vi.mocked(globSync).mockReturnValueOnce(['./a.sudo', './b.sudo']);
+    vi.mocked(recordTestOutput)
+      .mockResolvedValueOnce('/ai-evals/a.tap.md')
+      .mockResolvedValueOnce('/ai-evals/b.tap.md');
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    onTestFinished(() => consoleSpy.mockRestore());
+
+    const result = await runAICommand(args);
+
+    assert({
+      given: 'two passing test files',
+      should: 'return output paths for both files',
+      actual: result,
+      expected: ['/ai-evals/a.tap.md', '/ai-evals/b.tap.md']
+    });
+  });
+
+  test('continues running remaining files when one fails', async () => {
+    const { globSync } = await import('glob');
+    vi.mocked(globSync).mockReturnValueOnce(['./a.sudo', './b.sudo']);
+    vi.mocked(runAITests).mockReset();
+    vi.mocked(runAITests)
+      .mockResolvedValueOnce({
+        passed: false,
+        assertions: [{ requirement: 'test a', passed: false, passCount: 0, totalRuns: 4 }]
+      })
+      .mockResolvedValueOnce(passedResults);
+    vi.mocked(recordTestOutput)
+      .mockResolvedValueOnce('/ai-evals/a.tap.md')
+      .mockResolvedValueOnce('/ai-evals/b.tap.md');
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    onTestFinished(() => consoleSpy.mockRestore());
+
+    const error = await Try(runAICommand, args);
+
+    assert({
+      given: 'first file fails and second file passes',
+      should: 'still run the second file',
+      actual: vi.mocked(runAITests).mock.calls.length,
+      expected: 2
+    });
+
+    assert({
+      given: 'first file fails and second file passes',
+      should: 'report 1/2 file(s) failed',
+      actual: error?.cause?.message?.includes('1/2 test file(s) failed'),
+      expected: true
+    });
+
+    assert({
+      given: 'first file fails and second file passes',
+      should: 'include the passing file output in outputPaths',
+      actual: error?.cause?.outputPaths,
+      expected: ['/ai-evals/b.tap.md']
+    });
+  });
+
+  test('uses correct filename for partial results per file', async () => {
+    const { globSync } = await import('glob');
+    vi.mocked(globSync).mockReturnValueOnce(['./first.sudo', './second.sudo']);
+    const partialResults = {
+      passed: false,
+      assertions: [{ requirement: 'test', passed: true, passCount: 1, totalRuns: 1 }],
+      responses: ['partial']
+    };
+    const timeoutError = new Error('outer');
+    timeoutError.cause = {
+      name: 'TimeoutError',
+      code: 'AGENT_TIMEOUT',
+      message: 'Agent timed out after 300000ms',
+      partialResults
+    };
+    vi.mocked(runAITests)
+      .mockResolvedValueOnce(passedResults)
+      .mockRejectedValueOnce(timeoutError);
+    vi.mocked(recordTestOutput).mockClear();
+    vi.mocked(recordTestOutput)
+      .mockResolvedValueOnce('/ai-evals/first.tap.md')
+      .mockResolvedValueOnce('/ai-evals/second-partial.tap.md');
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    onTestFinished(() => consoleSpy.mockRestore());
+
+    await Try(runAICommand, { ...args, saveResponses: true });
+
+    assert({
+      given: 'second file times out with partial results',
+      should: 'record partial results under the second file name, not the first',
+      actual: vi.mocked(recordTestOutput).mock.calls[1]?.[0]?.testFilename,
+      expected: 'second.sudo'
     });
   });
 });

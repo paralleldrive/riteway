@@ -111,7 +111,15 @@ riteway ai path/to/my-feature-test.sudo
 
 By default this runs **4 passes**, requires **75% pass rate**, uses the **claude** agent, runs up to **4 tests concurrently**, and allows **300 seconds** per agent call.
 
+You can pass multiple files or glob patterns. Files are executed sequentially (to respect API rate limits), and all files run even if one fails — you get a combined report at the end.
+
 ```shell
+# Run all .sudo files under prompts/
+riteway ai 'prompts/**/*.sudo'
+
+# Run multiple patterns
+riteway ai 'evals/**/*.sudo' 'tests/**/*.sudo'
+
 # Specify runs, threshold, and agent
 riteway ai path/to/test.sudo --runs 10 --threshold 80 --agent opencode
 

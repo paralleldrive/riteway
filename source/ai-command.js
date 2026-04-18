@@ -1,6 +1,7 @@
 import { basename } from 'path';
 import minimist from 'minimist';
 import { z } from 'zod';
+import { globSync } from 'glob';
 import { createError } from 'error-causes';
 import { ValidationError, AITestError, OutputError } from './ai-errors.js';
 import { resolveAgentConfig } from './agent-config.js';
@@ -11,7 +12,7 @@ import { defaults, runsSchema, thresholdSchema, concurrencySchema, timeoutSchema
 
 // agent accepts any string here — custom registry agents are resolved at run time
 const aiArgsSchema = z.object({
-  filePath: z.string({ error: 'Test file path is required' }),
+  patterns: z.array(z.string()).min(1, { error: 'At least one test file path or glob pattern is required' }),
   runs: runsSchema,
   threshold: thresholdSchema,
   timeout: timeoutSchema,
@@ -70,7 +71,7 @@ export const parseAIArgs = (argv) => {
   const agentConfigPath = opts['agent-config'] ? opts['agent-config'] : undefined;
 
   const parsed = {
-    filePath: opts._[0],
+    patterns: opts._.length > 0 ? opts._ : [],
     runs: Number(opts.runs),
     threshold: Number(opts.threshold),
     timeout: Number(opts.timeout),
@@ -118,124 +119,163 @@ export const formatAssertionReport = ({ passed, requirement, passCount, totalRun
 };
 
 /**
- * Orchestrate AI test execution: validate file path, verify agent auth, run tests,
- * record TAP output to ai-evals/, and report results to console.
- * Throws AITestError when the pass rate falls below threshold.
- *
- * TODO (follow-up): console.log calls are mixed with orchestration here. A future
- * refactor could return a structured result and let the CLI layer own all output,
- * aligning with the saga pattern's IO-separation principle. Not critical for this PR.
- *
+ * Resolve glob patterns to concrete file paths.
+ * @param {string[]} patterns - File paths or glob patterns
+ * @returns {string[]} Resolved file paths
+ */
+export const resolveAITestFiles = (patterns) => {
+  const files = patterns.flatMap(pattern => globSync(pattern));
+
+  if (files.length === 0) {
+    throw createError({
+      ...ValidationError,
+      message: `No test files found matching: ${patterns.join(', ')}`
+    });
+  }
+
+  return files;
+};
+
+/**
+ * Run a single AI test file: validate path, run tests, record output, report results.
  * @param {Object} options - Test run options
  * @returns {Promise<string>} Path to the recorded TAP output file
  */
-export const runAICommand = async ({ filePath, runs, threshold, timeout, agent, agentConfigPath, color, saveResponses, concurrency, cwd }) => {
-  if (!filePath) {
+const runSingleFile = async ({ filePath, runs, threshold, timeout, agentConfig, color, saveResponses, concurrency, cwd }) => {
+  const testFilename = basename(filePath);
+  const fullPath = validateFilePath(filePath, cwd);
+
+  console.log(`\nRunning AI tests: ${testFilename}`);
+
+  const results = await runAITests({
+    filePath: fullPath,
+    runs,
+    threshold,
+    timeout,
+    agentConfig,
+    concurrency
+  });
+
+  let outputPath;
+  try {
+    outputPath = await recordTestOutput({
+      results,
+      testFilename,
+      saveResponses
+    });
+  } catch (error) {
+    throw createError({
+      ...OutputError,
+      message: `Failed to record test output: ${error.message}`,
+      cause: error
+    });
+  }
+
+  const { assertions } = results;
+  const passedAssertions = assertions.filter(a => a.passed).length;
+  const totalAssertions = assertions.length;
+
+  console.log(`Results recorded: ${outputPath}`);
+  console.log(`Assertions: ${passedAssertions}/${totalAssertions} passed`);
+  console.log(assertions.map(a => formatAssertionReport({ ...a, color })).join('\n'));
+
+  if (!results.passed) {
+    const passRate = totalAssertions > 0 ? Math.round(passedAssertions / totalAssertions * 100) : 0;
+    throw createError({
+      ...AITestError,
+      message: `Test suite failed: ${passedAssertions}/${totalAssertions} assertions passed (${passRate}%)`,
+      passRate,
+      threshold
+    });
+  }
+
+  console.log('Test suite passed!');
+  return outputPath;
+};
+
+/**
+ * Orchestrate AI test execution: resolve file patterns, verify agent auth,
+ * run tests for each file, record TAP output to ai-evals/, and report results.
+ * Throws AITestError when the pass rate falls below threshold.
+ *
+ * @param {Object} options - Test run options
+ * @returns {Promise<string[]>} Paths to the recorded TAP output files
+ */
+export const runAICommand = async ({ patterns, runs, threshold, timeout, agent, agentConfigPath, color, saveResponses, concurrency, cwd }) => {
+  if (!patterns || patterns.length === 0) {
     throw createError({
       ...ValidationError,
       message: 'Test file path is required'
     });
   }
 
-  const testFilename = basename(filePath);
+  const filePaths = resolveAITestFiles(patterns);
 
-  try {
-    const fullPath = validateFilePath(filePath, cwd);
-    const agentConfig = await resolveAgentConfig({ agent, agentConfigPath, cwd });
+  const agentConfig = await resolveAgentConfig({ agent, agentConfigPath, cwd });
 
-    const agentLabel = agentConfigPath
-      ? `custom (${agentConfigPath})`
-      : agent;
+  const agentLabel = agentConfigPath
+    ? `custom (${agentConfigPath})`
+    : agent;
 
-    console.log(`Running AI tests: ${testFilename}`);
-    console.log(`Configuration: ${runs} runs, ${threshold}% threshold, ${concurrency} concurrent, ${timeout}ms timeout, agent: ${agentLabel}, responses: ${saveResponses ? 'saving' : 'off'}`);
+  console.log(`Configuration: ${runs} runs, ${threshold}% threshold, ${concurrency} concurrent, ${timeout}ms timeout, agent: ${agentLabel}, responses: ${saveResponses ? 'saving' : 'off'}`);
+  console.log(`Test files: ${filePaths.length}`);
 
-    console.log(`\nVerifying ${agentLabel} agent authentication...`);
-    const authResult = await verifyAgentAuthentication({
-      agentConfig,
-      timeout: 30000
+  console.log(`\nVerifying ${agentLabel} agent authentication...`);
+  const authResult = await verifyAgentAuthentication({
+    agentConfig,
+    timeout: 30000
+  });
+
+  if (!authResult.success) {
+    throw createError({
+      ...ValidationError,
+      message: `Agent authentication failed: ${authResult.error}`
     });
+  }
+  console.log('✓ Agent authenticated successfully');
 
-    if (!authResult.success) {
-      throw createError({
-        ...ValidationError,
-        message: `Agent authentication failed: ${authResult.error}`
-      });
-    }
-    console.log('✓ Agent authenticated successfully\n');
-
-    const results = await runAITests({
-      filePath: fullPath,
-      runs,
-      threshold,
-      timeout,
-      agentConfig,
-      concurrency
-    });
-
-    let outputPath;
+  // Run all files, collecting results and errors. Files that fail do not
+  // prevent the remaining files from running (run-all, report-all).
+  const outputPaths = [];
+  const errors = [];
+  for (const filePath of filePaths) {
     try {
-      outputPath = await recordTestOutput({
-        results,
-        testFilename,
-        saveResponses
+      const outputPath = await runSingleFile({
+        filePath, runs, threshold, timeout, agentConfig, color, saveResponses, concurrency, cwd
       });
+      outputPaths.push(outputPath);
     } catch (error) {
-      throw createError({
-        ...OutputError,
-        message: `Failed to record test output: ${error.message}`,
-        cause: error
-      });
-    }
-
-    const { assertions } = results;
-    const passedAssertions = assertions.filter(a => a.passed).length;
-    const totalAssertions = assertions.length;
-
-    console.log(`\nResults recorded: ${outputPath}`);
-    console.log(`Assertions: ${passedAssertions}/${totalAssertions} passed`);
-    console.log(assertions.map(a => formatAssertionReport({ ...a, color })).join('\n'));
-
-    if (!results.passed) {
-      const passRate = totalAssertions > 0 ? Math.round(passedAssertions / totalAssertions * 100) : 0;
-      throw createError({
-        ...AITestError,
-        message: `Test suite failed: ${passedAssertions}/${totalAssertions} assertions passed (${passRate}%)`,
-        passRate,
-        threshold
-      });
-    }
-
-    console.log('Test suite passed!');
-    return outputPath;
-  } catch (error) {
-    // If the error carries partial results (e.g. some runs completed before a timeout),
-    // write them to disk before re-throwing so CI artifacts capture what we have.
-    const partialResults = error.cause?.partialResults;
-    if (partialResults) {
-      try {
-        const outputPath = await recordTestOutput({
-          results: partialResults,
-          testFilename,
-          saveResponses
-        });
-        console.log(`\nPartial results recorded: ${outputPath}`);
-      } catch {
-        // Best-effort — don't mask the original error
+      // If the error carries partial results, write them before continuing.
+      const partialResults = error.cause?.partialResults;
+      if (partialResults) {
+        try {
+          const outputPath = await recordTestOutput({
+            results: partialResults,
+            testFilename: basename(filePath),
+            saveResponses
+          });
+          console.log(`\nPartial results recorded: ${outputPath}`);
+          outputPaths.push(outputPath);
+        } catch {
+          // Best-effort — don't mask the original error
+        }
       }
+      errors.push({ filePath, error });
     }
+  }
 
-    // error-causes wraps structured errors as { cause: { name, code, ... } }.
-    // Presence of cause.name is the stable public contract of the library — only
-    // changes if error-causes itself changes its API. Re-throw to avoid double-wrapping.
-    if (error.cause?.name) {
-      throw error;
-    }
+  if (errors.length > 0) {
+    const messages = errors.map(({ filePath, error }) => {
+      const msg = error.cause?.message || error.message;
+      return `  ${basename(filePath)}: ${msg}`;
+    }).join('\n');
 
     throw createError({
       ...AITestError,
-      message: `Failed to run AI tests: ${error.message}`,
-      cause: error
+      message: `${errors.length}/${filePaths.length} test file(s) failed:\n${messages}`,
+      outputPaths
     });
   }
+
+  return outputPaths;
 };
