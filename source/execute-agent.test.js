@@ -53,6 +53,12 @@ const agentConfig = {
   args: ['-p', '--output-format', 'json', '--no-session-persistence']
 };
 
+const cursorAgentConfig = {
+  command: 'agent',
+  args: ['--print', '--output-format', 'json'],
+  outputFormat: 'json'
+};
+
 describe('executeAgent()', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -260,11 +266,72 @@ describe('executeAgent()', () => {
       prompt: 'my prompt'
     });
 
+    const [command, args] = spawn.mock.calls[0];
+
     assert({
       given: 'valid agentConfig with command and args',
       should: 'spawn process with command and args including prompt appended',
-      actual: spawn.mock.calls[0],
+      actual: [command, args],
       expected: ['claude', ['-p', '--output-format', 'json', '--no-session-persistence', 'my prompt']]
+    });
+  });
+
+  test('passes a unique CURSOR_CONFIG_DIR env to each cursor agent spawn', async () => {
+    spawn.mockImplementation(() => createMockProcess({ stdout: '{"ok":true}' }));
+
+    await executeAgent({ agentConfig: cursorAgentConfig, prompt: 'prompt 1' });
+    await executeAgent({ agentConfig: cursorAgentConfig, prompt: 'prompt 2' });
+
+    const dir1 = spawn.mock.calls[0][2]?.env?.CURSOR_CONFIG_DIR;
+    const dir2 = spawn.mock.calls[1][2]?.env?.CURSOR_CONFIG_DIR;
+
+    assert({
+      given: 'two sequential cursor agent calls',
+      should: 'pass a CURSOR_CONFIG_DIR env to the spawn options',
+      actual: typeof dir1,
+      expected: 'string'
+    });
+
+    assert({
+      given: 'two sequential cursor agent calls',
+      should: 'use different CURSOR_CONFIG_DIR values for each spawn',
+      actual: dir1 !== dir2,
+      expected: true
+    });
+  });
+
+  test('concurrent cursor agent spawns receive unique CURSOR_CONFIG_DIR values', async () => {
+    spawn.mockImplementation(() => createMockProcess({ stdout: '{"ok":true}' }));
+
+    await Promise.all([
+      executeAgent({ agentConfig: cursorAgentConfig, prompt: 'concurrent 1' }),
+      executeAgent({ agentConfig: cursorAgentConfig, prompt: 'concurrent 2' }),
+      executeAgent({ agentConfig: cursorAgentConfig, prompt: 'concurrent 3' })
+    ]);
+
+    const dirs = spawn.mock.calls.map(call => call[2]?.env?.CURSOR_CONFIG_DIR);
+    const uniqueDirs = new Set(dirs);
+
+    assert({
+      given: 'three concurrent cursor agent calls',
+      should: 'assign a unique CURSOR_CONFIG_DIR to each',
+      actual: uniqueDirs.size,
+      expected: 3
+    });
+  });
+
+  test('does not set CURSOR_CONFIG_DIR for non-cursor agents', async () => {
+    spawn.mockReturnValue(createMockProcess({ stdout: '{"ok":true}' }));
+
+    await executeAgent({ agentConfig, prompt: 'test prompt' });
+
+    const options = spawn.mock.calls[0][2];
+
+    assert({
+      given: 'a claude agent (non-cursor)',
+      should: 'not pass spawn options with CURSOR_CONFIG_DIR',
+      actual: options?.env?.CURSOR_CONFIG_DIR,
+      expected: undefined
     });
   });
 });

@@ -1,7 +1,23 @@
 import { spawn } from 'child_process';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import { createId } from '@paralleldrive/cuid2';
 import { createError } from 'error-causes';
 import { ParseError, TimeoutError, AgentProcessError } from './ai-errors.js';
 import { unwrapEnvelope, unwrapAgentResult, parseOpenCodeNDJSON } from './agent-parser.js';
+
+const isCursorAgent = (command) => command === 'agent';
+
+const buildSpawnOptions = (command) => {
+  if (!isCursorAgent(command)) return undefined;
+
+  return {
+    env: {
+      ...process.env,
+      CURSOR_CONFIG_DIR: join(tmpdir(), `riteway-cursor-${createId()}`)
+    }
+  };
+};
 
 const outputFormatParsers = {
   json: (stdout) => stdout,
@@ -38,7 +54,7 @@ const spawnProcess = ({ agentConfig, prompt }) => {
   const partialOutput = { stdout: '' };
 
   try {
-    const proc = spawn(command, allArgs);
+    const proc = spawn(command, allArgs, buildSpawnOptions(command));
     proc.stdin.end();
 
     return {
