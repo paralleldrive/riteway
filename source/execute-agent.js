@@ -1,7 +1,25 @@
 import { spawn } from 'child_process';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import { createId } from '@paralleldrive/cuid2';
 import { createError } from 'error-causes';
 import { ParseError, TimeoutError, AgentProcessError } from './ai-errors.js';
 import { unwrapEnvelope, unwrapAgentResult, parseOpenCodeNDJSON } from './agent-parser.js';
+
+// Some CLIs (e.g. Cursor) race on a shared config tempfile during concurrent
+// writes. When isolateConfigEnv is set, each spawn gets a unique config dir
+// via cuid2. The CLI creates the directory on first write.
+const buildSpawnOptions = (agentConfig) => {
+  const { isolateConfigEnv, isolateConfigPrefix = '' } = agentConfig;
+  if (!isolateConfigEnv) return undefined;
+
+  return {
+    env: {
+      ...process.env,
+      [isolateConfigEnv]: join(tmpdir(), `${isolateConfigPrefix}${createId()}`)
+    }
+  };
+};
 
 const outputFormatParsers = {
   json: (stdout) => stdout,
@@ -38,7 +56,7 @@ const spawnProcess = ({ agentConfig, prompt }) => {
   const partialOutput = { stdout: '' };
 
   try {
-    const proc = spawn(command, allArgs);
+    const proc = spawn(command, allArgs, buildSpawnOptions(agentConfig));
     proc.stdin.end();
 
     return {
@@ -161,6 +179,8 @@ const runAgentProcess = async ({ agentConfig, prompt, timeout }) => {
  * @param {string} options.agentConfig.command - Command to execute
  * @param {Array<string>} [options.agentConfig.args=[]] - Command arguments
  * @param {'json'|'ndjson'} [options.agentConfig.outputFormat='json'] - Output format for parsing
+ * @param {string} [options.agentConfig.isolateConfigEnv] - Env var for per-spawn config dir isolation
+ * @param {string} [options.agentConfig.isolateConfigPrefix] - Prefix for the isolated temp dir name
  * @param {string} options.prompt - Prompt to send to the agent
  * @param {number} [options.timeout=300000] - Timeout in ms (default: 5 minutes)
  * @param {boolean} [options.rawOutput=false] - Return raw stdout string without JSON parsing
