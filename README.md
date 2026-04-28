@@ -193,7 +193,7 @@ The generated file is a keyed registry. Add a custom agent entry and use it with
 {
   "claude":   { "command": "claude",   "args": ["-p", "--output-format", "json", "--no-session-persistence"], "outputFormat": "json"  },
   "opencode": { "command": "opencode", "args": ["run", "--format", "json"],                                   "outputFormat": "ndjson" },
-  "cursor":   { "command": "agent",    "args": ["--print", "--output-format", "json"],                        "outputFormat": "json"  },
+  "cursor":   { "command": "agent",    "args": ["--print", "--output-format", "json", "--trust"],             "outputFormat": "json"  },
   "my-agent": { "command": "my-tool",  "args": ["--json"],                                                    "outputFormat": "json"  }
 }
 ```
