@@ -40,7 +40,7 @@ describe('getAgentConfig()', () => {
       given: 'agent name "cursor"',
       should: 'return correct agent configuration with json outputFormat',
       actual: config,
-      expected: { command: 'agent', args: ['--print', '--output-format', 'json'], outputFormat: 'json' }
+      expected: { command: 'agent', args: ['--print', '--output-format', 'json', '--trust'], outputFormat: 'json' }
     });
   });
 
