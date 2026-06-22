@@ -14,65 +14,65 @@ Rank files by hotspot score to identify prime candidates for refactoring before 
 
 **File:** `aidd-fix.md`
 
-*No description available*
+Fix a bug or implement review feedback following the AIDD fix process
 
 ### Commit
 
 **File:** `commit.md`
 
-*No description available*
+Commit changes using conventional commit format
 
 ### discover
 
 **File:** `discover.md`
 
-*No description available*
+Discover user journeys and features through guided questions
 
 ### execute
 
 **File:** `execute.md`
 
-*No description available*
+Execute a task or epic from the task plan
 
 ### help
 
 **File:** `help.md`
 
-*No description available*
+List available commands from please.mdc
 
 ### log
 
 **File:** `log.md`
 
-*No description available*
+Log salient changes to activity-log.md
 
 ### plan
 
 **File:** `plan.md`
 
-*No description available*
+Review plan.md to identify priorities and suggest next steps
 
 ### 🔬 Code Review
 
 **File:** `review.md`
 
-*No description available*
+Conduct thorough code review focusing on code quality and best practices
 
 ### run-test
 
 **File:** `run-test.md`
 
-*No description available*
+Execute AI agent test script in real browser
 
 ### task
 
 **File:** `task.md`
 
-*No description available*
+Plan and execute a task epic using the task creator
 
 ### user-test
 
 **File:** `user-test.md`
 
-*No description available*
+Generate human and AI agent test scripts from user journeys
 
