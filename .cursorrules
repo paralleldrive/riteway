@@ -1,0 +1,120 @@
+# Riteway - Unit Testing Library
+
+## Project Overview
+Riteway is a JavaScript unit testing library that forces developers to write **R**eadable, **I**solated, **T**horough, and **E**xplicit tests. Built on top of tape, it provides a simple API that ensures every test answers the 5 essential questions:
+
+1. What is the unit under test?
+2. What should it do?
+3. What was the actual output?
+4. What was the expected output?
+5. How do you reproduce the failure?
+
+## Architecture & Key Components
+
+### Core API
+- `describe(unit, testFunction)` - Main test function
+- `assert({given, should, actual, expected})` - Assertion function with required prose descriptions
+- `Try(fn, ...args)` - Safe function execution with error handling
+- `match(text)` - Text/pattern matching utility for component testing
+- `render(component)` - React component rendering utility
+- `countKeys(obj)` - Object key counting utility
+
+### Module Structure
+- `/source/` - Main source code (CommonJS)
+- `/esm/` - ES module versions (copied from source)
+- `/bin/riteway` - CLI test runner
+- Type definitions in root (`.d.ts` files)
+
+## Coding Standards & Patterns
+
+### Test Writing Patterns
+```javascript
+describe('functionName()', async assert => {
+  assert({
+    given: 'a clear description of input/context',
+    should: 'describe expected behavior',
+    actual: functionCall(input),
+    expected: expectedOutput
+  });
+});
+```
+
+### Error Handling
+- Use `Try()` for testing functions that may throw
+- Always handle async operations properly
+- Prefer async/await over raw promises
+
+### Code Style
+- Use ES6+ features (arrow functions, destructuring, etc.)
+- Prefer const over let when possible
+- Use descriptive variable names
+- Follow existing formatting patterns (2 spaces, semicolons)
+
+### React Component Testing
+```javascript
+const $ = render(<Component prop="value" />);
+const contains = match($('.selector').html());
+assert({
+  given: 'component with props',
+  should: 'render expected content',
+  actual: contains('expected text'),
+  expected: 'expected text'
+});
+```
+
+## Development Workflow
+
+### Common Commands
+- `npm test` - Run all tests
+- `npm run lint` - Run ESLint
+- `npm run typecheck` - TypeScript checking
+- `npm run esm` - Update ESM modules
+- `npm run watch` - Watch mode for development
+
+### Build Process
+1. Source files are in `/source/`
+2. ESM versions are generated via copy to `/esm/`
+3. TypeScript definitions are manually maintained
+4. Babel is used for transpilation in tests
+
+### Testing Guidelines
+- Every test must have `given`, `should`, `actual`, `expected`
+- Use prose descriptions that read like sentences
+- Test one thing per assertion
+- Prefer isolated unit tests
+- Use `describe.only()` for focused testing
+- Use `describe.skip()` to temporarily disable tests
+
+## Dependencies & Tools
+- **tape** - Underlying test runner
+- **cheerio** - DOM manipulation for component testing
+- **react/react-dom** - For component rendering
+- **babel** - Transpilation
+- **eslint** - Linting
+- **typescript** - Type checking (dev only)
+
+## File Naming Conventions
+- `*-test.js` - Test files
+- `*.d.ts` - TypeScript definitions
+- Main modules: `riteway.js`, `match.js`, `render-component.js`, etc.
+
+## Key Design Principles
+1. **Explicitness over brevity** - Every test should be completely clear
+2. **Readability first** - Tests should read like documentation
+3. **Fail fast and clear** - Test failures should immediately show the problem
+4. **Minimal API surface** - Keep the API small and focused
+5. **TAP compatibility** - Output should work with TAP ecosystem tools
+
+## Common Issues & Solutions
+- Missing babel config causes syntax errors - ensure `.babelrc` is properly configured
+- ESM modules need manual updating via `npm run esm`
+- TypeScript checking is separate from runtime - run `npm run typecheck`
+- For React testing, ensure proper imports and babel presets
+
+## When Contributing
+- Follow existing test patterns exactly
+- Ensure all tests pass before submitting
+- Run linting and type checking
+- Update ESM modules if source changes
+- Maintain TypeScript definitions for API changes
+- Keep test output clear and readable
