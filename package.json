@@ -93,7 +93,7 @@
   "homepage": "https://github.com/ericelliott/riteway#readme",
   "devDependencies": {
     "@types/cheerio": "^1.0.0",
-    "@types/node": "^24.7.0",
+    "@types/node": "^26.0.0",
     "@types/react": "^19.2.2",
     "eslint": "^9.37.0",
     "eslint-plugin-react": "^7.37.5",
